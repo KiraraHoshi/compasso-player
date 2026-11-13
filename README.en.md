@@ -6,7 +6,7 @@ It runs in the browser on phones and desktops and can be installed as an app (PW
 
 **[Open the app](https://kirarahoshi.github.io/compasso-player/)** · *[Leia em português](README.md)*
 
-> The app interface is currently in Brazilian Portuguese. An English translation is planned.
+The app follows your device language (English or Brazilian Portuguese), and you can switch it in **Settings › Language**.
 
 | Library | Now playing | Vinyl (70s) |
 |---|---|---|
@@ -22,7 +22,13 @@ It runs in the browser on phones and desktops and can be installed as an app (PW
 - **Lyrics:** read from tags or `.lrc` files, synced karaoke-style, editable.
 - **You:** a local profile with listening time, most played songs and a yearly recap you can share as an image.
 - **Themes:** two free themes, a theme editor with contrast checking, a built-in gallery, and JSON import/export. The same theme format works in [Caixinhas Orologia](https://github.com/KiraraHoshi/caixinhas-orologias).
+- **Own volume control**, separate from the device volume, with mute and keyboard shortcuts.
+- **Light mode** for simpler devices. The app suggests it when it notices it is running slowly.
 - **Backup:** playlists, favorites, statistics, lyrics, profile, themes and settings in one file.
+
+## Translations
+
+All texts live in `js/i18n.js`. The Portuguese text is the key and `EN` holds the English. To add a language, copy `EN`, translate the values and register it in `IDIOMAS`.
 
 ## Run locally
 

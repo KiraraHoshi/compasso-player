@@ -37,13 +37,22 @@ Funciona no navegador do celular e do PC e pode ser instalado como app (PWA).
 - **Troca sem pausa e crossfade**, velocidade de reprodução e opção de nivelar o volume.
 - **Busca geral e seleção múltipla** na Biblioteca.
 - **Galeria de temas** dentro do app e na pasta [`temas/`](temas/).
+- **Volume próprio**, separado do volume do aparelho, com mudo e atalhos no teclado.
+- **Modo leve** para aparelhos mais simples, e o app sugere ligar quando percebe que está lento.
+- **Português e inglês**, escolhido pelo idioma do aparelho ou em Ajustes.
 - **Volta de onde parou:** ao reabrir, a fila e a posição da música continuam iguais.
 - **Controles do sistema:** tela de bloqueio, fones Bluetooth e teclas de mídia.
 - **Atalhos no PC:** espaço toca e pausa, ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita.
 
 ## Usar
 
-Abra `index.html` por um servidor (por exemplo, o GitHub Pages) e toque em **Importar**. Para instalar como app, use **Instalar app** ou **Adicionar à tela inicial** no menu do navegador.
+1. Abra **[kirarahoshi.github.io/compasso-player](https://kirarahoshi.github.io/compasso-player/)** no celular ou no PC.
+2. Toque em **Importar** e escolha suas músicas ou uma pasta inteira. No PC, também dá para arrastar para a janela.
+3. Para instalar como app, use **Instalar app** ou **Adicionar à tela inicial** no menu do navegador. Depois disso ele abre mesmo sem internet.
+
+O app abre em português ou inglês conforme o idioma do aparelho, e dá para trocar em **Ajustes › Idioma**. Se o celular for mais simples ou a rolagem travar, ligue **Ajustes › Efeitos › Modo leve**.
+
+### Para quem quer mexer no código
 
 Para testar no PC sem publicar:
 
@@ -97,6 +106,7 @@ O formato é o mesmo do [Caixinhas Orologia](https://github.com/KiraraHoshi/caix
 ```
 index.html          telas do app
 css/app.css         visual (todas as cores vêm do tema)
+js/i18n.js          idiomas (o dicionário de inglês fica aqui)
 js/tags.js          leitura de tags e capas dos arquivos de áudio
 js/app.js           biblioteca, fila, reprodução, playlists e temas
 sw.js               modo offline

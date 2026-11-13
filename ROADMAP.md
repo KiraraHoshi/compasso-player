@@ -26,9 +26,7 @@ Toda a lista da versão web está pronta. Os próximos passos são a versão And
 - ✅ **Tela cheia** com relógio (1.4.0).
 - ✅ **Boas-vindas, busca geral, seleção múltipla, galeria de temas e cartão Sobre** (1.5.0).
 
-## Próximo na versão web
-
-- Tradução do app para inglês.
+- ✅ **Volume próprio, modo leve e tradução para inglês** (1.6.0).
 
 ## Versão Android
 
