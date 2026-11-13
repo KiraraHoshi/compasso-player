@@ -72,7 +72,7 @@ const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i>
 
 /* ===================== Ajustes e temas ===================== */
 const cfg = Object.assign(
-  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, mudo: false, coracoes: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false },
+  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false },
   guardado.get("compasso.cfg", {})
 );
 const salvarCfg = () => guardado.set("compasso.cfg", cfg);
@@ -1208,7 +1208,7 @@ function renderTemas() {
       <div class="opt"><span id="l-leve">${T("Modo leve")}</span><button class="tg" data-alternar-leve role="switch" aria-checked="${!!cfg.leve}" aria-labelledby="l-leve"></button></div>
       <p class="note">${T("Desliga as animações que mais pesam. Bom para celulares mais simples ou se a rolagem estiver travando.")}</p>
       ${tg("amb", T("Luz de fundo com as cores da capa"))}${faixaAjuste("ambF", T("Intensidade da luz"), cfg.amb)}
-      ${tg("reage", T("Reagir à batida da música"))}${faixaAjuste("batF", T("Força da batida"), cfg.reage)}
+      ${tg("reage", T("Reagir à batida da música"))}${faixaAjuste("batF", T("Força da batida"), cfg.reage)}${cfg.reage ? `<div class="sub-opt">${tg("aura", T("Aura em volta da capa"))}</div>` : ""}
       <div class="opt"><span>${T("Imagem de fundo")}</span><div class="btns"><button class="btn ghost sm" data-fundo>${ico("image", 18)}${temFundo() ? T("Trocar") : T("Escolher")}</button>${temFundo() ? `<button class="btn ghost sm" data-semfundo>${T("Tirar")}</button>` : ""}</div></div>
       ${temFundo() ? `<div class="opt sub-opt"><label for="r-blur">${T("Desfoque")}</label><input type="range" id="r-blur" data-rgx="fundoBlur" min="0" max="24" step="1" value="${cfg.fundoBlur}"></div>
       <div class="opt sub-opt"><label for="r-veu">${T("Cor do tema por cima")}</label><input type="range" id="r-veu" data-rgx="fundoVeu" min="0.15" max="0.9" step="0.05" value="${cfg.fundoVeu}"></div>` : ""}
@@ -1306,6 +1306,7 @@ $("tm").addEventListener("click", (e) => {
     if (k === "nivelar" && ctx) montarFiltros();
     if (k === "eraRuido") ajustarRuido();
     if (k === "coracoes") { renderBib(); renderPl(); }
+    if (k === "aura") ondinhas = [];
     renderTemas(); return;
   }
   if (t.closest("[data-alternar-leve]")) return definirLeve(!cfg.leve);
@@ -1915,7 +1916,7 @@ function restaurarBackup(o) {
   for (const t of o.temas || []) { try { const v = validarTema(t); if (!meusTemas.some((m) => m.nome === v.nome)) { v.id = uid("t"); meusTemas.push(v); } } catch (err) { /* tema inválido: pula */ } }
   salvarTemas();
   const aj = o.ajustes || {};
-  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "leve", "coracoes"]) if (k in aj) cfg[k] = aj[k];
+  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "leve", "coracoes", "aura"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
   if (aj.ajustes) cfg.ajustes = aj.ajustes;
@@ -2184,12 +2185,20 @@ function pintarCena() {
   } else C.innerHTML = "";
 }
 let nivelViz = new Float32Array(28);
+let auraNiv = new Float32Array(36), ondinhas = [], ultOndinha = 0, auraLimpa = true;
+/* Aura: um anel suave em volta da capa (Relógio e Vinil) que respira com a música, sem exagero */
+const temAura = (v) => (v === "relogio" || v === "vinil") && cfg.reage && cfg.aura !== false && !cfg.leve && APP.dataset.letra !== "1";
 function desenharViz() {
-  const v = cfg.visual; if ((v !== "barras" && v !== "onda") || $("app").dataset.view !== "tocando") return;
+  const v = cfg.visual, aura = temAura(v);
+  if ((v !== "barras" && v !== "onda" && !aura) || $("app").dataset.view !== "tocando") {
+    if (!aura && !auraLimpa && (v === "relogio" || v === "vinil")) { const cv = $("viz"); cv.getContext("2d").clearRect(0, 0, cv.width, cv.height); auraLimpa = true; }
+    return;
+  }
   const cv = $("viz"), w = cv.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1); if (!w) return;
   if (cv.width !== Math.round(w * dpr)) cv.width = cv.height = Math.round(w * dpr);
   const c = cv.getContext("2d"), W = cv.width, vivo = playing && an && !calmo;
   c.clearRect(0, 0, W, W); c.fillStyle = c.strokeStyle = corViz;
+  if (aura) { auraLimpa = false; return desenharAura(c, W, vivo); }
   if (v === "barras") {
     if (vivo) an.getByteFrequencyData(bins);
     const n = 28, vao = W * 0.012, bw = (W - vao * (n - 1)) / n;
@@ -2208,6 +2217,35 @@ function desenharViz() {
     for (let i = 0; i <= 96; i++) { const val = vivo ? (ondas[Math.floor((i * (ondas.length - 1)) / 96)] - 128) / 128 : 0, y = W / 2 + val * W * 0.42; if (i) c.lineTo((i / 96) * W, y); else c.moveTo(0, y); }
     c.stroke();
   }
+}
+function desenharAura(c, W, vivo) {
+  const n = auraNiv.length, k = cfg.batF, cx = W / 2;
+  if (vivo) an.getByteFrequencyData(bins);
+  for (let i = 0; i < n; i++) {
+    const p = i / (n - 1), alvo = vivo ? bins[2 + Math.round(64 * p * p)] / 255 : 0;
+    auraNiv[i] += (alvo - auraNiv[i]) * (alvo > auraNiv[i] ? 0.22 : 0.08); // sobe rápido, desce devagar
+  }
+  // o raio acompanha o leve "pulo" da capa no CSS
+  const R = W * 0.34 * (1 + pulso * 0.02 * k + batida * k * 0.055) + W * 0.012, A = W * 0.05 * (0.4 + k * 0.8), N = n * 2, pts = [];
+  for (let j = 0; j < N; j++) {
+    const nv = auraNiv[j < n ? j : N - 1 - j], r = R + Math.pow(nv, 1.6) * A, ang = (j / N) * Math.PI * 2 - Math.PI / 2;
+    pts.push([cx + Math.cos(ang) * r, cx + Math.sin(ang) * r]);
+  }
+  c.lineJoin = "round"; c.beginPath();
+  for (let j = 0; j <= N; j++) { // curva suave pelos pontos médios
+    const a = pts[j % N], b = pts[(j + 1) % N], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    if (j === 0) c.moveTo(mx, my); else c.quadraticCurveTo(a[0], a[1], mx, my);
+  }
+  c.globalAlpha = 0.16; c.lineWidth = W * 0.03; c.stroke();
+  c.globalAlpha = 0.75; c.lineWidth = W * 0.006; c.stroke();
+  // uma onda sai da capa em cada batida forte
+  if (vivo && ultimaBatida !== ultOndinha && performance.now() - ultimaBatida < 60) { ultOndinha = ultimaBatida; if (ondinhas.length < 3) ondinhas.push(0); }
+  c.lineWidth = W * 0.005;
+  for (let i = ondinhas.length - 1; i >= 0; i--) {
+    const t = (ondinhas[i] += 0.022); if (t >= 1) { ondinhas.splice(i, 1); continue; }
+    c.globalAlpha = 0.35 * (1 - t) * k; c.beginPath(); c.arc(cx, cx, R + t * W * 0.1, 0, Math.PI * 2); c.stroke();
+  }
+  c.globalAlpha = 1;
 }
 /* Tela cheia: o mostrador vira um relógio que toca */
 const emPalco = () => $("app").dataset.palco === "1";
@@ -2264,7 +2302,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.7.0";
+const VERSAO = "1.7.1";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
