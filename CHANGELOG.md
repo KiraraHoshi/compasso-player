@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.11.2
+- Títulos longos no Tocando agora quebram em até duas linhas e terminam em "…". Antes, no PC, empurravam a coluna para fora da tela.
+
 ## 1.11.1
 - Os visuais reagem igual em qualquer tela. Antes a suavização era contada por quadro, então um monitor de 144 Hz reagia bem mais rápido que um celular a 60 Hz (ou 30 Hz na economia de bateria). Agora tudo segue o tempo real, as frequências são lidas uma vez por quadro e o analisador responde mais rápido.
 - O áudio usa um buffer de tamanho médio, que deixa o visual mais em sincronia com o som.
