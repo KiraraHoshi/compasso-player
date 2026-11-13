@@ -4,6 +4,8 @@ Player de música **offline** com **temas customizáveis**. As músicas, as play
 
 Funciona no navegador do celular e do PC e pode ser instalado como app (PWA).
 
+**[Abrir o app](https://kirarahoshi.github.io/compasso-player/)**
+
 ## O que ele faz
 
 - **Biblioteca:** importa arquivos ou pastas inteiras (no PC, também dá para arrastar para a janela). Lê título, artista, álbum, número da faixa e capa de MP3, FLAC, M4A, OGG e Opus. Abas de músicas, álbuns e artistas, com busca e ordenação.
@@ -14,10 +16,12 @@ Funciona no navegador do celular e do PC e pode ser instalado como app (PWA).
 - **Temas:** dois temas grátis (Orologia Claro e Orologia Escuro), ajuste rápido de cor e cantos, e um editor para criar temas próprios com verificação de contraste. Temas podem ser exportados e importados em JSON.
 - **Você:** perfil local (nome e foto), tempo de escuta, reproduções, últimos 7 dias, mais ouvidas e o Recap do ano. Sem conta e sem nada online.
 - **Favoritas e playlists automáticas:** Favoritas, Adicionadas recentemente, Tocadas recentemente e Mais tocadas.
-- **Equalizador** de 5 bandas com predefinições, **temporizador de sono** e fade ao pausar e tocar.
+- **Equalizador** de 5 ou 10 bandas com 15 predefinições, **temporizador de sono** e fade ao pausar e tocar.
 - **Letras:** lidas das tags da música ou de um arquivo .lrc com o mesmo nome, sincronizadas no estilo karaokê. Dá para colar e editar.
 - **Organização:** aba de Pastas, editor de informações (sem mexer no arquivo original) e músicas ocultas.
 - **Imagem de fundo** escolhida por você, com desfoque.
+- **Backup:** playlists, favoritas, estatísticas, letras, perfil, temas e ajustes num arquivo, para levar a outro aparelho.
+- **Recap em imagem:** o resumo do ano vira uma imagem para compartilhar.
 - **Volta de onde parou:** ao reabrir, a fila e a posição da música continuam iguais.
 - **Controles do sistema:** tela de bloqueio, fones Bluetooth e teclas de mídia.
 - **Atalhos no PC:** espaço toca e pausa, ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita.

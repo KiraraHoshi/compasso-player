@@ -360,12 +360,10 @@ function prepararAudio() {
   an = ctx.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.75; an.connect(ctx.destination);
   bins = new Uint8Array(an.frequencyBinCount);
   entrada = ctx.createGain();
-  filtros = EQ_F.map((f, i) => { const b = ctx.createBiquadFilter(); b.type = i === 0 ? "lowshelf" : i === 4 ? "highshelf" : "peaking"; b.frequency.value = f; b.Q.value = 1.1; return b; });
-  filtros.reduce((a, b) => (a.connect(b), b), entrada).connect(an);
   mestre = ctx.createGain(); mestre.gain.value = 0.5; mestre.connect(entrada);
   el = new Audio(); el.preload = "auto";
   ganhoEl = ctx.createGain(); ctx.createMediaElementSource(el).connect(ganhoEl); ganhoEl.connect(entrada);
-  aplicarEQ();
+  montarFiltros();
   el.onended = fimDaFaixa;
   el.onplaying = () => { erros = 0; };
   el.onloadedmetadata = () => { const x = cur(); if (x && !x.demo && el.dataset.id === x.id && isFinite(el.duration)) { x.d = el.duration; paint(); } };
@@ -1036,6 +1034,8 @@ function renderTemas() {
       <div class="opt"><label for="s-anterior">Botão Anterior</label><select id="s-anterior" class="mini-sel" data-sel="anterior"><option value="reiniciar"${cfg.anterior !== "sempre" ? " selected" : ""}>Recomeça a música</option><option value="sempre"${cfg.anterior === "sempre" ? " selected" : ""}>Volta para a anterior</option></select></div>
       <p class="note">Com "Recomeça a música", o Anterior volta para o começo se já passaram 3 segundos, e só então para a música anterior.</p>
       <div class="btns"><button class="btn ghost sm" data-abrireq>${ico("sliders", 18)}Equalizador</button><button class="btn ghost sm" data-abrirsono>${ico("timer", 18)}Temporizador</button></div></div>
+    <div class="card stack"><h2>Backup</h2><p class="note">Guarda num arquivo as playlists, favoritas, estatísticas, letras, perfil, temas e ajustes. As músicas não entram: no aparelho novo, importe as músicas primeiro e depois restaure.</p>
+      <div class="btns"><button class="btn ghost sm" data-bkp>Salvar backup</button><button class="btn ghost sm" data-rst>Restaurar backup</button></div></div>
     <div class="card stack"><h2>Compartilhar tema</h2><p class="note">Um tema é um arquivo JSON pequeno. Exporte o tema em uso ou importe um de outra pessoa.</p>
       <div class="btns"><button class="btn ghost sm" data-exp="copiar">Copiar JSON</button><button class="btn ghost sm" data-exp="baixar">Baixar .json</button><button class="btn ghost sm" data-imp="arquivo">Abrir .json</button><button class="btn ghost sm" data-imp="colar">Colar JSON</button></div></div>
     <div class="card stack"><h2>Biblioteca</h2>${tg("exemplos", "Mostrar as músicas de exemplo")}
@@ -1109,6 +1109,8 @@ $("tm").addEventListener("click", (e) => {
     renderTemas(); return;
   }
   if (t.closest("[data-abrireq]")) return abrirEQ();
+  if (t.closest("[data-bkp]")) return salvarBackup();
+  if (t.closest("[data-rst]")) return $("backup-file").click();
   if (t.closest("[data-fundo]")) return escolherFundo();
   if (t.closest("[data-semfundo]")) { try { localStorage.removeItem("compasso.fundo"); } catch (err) { /* ignora */ } aplicarFundo(); renderTemas(); return toast("Imagem de fundo removida"); }
   if (t.closest("[data-verocultas]")) return verOcultas();
@@ -1148,6 +1150,14 @@ $("tm").addEventListener("input", (e) => {
   else if (t.dataset.rgx) { cfg[t.dataset.rgx] = +t.value; salvarCfg(); aplicarFundo(); }
 });
 $("tm").addEventListener("change", (e) => { const k = e.target.dataset.sel; if (k) { cfg[k] = e.target.value; salvarCfg(); } });
+$("backup-file").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    const r = restaurarBackup(JSON.parse(await f.text()));
+    toast(`Backup restaurado: ${plural(r.nPl, "playlist", "playlists")}` + (r.total ? `, ${r.achadas} de ${r.total} músicas encontradas` : ""));
+    if (r.total > r.achadas) setTimeout(() => toast("Importe as músicas que faltam e restaure de novo para completar"), 2600);
+  } catch (err) { toast(err instanceof SyntaxError ? "O arquivo não é um JSON válido" : err.message); }
+});
 $("tema-file").addEventListener("change", async (e) => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   if (f.size > 100000) return toast("Esse arquivo é grande demais para ser um tema");
@@ -1215,26 +1225,56 @@ function cliqueEditor(e) {
 
 
 /* ===================== Equalizador ===================== */
-const EQ_F = [60, 230, 910, 3600, 14000], EQ_ROT = ["60 Hz", "230 Hz", "910 Hz", "3,6 kHz", "14 kHz"];
-const EQ_P = {
+const EQ5 = [60, 230, 910, 3600, 14000], EQ10 = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+const rotHz = (f) => (f >= 1000 ? String(f / 1000).replace(".", ",") + " kHz" : f + " Hz");
+const EQ_P = { // predefinições em 5 bandas; a versão de 10 bandas é calculada a partir delas
   normal: ["Normal", [0, 0, 0, 0, 0]], graves: ["Mais graves", [6, 4, 0, 0, 0]], rock: ["Rock", [5, 3, -1, 3, 5]],
-  pop: ["Pop", [-1, 2, 4, 2, -1]], jazz: ["Jazz", [3, 2, -1, 2, 3]], classica: ["Clássica", [4, 2, -1, 2, 4]],
+  pop: ["Pop", [-1, 2, 4, 2, -1]], hiphop: ["Hip-hop", [5, 4, 0, 1, 3]], funk: ["Funk", [6, 4, 0, 1, 2]],
+  jazz: ["Jazz", [3, 2, -1, 2, 3]], classica: ["Clássica", [4, 2, -1, 2, 4]], acustico: ["Acústico", [3, 1, 1, 2, 3]],
   eletronica: ["Eletrônica", [5, 3, 0, 2, 4]], vocal: ["Vocal e podcast", [-2, -1, 3, 4, 1]],
-  agudos: ["Mais agudos", [0, 0, 0, 3, 6]], noite: ["Noite (suave)", [2, 1, 0, -2, -4]],
+  agudos: ["Mais agudos", [0, 0, 0, 3, 6]], lofi: ["Lo-fi", [3, 1, 0, -3, -6]], baixo: ["Volume baixo", [5, 2, 0, 1, 4]],
+  noite: ["Noite (suave)", [2, 1, 0, -2, -4]],
 };
-if (!cfg.eq || !Array.isArray(cfg.eq.g) || cfg.eq.g.length !== 5) cfg.eq = { on: false, g: [0, 0, 0, 0, 0], p: "normal" };
+function interp(fs, gs, f) { // interpolação em escala logarítmica de frequência
+  if (f <= fs[0]) return gs[0];
+  if (f >= fs[fs.length - 1]) return gs[gs.length - 1];
+  let i = 0; while (fs[i + 1] < f) i++;
+  const t = (Math.log(f) - Math.log(fs[i])) / (Math.log(fs[i + 1]) - Math.log(fs[i]));
+  return Math.round(gs[i] + (gs[i + 1] - gs[i]) * t);
+}
+cfg.eq = Object.assign({ on: false, modo: 5, g: [0, 0, 0, 0, 0], g10: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], p: "normal" }, cfg.eq || {});
+if (!Array.isArray(cfg.eq.g) || cfg.eq.g.length !== 5) cfg.eq.g = [0, 0, 0, 0, 0];
+if (!Array.isArray(cfg.eq.g10) || cfg.eq.g10.length !== 10) cfg.eq.g10 = EQ10.map((f) => interp(EQ5, cfg.eq.g, f));
+if (cfg.eq.modo !== 10) cfg.eq.modo = 5;
+const eqBandas = () => (cfg.eq.modo === 10 ? EQ10 : EQ5);
+const eqGanhos = () => (cfg.eq.modo === 10 ? cfg.eq.g10 : cfg.eq.g);
+function montarFiltros() {
+  if (!ctx) return;
+  if (filtros) { entrada.disconnect(); filtros.forEach((f) => f.disconnect()); }
+  const F = eqBandas();
+  filtros = F.map((f, i) => {
+    const b = ctx.createBiquadFilter();
+    b.type = i === 0 ? "lowshelf" : i === F.length - 1 ? "highshelf" : "peaking";
+    b.frequency.value = f; b.Q.value = F.length === 10 ? 1.4 : 1.1;
+    return b;
+  });
+  filtros.reduce((a, b) => (a.connect(b), b), entrada).connect(an);
+  aplicarEQ();
+}
 function aplicarEQ() {
   if (!filtros) return;
-  const g = cfg.eq.on ? cfg.eq.g : [0, 0, 0, 0, 0], t = ctx.currentTime;
-  filtros.forEach((f, i) => f.gain.setTargetAtTime(g[i], t, 0.05));
+  const g = cfg.eq.on ? eqGanhos() : eqGanhos().map(() => 0), t = ctx.currentTime;
+  filtros.forEach((f, i) => f.gain.setTargetAtTime(g[i] || 0, t, 0.05));
   const pico = Math.max(0, ...g); // abaixa o volume de entrada para o reforço não distorcer
   entrada.gain.setTargetAtTime(Math.pow(10, (-pico * 0.6) / 20), t, 0.05);
 }
 const dB = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v) + " dB";
 function htmlEQ() {
+  const F = eqBandas(), G = eqGanhos();
   return `<div class="opt"><span id="l-eqon">Equalizador ligado</span><button class="tg" data-eqon role="switch" aria-checked="${cfg.eq.on}" aria-labelledby="l-eqon"></button></div>
+    <div class="seg" role="group" aria-label="Quantidade de bandas"><button data-eqmodo="5" class="${cfg.eq.modo === 5 ? "on" : ""}" aria-pressed="${cfg.eq.modo === 5}">5 bandas</button><button data-eqmodo="10" class="${cfg.eq.modo === 10 ? "on" : ""}" aria-pressed="${cfg.eq.modo === 10}">10 bandas</button></div>
     <div class="chips" role="group" aria-label="Predefinições">${Object.entries(EQ_P).map(([k, [n]]) => `<button data-eqp="${k}" aria-pressed="${cfg.eq.p === k}" class="${cfg.eq.p === k ? "on" : ""}">${n}</button>`).join("")}</div>
-    ${EQ_F.map((_, i) => `<div class="eqrow"><label for="eq${i}" class="note">${EQ_ROT[i]}</label><input type="range" id="eq${i}" data-eqb="${i}" min="-12" max="12" step="1" value="${cfg.eq.g[i]}"><span class="dur" id="eqv${i}">${dB(cfg.eq.g[i])}</span></div>`).join("")}
+    ${F.map((f, i) => `<div class="eqrow"><label for="eq${i}" class="note">${rotHz(f)}</label><input type="range" id="eq${i}" data-eqb="${i}" min="-12" max="12" step="1" value="${G[i]}"><span class="dur" id="eqv${i}">${dB(G[i])}</span></div>`).join("")}
     <p class="note">Vale para todas as músicas. Mexer numa faixa liga o equalizador sozinho.</p>`;
 }
 function abrirEQ() {
@@ -1244,13 +1284,20 @@ function abrirEQ() {
       const on = e.target.closest("[data-eqon]");
       if (on) { cfg.eq.on = !cfg.eq.on; on.setAttribute("aria-checked", cfg.eq.on); }
       const p = e.target.closest("[data-eqp]");
-      if (p) { cfg.eq.p = p.dataset.eqp; cfg.eq.g = EQ_P[cfg.eq.p][1].slice(); cfg.eq.on = true; $("sheet-b").innerHTML = htmlEQ(); }
-      if (on || p) { salvarCfg(); aplicarEQ(); paint(); }
+      if (p) { cfg.eq.p = p.dataset.eqp; cfg.eq.g = EQ_P[cfg.eq.p][1].slice(); cfg.eq.g10 = EQ10.map((f) => interp(EQ5, cfg.eq.g, f)); cfg.eq.on = true; }
+      const m = e.target.closest("[data-eqmodo]");
+      if (m && +m.dataset.eqmodo !== cfg.eq.modo) {
+        if (cfg.eq.modo === 5) cfg.eq.g10 = EQ10.map((f) => interp(EQ5, cfg.eq.g, f));
+        else cfg.eq.g = EQ5.map((f) => interp(EQ10, cfg.eq.g10, f));
+        cfg.eq.modo = +m.dataset.eqmodo; montarFiltros();
+      }
+      if (p || m) $("sheet-b").innerHTML = htmlEQ();
+      if (on || p || m) { salvarCfg(); aplicarEQ(); paint(); }
     },
     entrada(e) {
       const i = e.target.dataset.eqb; if (i === undefined) return;
-      cfg.eq.g[i] = +e.target.value; cfg.eq.p = "personalizado";
-      $("eqv" + i).textContent = dB(cfg.eq.g[i]);
+      eqGanhos()[i] = +e.target.value; cfg.eq.p = "personalizado";
+      $("eqv" + i).textContent = dB(eqGanhos()[i]);
       if (!cfg.eq.on) { cfg.eq.on = true; const t = $("sheet-b").querySelector("[data-eqon]"); if (t) t.setAttribute("aria-checked", "true"); }
       $("sheet-b").querySelectorAll("[data-eqp]").forEach((b) => { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); });
       salvarCfg(); aplicarEQ(); paint();
@@ -1447,14 +1494,146 @@ function abrirRecap() {
   const bloco = (rot, val, extra = "") => `<div class="recap"><span class="sub">${rot}</span><b>${val}</b>${extra ? `<span>${extra}</span>` : ""}</div>`;
   abrirFolha({
     titulo: `Seu ${ano} em música`,
+    clique(e) { if (e.target.closest("[data-recapimg]")) imagemRecap(); },
     html: totalAno < 60 ? vazio("Ainda não tem música suficiente para o Recap deste ano. Ouça mais um pouco e volte aqui.") :
       `<div class="stack">${bloco("Você ouviu", fmtTempo(totalAno), `em ${plural(diasAno.length, "dia", "dias")}`)}
       ${fx[0] ? bloco("Música do ano", esc(fx[0].x.t), `${esc(fx[0].x.a)} · ${fmtTempo(fx[0].s)}`) : ""}
       ${art[0] ? bloco("Artista do ano", esc(art[0].n), fmtTempo(art[0].s)) : ""}
       ${mesTop ? bloco("Mês que você mais ouviu", nomeMes(+mesTop[0]), fmtTempo(mesTop[1])) : ""}
       ${diaTop ? bloco("Dia mais musical", new Date(diaTop[0] + "T12:00").toLocaleDateString("pt-BR", { day: "numeric", month: "long" }), fmtTempo(diaTop[1])) : ""}
+      <button class="btn" data-recapimg>${ico("image", 18)}Criar imagem para compartilhar</button>
       ${fx.length > 1 ? `<p class="sec-t">Top 5 do ano</p><div class="list">${fx.slice(0, 5).map((r, i) => `<div class="track"><span class="idx">${i + 1}</span>${capa(r.x)}<span class="grow"><span class="t clip">${esc(r.x.t)}</span><span class="sub clip">${esc(r.x.a)} · ${fmtTempo(r.s)}</span></span></div>`).join("")}</div>` : ""}</div>`,
   });
+}
+
+
+/* ===================== Recap como imagem ===================== */
+function dadosRecap() {
+  const ano = new Date().getFullYear(), pre = ano + "-";
+  const diasAno = Object.entries(stats.dias).filter(([d]) => d.startsWith(pre));
+  const totalAno = diasAno.reduce((s, [, v]) => s + v, 0);
+  const meses = {}; diasAno.forEach(([d, v]) => { const m = +d.slice(5, 7); meses[m] = (meses[m] || 0) + v; });
+  const mesTop = Object.entries(meses).sort((a, b) => b[1] - a[1])[0];
+  const diaTop = diasAno.slice().sort((a, b) => b[1] - a[1])[0];
+  const nomeMes = (m) => new Date(ano, m - 1, 1).toLocaleDateString("pt-BR", { month: "long" });
+  return { ano, diasAno, totalAno, mesTop, diaTop, nomeMes, fx: rankFaixas("s", ano), art: rankArtistas(ano) };
+}
+function desenharRecap() {
+  const R = dadosRecap(), W = 1080, H = 1920, cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const c = cv.getContext("2d"), css = getComputedStyle(document.documentElement);
+  const v = (k) => css.getPropertyValue(k).trim();
+  const display = v("--display") || "system-ui, sans-serif", corpo = v("--body") || "system-ui, sans-serif";
+  const g = c.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, v("--accent") || "#6A4BD8"); g.addColorStop(1, v("--accent2") || "#A8743A");
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.fillStyle = "rgba(10,8,20,.42)"; c.fillRect(0, 0, W, H);
+  // mostrador de relógio de fundo, a marca do Compasso
+  c.save(); c.translate(W - 170, 300); c.strokeStyle = "rgba(255,255,255,.18)"; c.lineCap = "round";
+  for (let i = 0; i < 60; i++) { c.lineWidth = i % 5 ? 5 : 9; c.beginPath(); c.moveTo(0, -(i % 5 ? 230 : 210)); c.lineTo(0, -250); c.stroke(); c.rotate(Math.PI / 30); }
+  c.restore();
+  const corta = (txt, fonte, max) => { c.font = fonte; let t = String(txt); if (c.measureText(t).width <= max) return t; while (t.length > 1 && c.measureText(t + "…").width > max) t = t.slice(0, -1); return t + "…"; };
+  const texto = (txt, x, y, fonte, cor = "#fff", max = W - 160) => { c.font = fonte; c.fillStyle = cor; c.fillText(corta(txt, fonte, max), x, y); };
+  const X = 80; let y = 150;
+  texto(`COMPASSO · RECAP ${R.ano}`, X, y, `700 34px ${corpo}`, "rgba(255,255,255,.8)");
+  y += 90; texto(perfil.nome ? `O ano de ${perfil.nome}` : "Meu ano em música", X, y, `700 64px ${display}`);
+  y += 230; texto(fmtTempo(R.totalAno), X, y, `800 190px ${display}`);
+  y += 70; texto(`de música em ${plural(R.diasAno.length, "dia", "dias")}`, X, y, `500 44px ${corpo}`, "rgba(255,255,255,.88)");
+  const bloco = (rot, val, sub) => {
+    y += 120; texto(rot.toUpperCase(), X, y, `700 30px ${corpo}`, "rgba(255,255,255,.7)");
+    y += 70; texto(val, X, y, `700 62px ${display}`);
+    if (sub) { y += 52; texto(sub, X, y, `500 38px ${corpo}`, "rgba(255,255,255,.85)"); }
+  };
+  if (R.fx[0]) bloco("Música do ano", R.fx[0].x.t, R.fx[0].x.a);
+  if (R.art[0]) bloco("Artista do ano", R.art[0].n, fmtTempo(R.art[0].s));
+  if (R.mesTop) bloco("Mês mais musical", R.nomeMes(+R.mesTop[0]), fmtTempo(R.mesTop[1]));
+  if (R.fx.length > 1) {
+    y += 120; texto("TOP 5", X, y, `700 30px ${corpo}`, "rgba(255,255,255,.7)");
+    R.fx.slice(0, 5).forEach((r, i) => { y += 66; texto(`${i + 1}`, X, y, `800 44px ${display}`, "rgba(255,255,255,.65)"); texto(`${r.x.t} · ${r.x.a}`, X + 70, y, `600 42px ${corpo}`, "#fff", W - 230); });
+  }
+  texto("Feito no Compasso Player · offline e sem conta", X, H - 90, `500 32px ${corpo}`, "rgba(255,255,255,.75)");
+  return new Promise((ok) => cv.toBlob((b) => ok({ blob: b, ano: R.ano }), "image/png"));
+}
+async function imagemRecap() {
+  toast("Criando a imagem…");
+  const { blob, ano } = await desenharRecap();
+  if (!blob) return toast("Não deu para criar a imagem");
+  const url = URL.createObjectURL(blob), nome = `recap-${ano}.png`, arquivo = new File([blob], nome, { type: "image/png" });
+  const podeCompartilhar = !!(navigator.canShare && navigator.canShare({ files: [arquivo] }));
+  abrirFolha({
+    titulo: "Seu Recap em imagem",
+    html: `<img class="recap-img" src="${url}" alt="Imagem do seu Recap ${ano}"><div class="btns">${podeCompartilhar ? `<button class="btn" data-rshare>Compartilhar</button>` : ""}<button class="btn ${podeCompartilhar ? "ghost" : ""}" data-rbaixar>Baixar imagem</button></div>
+      <p class="note">A imagem é criada aqui no aparelho. Ela só sai dele se você compartilhar.</p>`,
+    async clique(e) {
+      if (e.target.closest("[data-rshare]")) { try { await navigator.share({ files: [arquivo], title: `Meu ${ano} em música` }); } catch (err) { /* cancelado */ } }
+      if (e.target.closest("[data-rbaixar]")) baixar(blob, nome);
+    },
+  });
+}
+function baixar(blob, nome) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast("Se o download não começar, abra o app instalado ou no navegador");
+}
+
+/* ===================== Backup ===================== */
+const chaveDe = (x) => (x.demo ? x.id : "s:" + x.sig);
+function gerarBackup() {
+  const k = (id) => { const x = porId.get(id); return x ? chaveDe(x) : null; };
+  return {
+    formato: "compasso-backup", versao: 1, criado: new Date().toISOString(),
+    playlists: pls.map((p) => ({ nome: p.nome, criada: p.criada, faixas: p.ids.map(k).filter(Boolean) })),
+    favoritas: [...favs].map(k).filter(Boolean),
+    estatisticas: { desde: stats.desde, dias: stats.dias, fx: Object.fromEntries(Object.entries(stats.fx).map(([id, f]) => [k(id), f]).filter(([c]) => c)) },
+    faixas: importadas().map((x) => ({ chave: chaveDe(x), t: x.t, a: x.a, al: x.al || "", n: x.n || 0, letra: x.letra || "", oculta: !!x.oculta })),
+    perfil, temas: meusTemas, ajustes: cfg,
+  };
+}
+function salvarBackup() {
+  const json = JSON.stringify(gerarBackup());
+  baixar(new Blob([json], { type: "application/json" }), `compasso-backup-${hojeStr()}.json`);
+}
+function restaurarBackup(o) {
+  if (!o || o.formato !== "compasso-backup") throw new Error("Esse arquivo não é um backup do Compasso.");
+  const mapa = new Map(faixas.map((x) => [chaveDe(x), x.id]));
+  const id = (c) => mapa.get(c);
+  let achadas = 0, total = 0;
+  for (const m of o.faixas || []) {
+    total++; const x = porId.get(id(m.chave)); if (!x) continue; achadas++;
+    Object.assign(x, { t: m.t || x.t, a: m.a || x.a, al: m.al ?? x.al, n: m.n || 0, letra: m.letra || x.letra || "", oculta: !!m.oculta });
+    salvarFaixa(x);
+  }
+  let nPl = 0;
+  for (const p of o.playlists || []) {
+    const ids = (p.faixas || []).map(id).filter(Boolean), ex = pls.find((y) => y.nome === p.nome);
+    if (ex) { for (const i of ids) if (!ex.ids.includes(i)) ex.ids.push(i); salvarPl(ex); } else novaPlaylist(String(p.nome || "Playlist").slice(0, 60), ids);
+    nPl++;
+  }
+  (o.favoritas || []).map(id).filter(Boolean).forEach((i) => favs.add(i));
+  guardado.set("compasso.fav", [...favs]);
+  const e = o.estatisticas || {};
+  for (const [c, f] of Object.entries(e.fx || {})) {
+    const i = id(c); if (!i || !f) continue;
+    const a = stats.fx[i];
+    if (!a) stats.fx[i] = f;
+    else { a.n = Math.max(a.n || 0, f.n || 0); a.s = Math.max(a.s || 0, f.s || 0); a.u = Math.max(a.u || 0, f.u || 0); a.y = a.y || {}; for (const [ano, s] of Object.entries(f.y || {})) a.y[ano] = Math.max(a.y[ano] || 0, s); }
+  }
+  for (const [d, s] of Object.entries(e.dias || {})) stats.dias[d] = Math.max(stats.dias[d] || 0, s);
+  if (e.desde) stats.desde = stats.desde ? Math.min(stats.desde, e.desde) : e.desde;
+  salvarStats();
+  if (o.perfil && (o.perfil.nome || o.perfil.foto)) { perfil = { nome: String(o.perfil.nome || "").slice(0, 30), foto: String(o.perfil.foto || "") }; guardado.set("compasso.perfil", perfil); }
+  for (const t of o.temas || []) { try { const v = validarTema(t); if (!meusTemas.some((m) => m.nome === v.nome)) { v.id = uid("t"); meusTemas.push(v); } } catch (err) { /* tema inválido: pula */ } }
+  salvarTemas();
+  const aj = o.ajustes || {};
+  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu"]) if (k in aj) cfg[k] = aj[k];
+  if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
+  if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
+  if (aj.ajustes) cfg.ajustes = aj.ajustes;
+  salvarCfg(); aplicarTema(); aplicarFundo(); if (ctx) montarFiltros();
+  mudouExemplos(); renderBib(); renderPl(); renderTemas(); paint();
+  return { achadas, total, nPl };
 }
 
 /* ===================== Playlists automáticas ===================== */
