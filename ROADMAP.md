@@ -28,6 +28,38 @@ Toda a lista da versão web está pronta. Os próximos passos são a versão And
 
 - ✅ **Volume próprio, modo leve e tradução para inglês** (1.6.0).
 
+## Ideias do concorrente (segunda revisão)
+
+Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ downloads, nota 4,8).
+
+**Fáceis, na versão web**
+- Botões de voltar e avançar 10 segundos ao lado da barra de progresso.
+- Botão de velocidade direto no Tocando agora (hoje fica em Ajustes).
+- Etiqueta "HQ" ou "FLAC" nas músicas sem perda de qualidade.
+- Importar vídeos (MP4, WEBM) e tocar só o áudio.
+- Lembrar a posição de cada música longa (audiolivros, podcasts, mixes) e continuar dali.
+- Aviso "N músicas novas" depois de importar, com atalho para elas.
+- Prévia da letra encontrada, com "Aplicar" e "Descartar", antes de salvar.
+- Opção de esconder o coração de favoritas nas listas.
+
+**Médias, na versão web**
+- Amplificador de volume (acima de 100%, com limitador para não distorcer).
+- Reverb (sala, palco, catedral) e um "aprimorador" com graves, agudos e intensidade em botões giratórios.
+- Abas Música e Letra no topo do Tocando agora, deslizando entre elas.
+- Modo condução: tela com botões enormes e só o essencial.
+- Aba Início opcional, com tocadas recentemente e favoritas.
+
+**Só no Android**
+- Procurar as músicas das pastas do aparelho sozinho, com progresso e escolha de pastas.
+- Widgets de vários tamanhos.
+- Tocar ao conectar os fones e tocar junto com outros apps.
+- Lembrete de audição no horário de costume.
+
+**O que não copiar** (além dos anúncios)
+- Pedir avaliação na loja no meio de uma música.
+- "Mais aplicativos (AD)" e itens de propaganda no menu.
+- Esconder predefinições básicas do equalizador atrás do pago.
+
 ## Versão Android
 
 - Encontrar as músicas do aparelho sozinho, sem importar.
