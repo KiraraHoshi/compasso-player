@@ -10,6 +10,7 @@ let LANG = (function () {
 })();
 document.documentElement.lang = LANG === "en" ? "en" : "pt-BR";
 const EN = {
+ "LED": "LED",
  "Anel": "Ring",
  "Formato da capa": "Cover shape",
  "Quadrada": "Square",

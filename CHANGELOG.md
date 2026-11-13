@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.13.0
+- Novo visual LED: equalizador clássico em blocos, que vai do azul ao vermelho conforme sobe, com o pico segurando um instante antes de cair e um reflexo embaixo.
+
 ## 1.12.0
 - Novo visual Anel: barrinhas finas saem de um anel fino em volta da capa, com riscos voando que aceleram nas batidas, no estilo dos vídeos tipo Trap Nation. As Barras de antes continuam.
 - Os visuais não batem mais num teto: nas músicas altas, os graves achatavam o topo (no Neon dava para ver bem). Agora a leitura tem mais folga e uma curva suave, e os picos vão até onde iriam de verdade.
