@@ -473,7 +473,7 @@ function prepararAudio() {
   // "playback" pede um buffer de áudio maior: no celular isso evita falhas e engasgos no som
   const AC = window.AudioContext || window.webkitAudioContext;
   try { ctx = new AC({ latencyHint: "balanced" }); } catch (e) { ctx = new AC(); }
-  an = ctx.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.55;
+  an = ctx.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.55; an.minDecibels = -95; an.maxDecibels = -16; // mais folga em cima: os graves das músicas altas não batem no teto
   volNo = ctx.createGain(); an.connect(volNo); volNo.connect(ctx.destination); aplicarVolume(true);
   bins = new Uint8Array(an.frequencyBinCount); ondas = new Uint8Array(an.fftSize);
   entrada = ctx.createGain(); eraIn = ctx.createGain();
@@ -755,7 +755,9 @@ function definirLeve(on) {
 let fqQ = 1, fqV = 1, ultQ = 0, ultV = 0, nQuadro = 0, binsLidos = -1;
 const passoT = (agora, ult) => (ult ? Math.min(4, Math.max(0.25, (agora - ult) / 16.667)) : 1);
 const sq = (k) => 1 - Math.pow(1 - k, fqQ), sv = (k) => 1 - Math.pow(1 - k, fqV); // suavização por quadro de 60 Hz, ajustada ao tempo
-function lerBins() { if (binsLidos !== nQuadro) { an.getByteFrequencyData(bins); binsLidos = nQuadro; } } // uma leitura por quadro
+// curva suave: realça o meio e comprime o topo sem achatar, para os picos ainda irem até onde "pretendiam"
+const CURVA_BINS = Uint8Array.from({ length: 256 }, (_, v) => Math.round((255 * Math.tanh((1.5 * v) / 255)) / Math.tanh(1.5)));
+function lerBins() { if (binsLidos !== nQuadro) { an.getByteFrequencyData(bins); for (let i = 0; i < bins.length; i++) bins[i] = CURVA_BINS[bins[i]]; binsLidos = nQuadro; } } // uma leitura por quadro
 let acesas = -1, arrastandoSeek = false, pulso = 0.4, graveEnv = 0, gravePiso = 0, escDisco = 1, ultEsc = "", batida = 0, alvoBatida = 0, media = 0, ultimaBatida = 0, ultimoSeg = -1;
 const nivel = new Float32Array(60);
 const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1313,7 +1315,7 @@ function renderTemas() {
     <div class="card stack"><h2>${T("Tocando agora")}</h2>
       <p class="t">${T("Visual do mostrador")}</p><div class="chips" role="group" aria-label="${T("Visual do mostrador")}">${Object.entries(VISUAIS).map(([k, n]) => `<button data-vis="${k}" aria-pressed="${cfg.visual === k}" class="${cfg.visual === k ? "on" : ""}">${n}</button>`).join("")}</div>
       <p class="t">${T("Formato da capa")}</p><div class="chips" role="group" aria-label="${T("Formato da capa")}">${[["quadrada", T("Quadrada")], ["redonda", T("Redonda")]].map(([k, n]) => `<button data-forma="${k}" aria-pressed="${cfg.formaCapa === k}" class="${cfg.formaCapa === k ? "on" : ""}">${n}</button>`).join("")}</div>
-      <p class="note">${T("Vale para Relógio, Aura e Espectro. No Vinil a capa é sempre redonda.")}</p>
+      <p class="note">${T("Vale para Relógio, Aura, Espectro e Anel. No Vinil a capa é sempre redonda.")}</p>
       ${tg("corCapa", T("Cores do visual seguem a capa da música"))}
       <p class="t">${T("Época do som")}</p><div class="chips" role="group" aria-label="${T("Época do som")}">${Object.entries(ERAS).map(([k, [n]]) => `<button data-epoca="${k}" aria-pressed="${String(cfg.era) === k}" class="${String(cfg.era) === k ? "on" : ""}">${n}</button>`).join("")}</div>
       <p class="note">${ERA_DESC[cfg.era] || ERA_DESC.off} ${T("Cada época também troca o visual, e você pode escolher outro depois.")}</p>
@@ -2235,7 +2237,7 @@ function escolherFundo() {
 /* ===================== Épocas (som) e visuais do mostrador ===================== */
 const ERAS = { off: [T("Desligado"), "relogio"], 60: [T("Anos 60"), "vinil"], 70: [T("Anos 70"), "vinil"], 80: [T("Anos 80"), "neon"], 90: [T("Anos 90"), "barras"] };
 const ERA_DESC = { off: T("Som original, sem efeito."), 60: T("Rádio valvulado: mono, abafado e com chiado."), 70: T("Vinil: graves quentes, estalos de agulha e leve oscilação."), 80: T("Fita cassete: chiado de fita e velocidade oscilando de leve."), 90: T("CD player: som limpo com graves e brilho reforçados.") };
-const VISUAIS = { relogio: T("Relógio"), vinil: T("Vinil"), aura: T("Aura"), espectro: T("Espectro"), neon: T("Neon"), barras: T("Barras"), onda: T("Onda") };
+const VISUAIS = { relogio: T("Relógio"), vinil: T("Vinil"), aura: T("Aura"), espectro: T("Espectro"), anel: T("Anel"), neon: T("Neon"), barras: T("Barras") };
 function curvaSat(k) { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = (i * 2) / n - 1; c[i] = Math.tanh(k * x) / Math.tanh(k); } return c; }
 function bufRuido(tipo) {
   const sr = ctx.sampleRate, n = sr * 4, b = ctx.createBuffer(1, n, sr), d = b.getChannelData(0);
@@ -2278,7 +2280,7 @@ function ajustarRuido() { if (ruido && ctx) ruido.g.gain.setTargetAtTime(playing
 function aplicarVisual() {
   const a = $("app");
   a.dataset.visual = VISUAIS[cfg.visual] ? cfg.visual : "relogio";
-  capaQuad = cfg.formaCapa !== "redonda" && ["relogio", "aura", "espectro"].includes(a.dataset.visual);
+  capaQuad = cfg.formaCapa !== "redonda" && ["relogio", "aura", "espectro", "anel"].includes(a.dataset.visual);
   a.dataset.capa = capaQuad ? "quadrada" : "";
   a.dataset.era = cfg.era && cfg.era !== "off" ? cfg.era : "";
   pintarCena();
@@ -2329,7 +2331,7 @@ let auraNiv = new Float32Array(64), ondinhas = [], ultOndinha = 0, auraLimpa = t
 const temAura = (v) => v === "aura" && APP.dataset.letra !== "1";
 function desenharViz() {
   const v = cfg.visual, aura = temAura(v);
-  if ((v !== "barras" && v !== "onda" && v !== "espectro" && v !== "neon" && !aura) || $("app").dataset.view !== "tocando") {
+  if ((v !== "barras" && v !== "onda" && v !== "espectro" && v !== "anel" && v !== "neon" && !aura) || $("app").dataset.view !== "tocando") {
     if (!aura && !auraLimpa && (v === "relogio" || v === "vinil")) { const cv = $("viz"); cv.getContext("2d").clearRect(0, 0, cv.width, cv.height); auraLimpa = true; }
     return;
   }
@@ -2342,6 +2344,7 @@ function desenharViz() {
   c.fillStyle = c.strokeStyle = tinta;
   if (aura) { auraLimpa = false; return desenharAura(c, W, vivo); }
   if (v === "espectro") return desenharEspectro(c, W, vivo);
+  if (v === "anel") return desenharAnel(c, W, vivo);
   if (v === "neon") return desenharNeon(c, W, vivo);
   if (v === "barras") {
     if (vivo) lerBins();
@@ -2365,13 +2368,16 @@ function desenharViz() {
 /* Espectro: anel fino com picos para fora e poeira que acelera nas batidas */
 const espNiv = new Float32Array(110), poeira = Array.from({ length: 42 }, () => ({ a: Math.random() * Math.PI * 2, d: Math.random(), v: 0.6 + Math.random(), t: 0.5 + Math.random() * 1.5 }));
 // poeira: sai do anel e se afasta devagar; nas batidas corre um pouco mais
-function desenharPoeira(c, W, R, k, graves, Wc = W) {
+function desenharPoeira(c, W, R, k, graves, Wc = W, riscos = false) {
   const cx = Wc / 2, vel = 0.0016 * (1 + batida * 4 * k + graves);
   c.fillStyle = tinta;
   for (const q of poeira) {
     q.d += vel * q.v * fqV; if (q.d > 1) { q.d = 0; q.a = Math.random() * Math.PI * 2; }
     const r = R + q.d * (Wc * 0.48 - R), al = Math.sin(q.d * Math.PI) * 0.55;
-    c.globalAlpha = al; c.beginPath(); c.arc(cx + Math.cos(q.a) * r, cx + Math.sin(q.a) * r, W * 0.0035 * q.t, 0, Math.PI * 2); c.fill();
+    if (riscos) { // risquinhos que esticam com a velocidade, como detritos voando
+      const L = W * (0.01 + vel * 9) * q.v, co = Math.cos(q.a), si = Math.sin(q.a);
+      c.globalAlpha = al; c.lineWidth = W * 0.0028 * q.t; c.beginPath(); c.moveTo(cx + co * r, cx + si * r); c.lineTo(cx + co * (r + L), cx + si * (r + L)); c.stroke();
+    } else { c.globalAlpha = al; c.beginPath(); c.arc(cx + Math.cos(q.a) * r, cx + Math.sin(q.a) * r, W * 0.0035 * q.t, 0, Math.PI * 2); c.fill(); }
   }
 }
 function desenharEspectro(c, Wc, vivo) {
@@ -2395,6 +2401,27 @@ function desenharEspectro(c, Wc, vivo) {
   c.globalAlpha = 0.55 + batida * 0.4 * k; c.lineWidth = W * (0.005 + batida * 0.004 * k); c.beginPath(); contornoCapa(c, W, cx, 0); c.stroke();
   c.globalAlpha = 1;
 }
+/* Anel: barrinhas finas saindo de um anel fino em volta da capa, com riscos voando (estilo dos vídeos tipo Trap Nation) */
+const anelNiv = new Float32Array(72);
+function desenharAnel(c, Wc, vivo) {
+  const W = Wc / FOLGA_VIZ, n = anelNiv.length, k = cfg.reage ? cfg.batF : 0.3, cx = Wc / 2;
+  if (vivo) lerBins();
+  for (let i = 0; i < n; i++) {
+    const p = i / (n - 1), alvo = vivo ? bins[3 + Math.round(140 * Math.pow(p, 1.35))] / 255 : 0;
+    anelNiv[i] += (alvo - anelNiv[i]) * sv(alvo > anelNiv[i] ? 0.6 : 0.2);
+  }
+  const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0, gap = W * 0.022, A = W * 0.15 * (0.45 + k * 0.75), N = n * 2;
+  desenharPoeira(c, W, W * 0.36, k, graves, Wc, true);
+  c.lineCap = "round"; c.lineWidth = W * 0.0042; c.globalAlpha = 0.9; c.beginPath();
+  for (let j = 0; j < N; j++) {
+    const ang = (j / N) * Math.PI * 2 - Math.PI / 2, nv = anelNiv[j < n ? j : N - 1 - j];
+    const r0 = baseR(W, ang, gap), r1 = Math.min(Wc / 2 - 3, r0 + W * 0.005 + Math.pow(nv, 3.2) * A * 1.25), co = Math.cos(ang), si = Math.sin(ang);
+    c.moveTo(cx + co * r0, cx + si * r0); c.lineTo(cx + co * r1, cx + si * r1);
+  }
+  c.stroke();
+  c.globalAlpha = 0.6 + batida * 0.35 * k; c.lineWidth = W * (0.0035 + batida * 0.003 * k); c.beginPath(); contornoCapa(c, W, cx, gap * 0.45); c.stroke();
+  c.globalAlpha = 1; c.lineCap = "butt";
+}
 /* Neon: onda espelhada de ponta a ponta, mais forte no centro, com brilho */
 const neonNiv = new Float32Array(80);
 function desenharNeon(c, W, vivo) {
@@ -2407,7 +2434,7 @@ function desenharNeon(c, W, vivo) {
   const A = W * 0.17 * (0.5 + k * 0.7) * (1 + batida * 0.15 * k), M = n * 2 - 1, pts = [];
   for (let j = 0; j <= M; j++) {
     const i = Math.abs(n - 1 - j), borda = Math.sin((j / M) * Math.PI); // os graves no meio, a onda morre nas pontas
-    pts.push([(j / M) * W, Math.pow(neonNiv[i], 2.4) * A * borda + W * 0.003]);
+    pts.push([(j / M) * W, Math.pow(neonNiv[i], 2.2) * A * borda + W * 0.003]);
   }
   const forma = (esc) => {
     c.beginPath(); c.moveTo(0, cy);
@@ -2540,7 +2567,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.11.3";
+const VERSAO = "1.12.0";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });

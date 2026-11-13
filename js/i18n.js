@@ -10,10 +10,11 @@ let LANG = (function () {
 })();
 document.documentElement.lang = LANG === "en" ? "en" : "pt-BR";
 const EN = {
+ "Anel": "Ring",
  "Formato da capa": "Cover shape",
  "Quadrada": "Square",
  "Redonda": "Round",
- "Vale para Relógio, Aura e Espectro. No Vinil a capa é sempre redonda.": "Applies to Clock, Aura and Spectrum. On Vinyl the cover is always round.",
+ "Vale para Relógio, Aura, Espectro e Anel. No Vinil a capa é sempre redonda.": "Applies to Clock, Aura, Spectrum and Ring. On Vinyl the cover is always round.",
  "Cores do visual seguem a capa da música": "Visual colors follow the album cover",
  "Espectro": "Spectrum",
  "Neon": "Neon",
