@@ -10,6 +10,14 @@ let LANG = (function () {
 })();
 document.documentElement.lang = LANG === "en" ? "en" : "pt-BR";
 const EN = {
+ "Arraste para posicionar e use o controle para aproximar.": "Drag to position and use the slider to zoom in.",
+ "Recorte da foto. Use as setas para mover e + ou − para aproximar.": "Photo crop. Use the arrow keys to move and + or − to zoom.",
+ "Zoom": "Zoom",
+ "Usar esta foto": "Use this photo",
+ "Letras encontradas em {0}": "Lyrics found in {0}",
+ "Letra encontrada no arquivo": "Lyrics found in the file",
+ "O arquivo não tem letra guardada": "The file has no lyrics stored",
+ "Procurar no arquivo de novo": "Look in the file again",
  " Espaço livre para o app: cerca de {0}.": " Free space for the app: about {0}.",
  " do Compasso e das playlists. Os arquivos originais continuam no seu aparelho.": " from Compasso and from the playlists. The original files stay on your device.",
  " do Compasso. Os arquivos originais continuam no seu aparelho. As playlists ficam, mas sem essas músicas.": " from Compasso. The original files stay on your device. Playlists stay, but without these songs.",

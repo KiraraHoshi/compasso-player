@@ -304,3 +304,9 @@ main{contain:content}
 #vol::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:var(--text)}
 #vol-n{min-width:40px}
 .app[data-palco="1"] .volume{display:none}
+/* Recorte da foto do perfil */
+.corte{position:relative;width:240px;height:240px;align-self:center;border-radius:var(--radius);overflow:hidden;background:var(--card);touch-action:none}
+.corte canvas{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+.corte canvas:active{cursor:grabbing}
+.corte::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:var(--radius);box-shadow:inset 0 0 0 999px rgba(0,0,0,.45);-webkit-mask:radial-gradient(circle at center,transparent 119px,#000 120px);mask:radial-gradient(circle at center,transparent 119px,#000 120px)}
+.corte::before{content:"";position:absolute;inset:0;margin:auto;width:238px;height:238px;border-radius:50%;border:2px solid rgba(255,255,255,.85);pointer-events:none;z-index:1}

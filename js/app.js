@@ -1626,29 +1626,96 @@ $("vc").addEventListener("click", (e) => {
   const p = t.closest("[data-play]"); if (p) tocarLista(topVoce, topVoce.indexOf(p.dataset.play), T("suas mais ouvidas"));
 });
 function editarPerfil() {
-  let foto = perfil.foto;
-  const html = () => `<form class="stack"><div class="row">${foto ? `<span class="avatar" style="background-image:url('${foto}')"></span>` : avatar()}<div class="btns grow"><button class="btn ghost sm" type="button" data-foto>${T("Escolher foto")}</button>${foto ? `<button class="btn ghost sm" type="button" data-semfoto>${T("Tirar foto")}</button>` : ""}</div></div>
-    <label class="t" for="pf-nome">${T("Seu nome ou apelido")}</label><input class="field" id="pf-nome" name="v" value="${esc(perfil.nome)}" maxlength="30" autocomplete="off" placeholder="${T("Por exemplo: Jo")}">
+  let foto = perfil.foto, corte = null;
+  const V = 240; // tamanho do quadro de recorte, em px
+  const htmlCorte = () => `<div class="stack corte-box"><p class="note">${T("Arraste para posicionar e use o controle para aproximar.")}</p>
+      <div class="corte"><canvas id="corte-cv" width="${V * 2}" height="${V * 2}" tabindex="0" aria-label="${T("Recorte da foto. Use as setas para mover e + ou − para aproximar.")}"></canvas></div>
+      <div class="opt"><label for="corte-z">${T("Zoom")}</label><input type="range" id="corte-z" min="1" max="4" step="0.01" value="${corte.z}"></div>
+      <div class="btns"><button class="btn" type="button" data-corte-ok>${T("Usar esta foto")}</button><button class="btn ghost" type="button" data-corte-x>${T("Cancelar")}</button></div></div>`;
+  const html = () => corte ? htmlCorte() : `<form class="stack"><div class="row">${foto ? `<span class="avatar" style="background-image:url('${foto}')"></span>` : avatar()}<div class="btns grow"><button class="btn ghost sm" type="button" data-foto>${T("Escolher foto")}</button>${foto ? `<button class="btn ghost sm" type="button" data-semfoto>${T("Tirar foto")}</button>` : ""}</div></div>
+    <label class="t" for="pf-nome">${T("Seu nome ou apelido")}</label><input class="field" id="pf-nome" name="v" value="${esc(nomeRasc)}" maxlength="30" autocomplete="off" placeholder="${T("Por exemplo: Jo")}">
     <button class="btn" type="submit">${T("Salvar perfil")}</button><p class="note">${T("Seu perfil fica só neste aparelho. Não existe conta nem nada online.")}</p></form>`;
-  const redesenhar = () => { const n = $("pf-nome") ? $("pf-nome").value : perfil.nome; $("sheet-b").innerHTML = html(); $("pf-nome").value = n; };
+  let nomeRasc = perfil.nome;
+  const redesenhar = () => { if ($("pf-nome")) nomeRasc = $("pf-nome").value; $("sheet-b").innerHTML = html(); if (corte) ligarCorte(); };
+  /* recorte: x e y são o centro do quadro em pixels da imagem; z é o zoom além do "preencher" */
+  const escala = () => (V / Math.min(corte.w, corte.h)) * corte.z;
+  function limitar() {
+    const m = V / 2 / escala();
+    corte.x = Math.min(corte.w - m, Math.max(m, corte.x));
+    corte.y = Math.min(corte.h - m, Math.max(m, corte.y));
+  }
+  function desenhar() {
+    const cv = $("corte-cv"); if (!cv) return;
+    const c = cv.getContext("2d"), k = cv.width / V, sc = escala();
+    limitar();
+    c.clearRect(0, 0, cv.width, cv.height);
+    c.drawImage(corte.bm, (V / 2 - corte.x * sc) * k, (V / 2 - corte.y * sc) * k, corte.w * sc * k, corte.h * sc * k);
+  }
+  function zoom(z, foco) {
+    const antes = escala();
+    corte.z = Math.min(4, Math.max(1, z));
+    if (foco) { // mantém parado o ponto sob o dedo ou o mouse
+      const depois = escala();
+      corte.x += (foco.x - V / 2) / antes - (foco.x - V / 2) / depois;
+      corte.y += (foco.y - V / 2) / antes - (foco.y - V / 2) / depois;
+    }
+    const r = $("corte-z"); if (r) r.value = corte.z;
+    desenhar();
+  }
+  function ligarCorte() {
+    const cv = $("corte-cv"), dedos = new Map(); let dist0 = 0, z0 = 1;
+    const ponto = (e) => { const b = cv.getBoundingClientRect(); return { x: ((e.clientX - b.left) / b.width) * V, y: ((e.clientY - b.top) / b.height) * V }; };
+    cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); dedos.set(e.pointerId, ponto(e)); if (dedos.size === 2) { const [a, b] = [...dedos.values()]; dist0 = Math.hypot(a.x - b.x, a.y - b.y); z0 = corte.z; } });
+    cv.addEventListener("pointermove", (e) => {
+      if (!dedos.has(e.pointerId)) return;
+      const ant = dedos.get(e.pointerId), p = ponto(e); dedos.set(e.pointerId, p);
+      if (dedos.size === 2) { const [a, b] = [...dedos.values()]; if (dist0) zoom(z0 * (Math.hypot(a.x - b.x, a.y - b.y) / dist0), { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }); }
+      else { const sc = escala(); corte.x -= (p.x - ant.x) / sc; corte.y -= (p.y - ant.y) / sc; desenhar(); }
+    });
+    const solta = (e) => { dedos.delete(e.pointerId); dist0 = 0; };
+    cv.addEventListener("pointerup", solta); cv.addEventListener("pointercancel", solta);
+    cv.addEventListener("wheel", (e) => { e.preventDefault(); zoom(corte.z * (e.deltaY < 0 ? 1.1 : 1 / 1.1), ponto(e)); }, { passive: false });
+    cv.addEventListener("keydown", (e) => {
+      const passo = 12 / escala(), mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+      if (mapa[e.key]) { e.preventDefault(); corte.x += mapa[e.key][0] * passo; corte.y += mapa[e.key][1] * passo; desenhar(); }
+      else if (e.key === "+" || e.key === "=") { e.preventDefault(); zoom(corte.z * 1.1); }
+      else if (e.key === "-" || e.key === "−") { e.preventDefault(); zoom(corte.z / 1.1); }
+    });
+    desenhar(); setTimeout(() => cv.focus(), 60);
+  }
+  function usarCorte() {
+    const sc = escala(), lado = V / sc, out = document.createElement("canvas");
+    out.width = out.height = 320;
+    out.getContext("2d").drawImage(corte.bm, corte.x - lado / 2, corte.y - lado / 2, lado, lado, 0, 0, 320, 320);
+    foto = out.toDataURL("image/jpeg", 0.86);
+    if (corte.bm.close) corte.bm.close();
+    corte = null; redesenhar();
+  }
   abrirFolha({
     titulo: T("Seu perfil"), html: html(),
     clique(e) {
       if (e.target.closest("[data-semfoto]")) { foto = ""; redesenhar(); }
+      if (e.target.closest("[data-corte-ok]")) return usarCorte();
+      if (e.target.closest("[data-corte-x]")) { if (corte.bm.close) corte.bm.close(); corte = null; return redesenhar(); }
       if (e.target.closest("[data-foto]")) {
         const inp = $("perfil-file");
         inp.onchange = async () => {
           const f = inp.files[0]; inp.value = ""; if (!f) return;
           try {
-            const bm = await createImageBitmap(f), lado = Math.min(bm.width, bm.height), cv = document.createElement("canvas");
-            cv.width = cv.height = 256;
-            cv.getContext("2d").drawImage(bm, (bm.width - lado) / 2, (bm.height - lado) / 2, lado, lado, 0, 0, 256, 256);
-            foto = cv.toDataURL("image/jpeg", 0.85); redesenhar();
+            let bm = await createImageBitmap(f);
+            if (Math.max(bm.width, bm.height) > 2400) { // foto grande de celular: reduz antes, para o recorte ficar leve
+              const k = 2400 / Math.max(bm.width, bm.height), menor = await createImageBitmap(bm, { resizeWidth: Math.round(bm.width * k), resizeHeight: Math.round(bm.height * k), resizeQuality: "high" });
+              bm.close(); bm = menor;
+            }
+            if ($("pf-nome")) nomeRasc = $("pf-nome").value;
+            corte = { bm, w: bm.width, h: bm.height, x: bm.width / 2, y: bm.height / 2, z: 1 };
+            redesenhar();
           } catch (err) { toast(T("Não deu para abrir essa imagem")); }
         };
         inp.click();
       }
     },
+    entrada(e) { if (e.target.id === "corte-z" && corte) zoom(+e.target.value); },
     enviar(d) {
       perfil = { nome: String(d.get("v") || "").trim().slice(0, 30), foto };
       try { localStorage.setItem("compasso.perfil", JSON.stringify(perfil)); } catch (err) { toast(T("Não deu para guardar a foto neste navegador")); }
@@ -1844,7 +1911,7 @@ function renderLetra() {
   if (x.demo) { letraCache = null; P.innerHTML = vazio(T("As músicas de exemplo não têm letra.")); return; }
   if (!x.letra) {
     letraCache = null;
-    P.innerHTML = vazio(T("Esta música ainda não tem letra."), `<div class="btns" style="justify-content:center"><button class="btn sm" data-letra-arq>${T("Abrir .lrc ou .txt")}</button><button class="btn ghost sm" data-letra-ed>${T("Colar letra")}</button></div><p class="note">${T("Dica: um arquivo .lrc com o mesmo nome da música entra sozinho ao importar, inclusive arrastando só o .lrc.")}</p>`);
+    P.innerHTML = vazio(T("Esta música ainda não tem letra."), `<div class="btns" style="justify-content:center"><button class="btn sm" data-letra-arq>${T("Abrir .lrc ou .txt")}</button><button class="btn ghost sm" data-letra-ed>${T("Colar letra")}</button><button class="btn ghost sm" data-letra-reler>${T("Procurar no arquivo de novo")}</button></div><p class="note">${T("Dica: um arquivo .lrc com o mesmo nome da música entra sozinho ao importar, inclusive arrastando só o .lrc.")}</p>`);
     return;
   }
   letraCache = { id: x.id, ...parseLetra(x.letra) };
@@ -1892,9 +1959,30 @@ $("letra").addEventListener("click", (e) => {
   const x = cur(); if (!x) return;
   if (e.target.closest("[data-letra-ed]")) return editarLetra(x);
   if (e.target.closest("[data-letra-arq]")) return abrirArquivoLetra(x);
+  if (e.target.closest("[data-letra-reler]")) return procurarLetra(x);
   const l = e.target.closest(".l.s"); if (l && letraCache) { letraMexeu = 0; buscarSeg(letraCache.linhas[+l.dataset.li].t); if (!playing) tocar(); }
 });
 ["wheel", "touchmove", "pointerdown"].forEach((ev) => $("letra").addEventListener(ev, () => { letraMexeu = Date.now(); }, { passive: true }));
+
+/* O leitor de etiquetas aprendeu a achar letras em mais lugares (1.6.1):
+   relê uma vez as músicas importadas que ficaram sem letra. */
+async function relerLetras() {
+  let n = 0;
+  for (const x of importadas()) {
+    if (x.letra || !x.arq) continue;
+    try { const m = await lerTags(x.arq); if (m.letra) { x.letra = m.letra; salvarFaixa(x); n++; } } catch (e) { /* arquivo ilegível: pula */ }
+  }
+  cfg.tagsVer = 2; salvarCfg();
+  if (n) { toast(T("Letras encontradas em {0}", plural(n, "música", "músicas"))); if (modoLetra) renderLetra(); }
+}
+async function procurarLetra(x) {
+  if (!x || !x.arq) return;
+  try {
+    const m = await lerTags(x.arq);
+    if (m.letra) { x.letra = m.letra; salvarFaixa(x); renderLetra(); toast(T("Letra encontrada no arquivo")); }
+    else toast(T("O arquivo não tem letra guardada"));
+  } catch (e) { toast(T("O arquivo não tem letra guardada")); }
+}
 
 /* ===================== Editar informações e ocultar ===================== */
 function editarInfo(x) {
@@ -2116,7 +2204,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.6.0";
+const VERSAO = "1.6.1";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
@@ -2247,6 +2335,7 @@ requestAnimationFrame(quadro);
   guardado.set("compasso.semente", true);
   restaurarSessao();
   renderBib(); renderPl(); renderTemas(); paint();
+  if (cfg.tagsVer !== 2) setTimeout(relerLetras, 1500);
   if (!guardado.get("compasso.boasvindas", false) && !importadas().length) boasVindas();
 })();
 
