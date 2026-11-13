@@ -61,7 +61,7 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 
 ## Pacote pago: visuais do mostrador (ideia)
 
-Os visuais de hoje (Relógio, Vinil, Aura, Espectro, Anel, Neon e Barras) continuam grátis. Os modelos novos podem entrar num pacote pago, com compra única e offline. Exemplos: galáxia de partículas, túnel, anel duplo, chuva de luz e visuais por época.
+Os visuais de hoje (Relógio, Vinil, Aura, Espectro, Anel, Neon, Barras e LED) continuam grátis. Os modelos novos podem entrar num pacote pago, com compra única e offline. Exemplos: galáxia de partículas, túnel, anel duplo, chuva de luz e visuais por época.
 
 ## Pacote pago: épocas (compra única)
 
