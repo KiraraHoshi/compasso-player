@@ -258,6 +258,9 @@ textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
 .app[data-visual="barras"] #viz,.app[data-visual="onda"] #viz,.app[data-visual="aura"] #viz,.app[data-visual="espectro"] #viz,.app[data-visual="neon"] #viz{display:block}
 .app[data-visual="espectro"] #ticks,.app[data-visual="aura"] #ticks,.app[data-visual="neon"] :is(#ticks,.disc){display:none}
 #viz{pointer-events:none}
+.app[data-capa="quadrada"] .disc{inset:18%;border-radius:24%}
+.app[data-capa="quadrada"][data-visual="relogio"] .disc{inset:21%}
+.app[data-capa="quadrada"] :is(.gira,.selo){border-radius:inherit}
 .app:is([data-visual="aura"],[data-visual="espectro"]) #viz{inset:-25%;width:150%;height:150%}
 .app[data-visual="cassete"] .cena,.app[data-visual="radio"] .cena{display:block}
 .app:is([data-visual="barras"],[data-visual="onda"],[data-visual="cassete"],[data-visual="radio"]) :is(#ticks,.disc){display:none}

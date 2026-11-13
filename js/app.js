@@ -72,10 +72,11 @@ const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i>
 
 /* ===================== Ajustes e temas ===================== */
 const cfg = Object.assign(
-  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false, corCapa: false },
+  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false, corCapa: true, formaCapa: "quadrada" },
   guardado.get("compasso.cfg", {})
 );
 const salvarCfg = () => guardado.set("compasso.cfg", cfg);
+if (cfg.padroes19 !== 1) { cfg.corCapa = true; cfg.formaCapa = "quadrada"; cfg.padroes19 = 1; salvarCfg(); } // novos padrões da 1.9.4
 
 const FONTES = {
   padrao: { n: T("Orolon"), d: '"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif', b: '"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' },
@@ -1305,6 +1306,8 @@ function renderTemas() {
       <p class="note">${T("A imagem fica só neste aparelho e não entra no JSON do tema.")}</p></div>
     <div class="card stack"><h2>${T("Tocando agora")}</h2>
       <p class="t">${T("Visual do mostrador")}</p><div class="chips" role="group" aria-label="${T("Visual do mostrador")}">${Object.entries(VISUAIS).map(([k, n]) => `<button data-vis="${k}" aria-pressed="${cfg.visual === k}" class="${cfg.visual === k ? "on" : ""}">${n}</button>`).join("")}</div>
+      <p class="t">${T("Formato da capa")}</p><div class="chips" role="group" aria-label="${T("Formato da capa")}">${[["quadrada", T("Quadrada")], ["redonda", T("Redonda")]].map(([k, n]) => `<button data-forma="${k}" aria-pressed="${cfg.formaCapa === k}" class="${cfg.formaCapa === k ? "on" : ""}">${n}</button>`).join("")}</div>
+      <p class="note">${T("Vale para Relógio, Aura e Espectro. No Vinil a capa é sempre redonda.")}</p>
       ${tg("corCapa", T("Cores do visual seguem a capa da música"))}
       <p class="t">${T("Época do som")}</p><div class="chips" role="group" aria-label="${T("Época do som")}">${Object.entries(ERAS).map(([k, [n]]) => `<button data-epoca="${k}" aria-pressed="${String(cfg.era) === k}" class="${String(cfg.era) === k ? "on" : ""}">${n}</button>`).join("")}</div>
       <p class="note">${ERA_DESC[cfg.era] || ERA_DESC.off} ${T("Cada época também troca o visual, e você pode escolher outro depois.")}</p>
@@ -1405,6 +1408,7 @@ $("tm").addEventListener("click", (e) => {
   if (ga) { const n = validarTema(GALERIA[+ga.dataset.galeria]); n.id = uid("t"); meusTemas.push(n); salvarTemas(); cfg.tema = n.id; aplicarTema(); renderTemas(); return toast(T('Tema "{0}" adicionado', n.nome)); }
   if (t.closest("[data-instalar]")) return pedirInstalacao();
   if (t.closest("[data-boasvindas]")) return boasVindas();
+  const fo = t.closest("[data-forma]"); if (fo) { cfg.formaCapa = fo.dataset.forma; salvarCfg(); aplicarVisual(); return renderTemas(); }
   const vi = t.closest("[data-vis]"); if (vi) { cfg.visual = vi.dataset.vis; salvarCfg(); aplicarVisual(); return renderTemas(); }
   const ep = t.closest("[data-epoca]");
   if (ep) { cfg.era = ep.dataset.epoca; cfg.visual = ERAS[cfg.era][1]; salvarCfg(); aplicarVisual(); if (ctx) montarEra(); return renderTemas(); }
@@ -2007,7 +2011,7 @@ function restaurarBackup(o) {
   for (const t of o.temas || []) { try { const v = validarTema(t); if (!meusTemas.some((m) => m.nome === v.nome)) { v.id = uid("t"); meusTemas.push(v); } } catch (err) { /* tema inválido: pula */ } }
   salvarTemas();
   const aj = o.ajustes || {};
-  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "leve", "coracoes", "corCapa"]) if (k in aj) cfg[k] = aj[k];
+  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "leve", "coracoes", "corCapa", "formaCapa"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
   if (aj.ajustes) cfg.ajustes = aj.ajustes;
@@ -2268,6 +2272,8 @@ function ajustarRuido() { if (ruido && ctx) ruido.g.gain.setTargetAtTime(playing
 function aplicarVisual() {
   const a = $("app");
   a.dataset.visual = VISUAIS[cfg.visual] ? cfg.visual : "relogio";
+  capaQuad = cfg.formaCapa !== "redonda" && ["relogio", "aura", "espectro"].includes(a.dataset.visual);
+  a.dataset.capa = capaQuad ? "quadrada" : "";
   a.dataset.era = cfg.era && cfg.era !== "off" ? cfg.era : "";
   pintarCena();
 }
@@ -2290,6 +2296,20 @@ function pintarCena() {
   } else C.innerHTML = "";
 }
 let nivelViz = new Float32Array(28);
+/* Capa quadrada de cantos arredondados: a borda é uma superelipse, e a Aura e o Espectro seguem esse contorno */
+let capaQuad = false;
+const SE_N = 6, LADO_Q = 0.32; // meia largura da capa quadrada, em fração do mostrador
+const seR = (ang) => { const co = Math.abs(Math.cos(ang)), si = Math.abs(Math.sin(ang)); return 1 / Math.pow(Math.pow(co, SE_N) + Math.pow(si, SE_N), 1 / SE_N); };
+const baseR = (W, ang, off) => (capaQuad ? W * LADO_Q * escDisco * seR(ang) : W * 0.34 * escDisco) + off;
+function contornoCapa(c, W, cx, off, inverso) { // contorno da capa (mais um afastamento), como caminho
+  if (!capaQuad) { const r = W * 0.34 * escDisco + off; c.moveTo(cx + r, cx); c.arc(cx, cx, r, 0, Math.PI * 2, !!inverso); return; }
+  const N = 96;
+  for (let j = 0; j <= N; j++) {
+    const ang = ((inverso ? N - j : j) / N) * Math.PI * 2, r = baseR(W, ang, off);
+    const x = cx + Math.cos(ang) * r, y = cx + Math.sin(ang) * r; if (j) c.lineTo(x, y); else c.moveTo(x, y);
+  }
+  c.closePath();
+}
 const FOLGA_VIZ = 1.5; // Aura e Espectro desenham numa área 50% maior que o mostrador
 let auraNiv = new Float32Array(64), ondinhas = [], ultOndinha = 0, auraLimpa = true;
 /* Aura: um anel suave em volta da capa (Relógio e Vinil) que respira com a música, sem exagero */
@@ -2353,12 +2373,12 @@ function desenharEspectro(c, Wc, vivo) {
   // picos: uma linha quebrada (não suavizada), espelhada entre a esquerda e a direita
   c.beginPath();
   for (let j = 0; j <= N; j++) {
-    const jj = j % N, nv = espNiv[jj < n ? jj : N - 1 - jj], r = Math.min(Wc / 2 - 3, R + Math.pow(nv, 3) * A), ang = (jj / N) * Math.PI * 2 - Math.PI / 2;
+    const jj = j % N, ang = (jj / N) * Math.PI * 2 - Math.PI / 2, nv = espNiv[jj < n ? jj : N - 1 - jj], r = Math.min(Wc / 2 - 3, baseR(W, ang, W * 0.01) + Math.pow(nv, 3) * A);
     const x = cx + Math.cos(ang) * r, y = cx + Math.sin(ang) * r; if (j) c.lineTo(x, y); else c.moveTo(x, y);
   }
   c.lineJoin = "miter"; c.globalAlpha = 0.07; c.fill();
   c.globalAlpha = 0.85; c.lineWidth = W * 0.003; c.stroke();
-  c.globalAlpha = 0.55 + batida * 0.4 * k; c.lineWidth = W * (0.005 + batida * 0.004 * k); c.beginPath(); c.arc(cx, cx, R, 0, Math.PI * 2); c.stroke();
+  c.globalAlpha = 0.55 + batida * 0.4 * k; c.lineWidth = W * (0.005 + batida * 0.004 * k); c.beginPath(); contornoCapa(c, W, cx, W * 0.01); c.stroke();
   c.globalAlpha = 1;
 }
 /* Neon: onda espelhada de ponta a ponta, mais forte no centro, com brilho */
@@ -2394,10 +2414,10 @@ function desenharNeon(c, W, vivo) {
    reação rápida, forma suavizada entre vizinhos (parece líquido) e duas camadas de eco atrás que acompanham com atraso */
 const AURA_N = 64, auraEco1 = new Float32Array(AURA_N), auraEco2 = new Float32Array(AURA_N), auraTmp = new Float32Array(AURA_N);
 let auraGiro = 0;
-function curvaAura(c, niv, R, A, cx, giro, buraco) {
+function curvaAura(c, niv, W, off, A, cx, giro, buraco) {
   const n = niv.length, N = n * 2, pts = [], teto = cx - 4; // nunca encosta na borda da tela de desenho
   for (let j = 0; j < N; j++) {
-    const nv = niv[j < n ? j : N - 1 - j], r0 = R + Math.pow(nv, 1.7) * A, r = r0 < teto * 0.9 ? r0 : teto * 0.9 + (teto * 0.1) * Math.tanh((r0 - teto * 0.9) / (teto * 0.1)), ang = (j / N) * Math.PI * 2 - Math.PI / 2 + giro;
+    const angP = (j / N) * Math.PI * 2 - Math.PI / 2 + giro, nv = niv[j < n ? j : N - 1 - j], r0 = baseR(W, angP, off) + Math.pow(nv, 1.7) * A, r = r0 < teto * 0.9 ? r0 : teto * 0.9 + (teto * 0.1) * Math.tanh((r0 - teto * 0.9) / (teto * 0.1)), ang = (j / N) * Math.PI * 2 - Math.PI / 2 + giro;
     pts.push([cx + Math.cos(ang) * r, cx + Math.sin(ang) * r]);
   }
   c.beginPath();
@@ -2405,7 +2425,7 @@ function curvaAura(c, niv, R, A, cx, giro, buraco) {
     const p0 = pts[j % N], p1 = pts[(j + 1) % N], mx = (p0[0] + p1[0]) / 2, my = (p0[1] + p1[1]) / 2;
     if (j === 0) c.moveTo(mx, my); else c.quadraticCurveTo(p0[0], p0[1], mx, my);
   }
-  if (buraco) { c.moveTo(cx + buraco, cx); c.arc(cx, cx, buraco, 0, Math.PI * 2, true); } // não pinta por cima da capa
+  if (buraco) contornoCapa(c, W, cx, -1, true); // não pinta por cima da capa
 }
 function desenharAura(c, Wc, vivo) {
   const W = Wc / FOLGA_VIZ, n = AURA_N, k = cfg.reage ? cfg.batF : 0.3, cx = Wc / 2; // a tela de desenho é maior que o mostrador
@@ -2431,14 +2451,14 @@ function desenharAura(c, Wc, vivo) {
   desenharPoeira(c, W, R, k, graves, Wc);
   c.lineJoin = "round"; c.fillStyle = c.strokeStyle = tinta;
   // ecos atrás: maiores, mais transparentes e atrasados
-  const Rc = W * 0.34 * escDisco - 1; // borda da capa
-  curvaAura(c, auraEco2, R, A * 1.25, cx, -auraGiro * 0.6, Rc); c.globalAlpha = 0.08; c.fill("evenodd");
-  curvaAura(c, auraEco1, R, A * 1.12, cx, auraGiro * 0.5, Rc); c.globalAlpha = 0.12; c.fill("evenodd");
-  curvaAura(c, auraEco1, R, A * 1.12, cx, auraGiro * 0.5); c.globalAlpha = 0.3; c.lineWidth = W * 0.003; c.stroke();
+  const off = W * 0.01;
+  curvaAura(c, auraEco2, W, off, A * 1.25, cx, -auraGiro * 0.6, true); c.globalAlpha = 0.08; c.fill("evenodd");
+  curvaAura(c, auraEco1, W, off, A * 1.12, cx, auraGiro * 0.5, true); c.globalAlpha = 0.12; c.fill("evenodd");
+  curvaAura(c, auraEco1, W, off, A * 1.12, cx, auraGiro * 0.5); c.globalAlpha = 0.3; c.lineWidth = W * 0.003; c.stroke();
   // camada principal
-  curvaAura(c, auraNiv, R, A, cx, auraGiro, Rc);
+  curvaAura(c, auraNiv, W, off, A, cx, auraGiro, true);
   c.globalAlpha = 0.16 + batida * 0.08 * k; c.fill("evenodd");
-  curvaAura(c, auraNiv, R, A, cx, auraGiro);
+  curvaAura(c, auraNiv, W, off, A, cx, auraGiro);
   c.globalAlpha = 0.07 + batida * 0.07 * k; c.fill(); // véu leve da cor por cima da capa, mais forte nas batidas
   c.globalAlpha = 0.18; c.lineWidth = W * 0.022; c.stroke();
   c.globalAlpha = 0.85; c.lineWidth = W * 0.005; c.stroke();
@@ -2447,7 +2467,7 @@ function desenharAura(c, Wc, vivo) {
   c.lineWidth = W * 0.005;
   for (let i = ondinhas.length - 1; i >= 0; i--) {
     const t = (ondinhas[i] += 0.022); if (t >= 1) { ondinhas.splice(i, 1); continue; }
-    c.globalAlpha = 0.3 * (1 - t) * k; c.beginPath(); c.arc(cx, cx, R + t * W * 0.14, 0, Math.PI * 2); c.stroke();
+    c.globalAlpha = 0.3 * (1 - t) * k; c.beginPath(); contornoCapa(c, W, cx, W * 0.01 + t * W * 0.14); c.stroke();
   }
   c.globalAlpha = 1;
 }
@@ -2506,7 +2526,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.9.3";
+const VERSAO = "1.10.0";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
