@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.10.0
+- Capa quadrada com cantos arredondados, para quem curte a arte do álbum. Agora é o padrão (Ajustes › Tocando agora › Formato da capa), e a Aura e o Espectro seguem o contorno quadrado. No Vinil a capa continua redonda.
+- "Cores do visual seguem a capa da música" passa a vir ligado.
+
 ## 1.9.3
 - "Cores do visual seguem a capa": agora usa as cores que mais aparecem na capa, num degradê entre as duas principais. Capa em preto e branco fica em prata (tema escuro) ou grafite (tema claro), e não volta mais para a cor do tema.
 
