@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.11.1
+- Os visuais reagem igual em qualquer tela. Antes a suavização era contada por quadro, então um monitor de 144 Hz reagia bem mais rápido que um celular a 60 Hz (ou 30 Hz na economia de bateria). Agora tudo segue o tempo real, as frequências são lidas uma vez por quadro e o analisador responde mais rápido.
+- O áudio usa um buffer de tamanho médio, que deixa o visual mais em sincronia com o som.
+- Saíram os visuais Rádio e Cassete. A época dos anos 60 agora usa o Vinil, e a dos anos 80 usa o Neon.
+
 ## 1.11.0
 - Layout adaptativo: o app acompanha o tamanho da tela aos poucos. No PC ele ocupa a janela toda, com barra lateral, conteúdo largo, mini player de ponta a ponta e o Tocando agora em duas colunas (capa à esquerda, controles à direita). Com o celular deitado, o Tocando agora também fica em duas colunas e a navegação vai para a lateral. Em pé, a capa cresce de acordo com a altura do celular.
 - A tela cheia continua igual, em uma coluna com o relógio grande.

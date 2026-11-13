@@ -472,8 +472,8 @@ function prepararAudio() {
   if (ctx) return;
   // "playback" pede um buffer de áudio maior: no celular isso evita falhas e engasgos no som
   const AC = window.AudioContext || window.webkitAudioContext;
-  try { ctx = new AC({ latencyHint: "playback" }); } catch (e) { ctx = new AC(); }
-  an = ctx.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.75;
+  try { ctx = new AC({ latencyHint: "balanced" }); } catch (e) { ctx = new AC(); }
+  an = ctx.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.55;
   volNo = ctx.createGain(); an.connect(volNo); volNo.connect(ctx.destination); aplicarVolume(true);
   bins = new Uint8Array(an.frequencyBinCount); ondas = new Uint8Array(an.fftSize);
   entrada = ctx.createGain(); eraIn = ctx.createGain();
@@ -751,10 +751,16 @@ function definirLeve(on) {
   if (APP.dataset.view === "temas" && !editando) renderTemas();
   toast(cfg.leve ? T("Modo leve ligado") : T("Modo leve desligado"));
 }
+/* As animações seguem o tempo real, e não o número de quadros: assim um monitor de 144 Hz e um celular a 60 Hz (ou 30 Hz na economia de bateria) reagem igual */
+let fqQ = 1, fqV = 1, ultQ = 0, ultV = 0, nQuadro = 0, binsLidos = -1;
+const passoT = (agora, ult) => (ult ? Math.min(4, Math.max(0.25, (agora - ult) / 16.667)) : 1);
+const sq = (k) => 1 - Math.pow(1 - k, fqQ), sv = (k) => 1 - Math.pow(1 - k, fqV); // suavização por quadro de 60 Hz, ajustada ao tempo
+function lerBins() { if (binsLidos !== nQuadro) { an.getByteFrequencyData(bins); binsLidos = nQuadro; } } // uma leitura por quadro
 let acesas = -1, arrastandoSeek = false, pulso = 0.4, graveEnv = 0, gravePiso = 0, escDisco = 1, ultEsc = "", batida = 0, alvoBatida = 0, media = 0, ultimaBatida = 0, ultimoSeg = -1;
 const nivel = new Float32Array(60);
 const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function quadro() {
+  { const ag = performance.now(); fqQ = passoT(ag, ultQ); ultQ = ag; nQuadro++; }
   const x = cur();
   if (x) {
     const p = posAtual();
@@ -779,27 +785,27 @@ function quadro() {
   let alvo = 0.4;
   const ativo = playing && an && cfg.reage && !calmo;
   if (ativo) {
-    an.getByteFrequencyData(bins);
+    lerBins();
     let s = 0; for (let i = 1; i < 19; i++) s += bins[i];
     alvo = Math.min(1, s / 18 / 170);
     const g = (bins[0] + bins[1] + bins[2] + bins[3]) / 4, agora = performance.now();
     if (g > media * 1.3 && g > 90 && agora - ultimaBatida > 450) { alvoBatida = 1; ultimaBatida = agora; }
-    media += (g - media) * 0.06;
+    media += (g - media) * sq(0.06);
     // pulso da capa: segue a força dos graves acima do nível médio da música, para pulsar mesmo em músicas altas
-    const gv = g / 255; graveEnv += (gv - graveEnv) * (gv > graveEnv ? 0.35 : 0.1); gravePiso += (graveEnv - gravePiso) * 0.015;
-  } else { if (!playing) alvo = 0.25; graveEnv *= 0.92; }
-  alvoBatida *= 0.93; batida += (alvoBatida - batida) * 0.22;
+    const gv = g / 255; graveEnv += (gv - graveEnv) * sq(gv > graveEnv ? 0.35 : 0.1); gravePiso += (graveEnv - gravePiso) * sq(0.015);
+  } else { if (!playing) alvo = 0.25; graveEnv *= Math.pow(0.92, fqQ); }
+  alvoBatida *= Math.pow(0.93, fqQ); batida += (alvoBatida - batida) * sq(0.22);
   const naTela = APP.dataset.view === "tocando", leve = !!cfg.leve;
   // os tracinhos só se mexem quando o mostrador de relógio está na tela
   if (naTela && !leve && APP.dataset.visual === "relogio" && APP.dataset.letra !== "1") for (let i = 0; i < 60; i++) {
     const p = (i < 30 ? i : 59 - i) / 29, t = ativo ? (bins[1 + Math.round(60 * p * p)] / 255) * cfg.batF * 1.4 : 0;
-    const nv = nivel[i] + (Math.min(1, t) - nivel[i]) * 0.16;
+    const nv = nivel[i] + (Math.min(1, t) - nivel[i]) * sq(0.16);
     if (Math.abs(nv - nivel[i]) > 0.004 || (nv < 0.004 && nivel[i] !== 0)) {
       nivel[i] = nv < 0.004 ? 0 : nv;
       linhas[i].setAttribute("y2", (12 + nivel[i] * 7).toFixed(1));
     }
   }
-  pulso += (alvo - pulso) * 0.1;
+  pulso += (alvo - pulso) * sq(0.1);
   // As variáveis ficam só nos elementos que as usam (e só mudam quando o valor muda),
   // para o navegador não recalcular o estilo da página inteira a cada quadro.
   if (!leve && naTela) { // fora do Tocando agora a luz de fundo fica parada
@@ -2227,9 +2233,9 @@ function escolherFundo() {
 
 
 /* ===================== Épocas (som) e visuais do mostrador ===================== */
-const ERAS = { off: [T("Desligado"), "relogio"], 60: [T("Anos 60"), "radio"], 70: [T("Anos 70"), "vinil"], 80: [T("Anos 80"), "cassete"], 90: [T("Anos 90"), "barras"] };
+const ERAS = { off: [T("Desligado"), "relogio"], 60: [T("Anos 60"), "vinil"], 70: [T("Anos 70"), "vinil"], 80: [T("Anos 80"), "neon"], 90: [T("Anos 90"), "barras"] };
 const ERA_DESC = { off: T("Som original, sem efeito."), 60: T("Rádio valvulado: mono, abafado e com chiado."), 70: T("Vinil: graves quentes, estalos de agulha e leve oscilação."), 80: T("Fita cassete: chiado de fita e velocidade oscilando de leve."), 90: T("CD player: som limpo com graves e brilho reforçados.") };
-const VISUAIS = { relogio: T("Relógio"), vinil: T("Vinil"), aura: T("Aura"), espectro: T("Espectro"), neon: T("Neon"), cassete: T("Cassete"), radio: T("Rádio"), barras: T("Barras"), onda: T("Onda") };
+const VISUAIS = { relogio: T("Relógio"), vinil: T("Vinil"), aura: T("Aura"), espectro: T("Espectro"), neon: T("Neon"), barras: T("Barras"), onda: T("Onda") };
 function curvaSat(k) { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = (i * 2) / n - 1; c[i] = Math.tanh(k * x) / Math.tanh(k); } return c; }
 function bufRuido(tipo) {
   const sr = ctx.sampleRate, n = sr * 4, b = ctx.createBuffer(1, n, sr), d = b.getChannelData(0);
@@ -2322,6 +2328,7 @@ function desenharViz() {
   }
   const cv = $("viz"), w = cv.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1); if (!w) return;
   if (cv.width !== Math.round(w * dpr)) cv.width = cv.height = Math.round(w * dpr);
+  { const ag = performance.now(); fqV = passoT(ag, ultV); ultV = ag; }
   const c = cv.getContext("2d"), W = cv.width, vivo = playing && an && !calmo;
   c.clearRect(0, 0, W, W);
   if (corViz2) { tinta = c.createLinearGradient(0, 0, W, W); tinta.addColorStop(0.15, corViz); tinta.addColorStop(0.85, corViz2); } else tinta = corViz;
@@ -2330,11 +2337,11 @@ function desenharViz() {
   if (v === "espectro") return desenharEspectro(c, W, vivo);
   if (v === "neon") return desenharNeon(c, W, vivo);
   if (v === "barras") {
-    if (vivo) an.getByteFrequencyData(bins);
+    if (vivo) lerBins();
     const n = 28, vao = W * 0.012, bw = (W - vao * (n - 1)) / n;
     for (let i = 0; i < n; i++) {
       const p = i / (n - 1), alvo = vivo ? bins[1 + Math.round(70 * p * p)] / 255 : 0;
-      nivelViz[i] += (alvo - nivelViz[i]) * 0.25;
+      nivelViz[i] += (alvo - nivelViz[i]) * sv(0.25);
       const h = Math.max(bw, nivelViz[i] * W * 0.8);
       c.globalAlpha = 0.45 + nivelViz[i] * 0.55; c.beginPath();
       if (c.roundRect) c.roundRect(i * (bw + vao), (W - h) / 2, bw, h, bw / 2); else c.rect(i * (bw + vao), (W - h) / 2, bw, h);
@@ -2355,17 +2362,17 @@ function desenharPoeira(c, W, R, k, graves, Wc = W) {
   const cx = Wc / 2, vel = 0.0016 * (1 + batida * 4 * k + graves);
   c.fillStyle = tinta;
   for (const q of poeira) {
-    q.d += vel * q.v; if (q.d > 1) { q.d = 0; q.a = Math.random() * Math.PI * 2; }
+    q.d += vel * q.v * fqV; if (q.d > 1) { q.d = 0; q.a = Math.random() * Math.PI * 2; }
     const r = R + q.d * (Wc * 0.48 - R), al = Math.sin(q.d * Math.PI) * 0.55;
     c.globalAlpha = al; c.beginPath(); c.arc(cx + Math.cos(q.a) * r, cx + Math.sin(q.a) * r, W * 0.0035 * q.t, 0, Math.PI * 2); c.fill();
   }
 }
 function desenharEspectro(c, Wc, vivo) {
   const W = Wc / FOLGA_VIZ, n = espNiv.length, k = cfg.reage ? cfg.batF : 0.3, cx = Wc / 2; // a tela de desenho é maior que o mostrador
-  if (vivo) an.getByteFrequencyData(bins);
+  if (vivo) lerBins();
   for (let i = 0; i < n; i++) {
     const p = i / (n - 1), alvo = vivo ? bins[3 + Math.round(150 * Math.pow(p, 1.3))] / 255 : 0;
-    espNiv[i] += (alvo - espNiv[i]) * (alvo > espNiv[i] ? 0.6 : 0.16);
+    espNiv[i] += (alvo - espNiv[i]) * sv(alvo > espNiv[i] ? 0.6 : 0.16);
   }
   const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0;
   const R = W * 0.34 * escDisco + W * 0.01, A = W * 0.1 * (0.45 + k * 0.75), N = n * 2;
@@ -2385,10 +2392,10 @@ function desenharEspectro(c, Wc, vivo) {
 const neonNiv = new Float32Array(80);
 function desenharNeon(c, W, vivo) {
   const n = neonNiv.length, k = cfg.reage ? cfg.batF : 0.3, cy = W / 2;
-  if (vivo) an.getByteFrequencyData(bins);
+  if (vivo) lerBins();
   for (let i = 0; i < n; i++) {
     const p = i / (n - 1), alvo = vivo ? bins[2 + Math.round(130 * Math.pow(p, 1.4))] / 255 : 0;
-    neonNiv[i] += (alvo - neonNiv[i]) * (alvo > neonNiv[i] ? 0.5 : 0.14);
+    neonNiv[i] += (alvo - neonNiv[i]) * sv(alvo > neonNiv[i] ? 0.5 : 0.14);
   }
   const A = W * 0.17 * (0.5 + k * 0.7) * (1 + batida * 0.15 * k), M = n * 2 - 1, pts = [];
   for (let j = 0; j <= M; j++) {
@@ -2429,7 +2436,7 @@ function curvaAura(c, niv, W, off, A, cx, giro, buraco) {
 }
 function desenharAura(c, Wc, vivo) {
   const W = Wc / FOLGA_VIZ, n = AURA_N, k = cfg.reage ? cfg.batF : 0.3, cx = Wc / 2; // a tela de desenho é maior que o mostrador
-  if (vivo) an.getByteFrequencyData(bins);
+  if (vivo) lerBins();
   for (let i = 0; i < n; i++) {
     const p = i / (n - 1), alvo = vivo ? bins[2 + Math.round(110 * Math.pow(p, 1.5))] / 255 : 0;
     auraTmp[i] = alvo;
@@ -2441,12 +2448,12 @@ function desenharAura(c, Wc, vivo) {
   }
   for (let i = 0; i < n; i++) {
     const alvo = auraTmp[i];
-    auraNiv[i] += (alvo - auraNiv[i]) * (alvo > auraNiv[i] ? 0.55 : 0.18); // sobe na hora, desce rápido
-    auraEco1[i] += (auraNiv[i] - auraEco1[i]) * 0.12;
-    auraEco2[i] += (auraEco1[i] - auraEco2[i]) * 0.08;
+    auraNiv[i] += (alvo - auraNiv[i]) * sv(alvo > auraNiv[i] ? 0.55 : 0.18); // sobe na hora, desce rápido
+    auraEco1[i] += (auraNiv[i] - auraEco1[i]) * sv(0.12);
+    auraEco2[i] += (auraEco1[i] - auraEco2[i]) * sv(0.08);
   }
   const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0;
-  auraGiro += 0.0012 + batida * 0.004 * k; // gira bem devagar, um pouco mais nas batidas
+  auraGiro += (0.0012 + batida * 0.004 * k) * fqV; // gira bem devagar, um pouco mais nas batidas
   const R = W * 0.34 * escDisco + W * 0.01, A = W * 0.13 * (0.45 + k * 0.75);
   desenharPoeira(c, W, R, k, graves, Wc);
   c.lineJoin = "round"; c.fillStyle = c.strokeStyle = tinta;
@@ -2466,7 +2473,7 @@ function desenharAura(c, Wc, vivo) {
   if (vivo && ultimaBatida !== ultOndinha && performance.now() - ultimaBatida < 60) { ultOndinha = ultimaBatida; if (ondinhas.length < 3) ondinhas.push(0); }
   c.lineWidth = W * 0.005;
   for (let i = ondinhas.length - 1; i >= 0; i--) {
-    const t = (ondinhas[i] += 0.022); if (t >= 1) { ondinhas.splice(i, 1); continue; }
+    const t = (ondinhas[i] += 0.022 * fqV); if (t >= 1) { ondinhas.splice(i, 1); continue; }
     c.globalAlpha = 0.3 * (1 - t) * k; c.beginPath(); contornoCapa(c, W, cx, W * 0.01 + t * W * 0.14); c.stroke();
   }
   c.globalAlpha = 1;
@@ -2526,7 +2533,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.11.0";
+const VERSAO = "1.11.1";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
