@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.11.3
+- Capa quadrada: a Aura e o Espectro seguem exatamente o canto arredondado da arte e começam rentes a ela. Some a bordinha sobrando e a "sombra" estranha nos cantos.
+
 ## 1.11.2
 - Títulos longos no Tocando agora quebram em até duas linhas e terminam em "…". Antes, no PC, empurravam a coluna para fora da tela.
 
