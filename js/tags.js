@@ -46,7 +46,24 @@
         const e = d[0], dupla = e === 1 || e === 2; let q = 1;
         if (dupla) { while (q + 1 < d.length && (d[q] || d[q + 1])) q += 2; q += 2; } else { while (q < d.length && d[q]) q++; q++; }
         const desc = txt(d.subarray(0, q)).toUpperCase();
-        if (/^(LYRICS|USLT|UNSYNCEDLYRICS|UNSYNCED LYRICS)$/.test(desc)) { const v = new Uint8Array(d.length - q + 1); v[0] = e; v.set(d.subarray(q), 1); m.letra = txt(v); }
+        if (/LYRIC|^USLT$|LETRA/.test(desc)) { const v = new Uint8Array(d.length - q + 1); v[0] = e; v.set(d.subarray(q), 1); m.letra = txt(v); }
+      }
+      else if ((id === "SYLT" || id === "SLT") && !m.sinc && d.length > 7) {
+        // codificação, idioma (3), formato do tempo (2 = milissegundos), tipo, descrição, depois [texto, tempo de 4 bytes]...
+        const e = d[0], dupla = e === 1 || e === 2, fmtT = d[4];
+        if (fmtT === 2) {
+          let q = 6; const fim0 = () => { if (dupla) { while (q + 1 < d.length && (d[q] || d[q + 1])) q += 2; q += 2; } else { while (q < d.length && d[q]) q++; q++; } };
+          fim0(); // pula a descrição
+          const linhas = [];
+          while (q < d.length - 4) {
+            const ini = q; fim0(); const bytes = d.subarray(ini, Math.max(ini, q - (dupla ? 2 : 1)));
+            const u = new Uint8Array(bytes.length + 1); u[0] = e; u.set(bytes, 1);
+            const ms = be(d, q); q += 4;
+            const tx = txt(u).replace(/^[\r\n]+/, ""), mm = Math.floor(ms / 60000), ss = ((ms % 60000) / 1000).toFixed(2).padStart(5, "0");
+            linhas.push(`[${String(mm).padStart(2, "0")}:${ss}]${tx}`);
+          }
+          if (linhas.length) m.sinc = linhas.join("\n");
+        }
       }
       else if ((id === "USLT" || id === "ULT") && !m.letra && d.length > 4) {
         // codificação (1 byte), idioma (3 bytes), descrição terminada em zero, letra
@@ -94,7 +111,7 @@
       else if (key === "ALBUMARTIST" && !m.a) m.a = v;
       else if (key === "ALBUM") m.al = v;
       else if (key === "TRACKNUMBER") m.n = num(v);
-      else if ((key === "LYRICS" || key === "UNSYNCEDLYRICS") && !m.letra) m.letra = v;
+      else if (/LYRIC|^LETRA/.test(key) && v) { if (/\[\d{1,3}:\d{2}/.test(v)) { if (!m.sinc) m.sinc = v; } else if (!m.letra) m.letra = v; }
       else if (key === "METADATA_BLOCK_PICTURE" && !m.capa) {
         try {
           const bin = atob(v), u = new Uint8Array(bin.length);
@@ -104,9 +121,9 @@
       }
     }
   }
-  async function lerFLAC(f) {
-    if (dec(await ler(f, 0, 4), "latin1") !== "fLaC") return null;
-    let p = 4; const m = {};
+  async function lerFLAC(f, ini = 0) {
+    if (dec(await ler(f, ini, ini + 4), "latin1") !== "fLaC") return null;
+    let p = ini + 4; const m = {};
     for (let n = 0; n < 64; n++) {
       const bh = await ler(f, p, p + 4); if (bh.length < 4) break;
       const tipo = bh[0] & 127, len = be(bh, 1, 3);
@@ -185,11 +202,27 @@
     return m;
   }
 
-  async function lerTags(f) {
-    for (const leitor of [lerID3, lerFLAC, lerMP4, lerOGG]) {
+  async function bruto(f) {
+    // FLAC com etiqueta ID3 no começo: lê as duas e junta (a do FLAC tem prioridade)
+    const h = await ler(f, 0, 10);
+    if (h[0] === 73 && h[1] === 68 && h[2] === 51) {
+      const id3 = (await lerID3(f)) || {}, fim = 10 + ss(h, 6) + (h[5] & 0x10 ? 10 : 0);
+      let flac = null; try { flac = await lerFLAC(f, fim); } catch (e) { /* não é FLAC */ }
+      if (flac) { for (const k in id3) if (flac[k] === undefined || flac[k] === "") flac[k] = id3[k]; return flac; }
+      return id3;
+    }
+    for (const leitor of [lerFLAC, lerMP4, lerOGG]) {
       try { const m = await leitor(f); if (m) return m; } catch (e) { /* tenta o próximo */ }
     }
     return {};
+  }
+  async function lerTags(f) {
+    let m = {};
+    try { m = await bruto(f); } catch (e) { m = {}; }
+    if (m.sinc) m.letra = m.sinc; // letra sincronizada vale mais que a solta
+    delete m.sinc;
+    if (m.letra) m.letra = String(m.letra).replace(/\r\n?/g, "\n").trim();
+    return m;
   }
   (typeof window !== "undefined" ? window : globalThis).lerTags = lerTags;
 })();

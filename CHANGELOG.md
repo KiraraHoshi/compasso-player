@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.6.1
+- Letras: o app passou a achar letras guardadas de mais jeitos (campos "UNSYNCED LYRICS" e "SYNCEDLYRICS" no FLAC, FLAC com etiqueta ID3 no começo e letra sincronizada SYLT no MP3). As músicas já importadas são relidas uma vez, e a tela de letra ganhou o botão "Procurar no arquivo de novo".
+- Foto do perfil: recorte com arrastar e zoom (controle, dois dedos ou roda do mouse).
+
 ## 1.6.0
 - Controle de volume próprio no Tocando agora, com mudo e atalhos (↑, ↓ e M no PC).
 - App mais leve: as animações deixaram de recalcular a página inteira a cada quadro. Num processador 4 vezes mais lento, o app foi de cerca de 25 para 60 quadros por segundo, e a rolagem ficou lisa.
