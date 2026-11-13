@@ -48,7 +48,7 @@ jobs:
       - name: Gerar o APK de teste
         run: |
           # chave fixa: cada APK de teste novo atualiza o anterior sem desinstalar
-          mkdir -p ~/.android && cp android-teste/teste-debug.keystore ~/.android/debug.keystore
+          node scripts/chave-teste-android.mjs
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
