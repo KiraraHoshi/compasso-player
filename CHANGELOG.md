@@ -1,6 +1,6 @@
 # Histórico de versões
 
-## 1.15.4
+## 1.15.5
 - APK de teste: agora sempre assinado com a mesma chave, então cada versão nova instala por cima da anterior, sem desinstalar e sem perder nada.
 
 ## 1.15.3
