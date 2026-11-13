@@ -1638,7 +1638,7 @@ const dB = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v) + " dB";
 function htmlEQ() {
   const F = eqBandas(), G = eqGanhos();
   return `<div class="opt"><span id="l-eqon">${T("Equalizador ligado")}</span><button class="tg" data-eqon role="switch" aria-checked="${cfg.eq.on}" aria-labelledby="l-eqon"></button></div>
-    <div class="seg" role="group" aria-label="${T("Quantidade de bandas")}"><button data-eqmodo="5" class="${cfg.eq.modo === 5 ? "on" : ""}" aria-pressed="${cfg.eq.modo === 5}">5 bandas</button><button data-eqmodo="10" class="${cfg.eq.modo === 10 ? "on" : ""}" aria-pressed="${cfg.eq.modo === 10}">10 bandas</button></div>
+    <div class="seg" role="group" aria-label="${T("Quantidade de bandas")}"><button data-eqmodo="5" class="${cfg.eq.modo === 5 ? "on" : ""}" aria-pressed="${cfg.eq.modo === 5}">${T("5 bandas")}</button><button data-eqmodo="10" class="${cfg.eq.modo === 10 ? "on" : ""}" aria-pressed="${cfg.eq.modo === 10}">${T("10 bandas")}</button></div>
     <div class="chips" role="group" aria-label="${T("Predefinições")}">${Object.entries(EQ_P).map(([k, [n]]) => `<button data-eqp="${k}" aria-pressed="${cfg.eq.p === k}" class="${cfg.eq.p === k ? "on" : ""}">${n}</button>`).join("")}</div>
     ${F.map((f, i) => `<div class="eqrow"><label for="eq${i}" class="note">${rotHz(f)}</label><input type="range" id="eq${i}" data-eqb="${i}" min="-12" max="12" step="1" value="${G[i]}"><span class="dur" id="eqv${i}">${dB(G[i])}</span></div>`).join("")}
     <p class="note">${T("Vale para todas as músicas. Mexer numa faixa liga o equalizador sozinho.")}</p>`;
