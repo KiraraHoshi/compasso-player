@@ -56,6 +56,9 @@ const I = {
   sliders: tr("M5 7h14M5 12h14M5 17h14") + '<circle cx="9" cy="7" r="2.1" fill="currentColor"/><circle cx="15.5" cy="12" r="2.1" fill="currentColor"/><circle cx="8" cy="17" r="2.1" fill="currentColor"/>',
   user: '<circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M4.5 20c1.2-3.8 4.2-5.6 7.5-5.6s6.3 1.8 7.5 5.6"),
   stats: tr("M5 20V11M12 20V5M19 20v-7"),
+  lyrics: tr("M5 6h14M5 10.5h14M5 15h9M5 19.5h6") + '<circle cx="18" cy="17.5" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+  eyeoff: tr("M4 4l16 16M10.6 6.2A9.7 9.7 0 0112 6c5 0 8.5 4.3 9.5 6-.5.9-1.6 2.4-3.1 3.7M6.6 8C4.7 9.3 3.2 11 2.5 12c1 1.7 4.5 6 9.5 6 1.6 0 3-.4 4.3-1.1M9.9 9.9a3 3 0 004.2 4.2"),
+  image: '<rect x="3.5" y="5" width="17" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M3.5 16l5-5 4 4 3-3 5 5") + '<circle cx="15.5" cy="9.5" r="1.6" fill="currentColor"/>',
   note: tr("M9 17V6l10-2v11") + '<circle cx="6.8" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16.8" cy="15" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/>',
 };
 const ico = (n, s = 24) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
@@ -132,7 +135,7 @@ const EXEMPLOS = [
 
 let faixas = EXEMPLOS.slice();
 const porId = new Map(faixas.map((x) => [x.id, x]));
-const visivel = (x) => x && (!x.demo || cfg.exemplos);
+const visivel = (x) => x && !x.oculta && (!x.demo || cfg.exemplos);
 const vis = () => faixas.filter(visivel);
 const importadas = () => faixas.filter((x) => !x.demo);
 function adicionarFaixa(x) { faixas.push(x); porId.set(x.id, x); }
@@ -185,7 +188,7 @@ function dbTodos(nome) {
     try { const r = loja(nome).getAll(); r.onsuccess = () => ok(r.result || []); r.onerror = () => ok([]); } catch (e) { ok([]); }
   });
 }
-const salvarFaixa = (x) => dbPut("faixas", { id: x.id, t: x.t, a: x.a, al: x.al, n: x.n, d: x.d, c: x.c, arq: x.arq, capaBlob: x.capaBlob, sig: x.sig, em: x.em });
+const salvarFaixa = (x) => dbPut("faixas", { id: x.id, t: x.t, a: x.a, al: x.al, n: x.n, d: x.d, c: x.c, arq: x.arq, capaBlob: x.capaBlob, sig: x.sig, em: x.em, letra: x.letra || "", pasta: x.pasta || "", oculta: !!x.oculta });
 function montar(x) { x.url = URL.createObjectURL(x.arq); if (x.capaBlob) x.cover = URL.createObjectURL(x.capaBlob); }
 
 /* ---- Importar ---- */
@@ -203,8 +206,21 @@ function lerDuracao(url) {
   });
 }
 let importando = false;
+const pastaDe = (f) => f._pasta || (f.webkitRelativePath ? f.webkitRelativePath.split("/").slice(0, -1).join("/") : "");
+const semExt = (n) => n.replace(/\.[^.]+$/, "").toLowerCase();
 async function importar(lista) {
-  const fs = [...lista].filter(ehAudio);
+  const todos = [...lista].filter(Boolean), fs = todos.filter(ehAudio);
+  const letras = new Map(todos.filter((f) => /\.(lrc|txt)$/i.test(f.name)).map((f) => [semExt(f.name), f]));
+  if (!fs.length && letras.size) { // só letras: liga cada uma à música com o mesmo nome
+    let n = 0;
+    for (const x of importadas()) {
+      const f = letras.get(semExt((x.sig || "").split("|")[0] || ""));
+      if (f && f.size < 512000) { x.letra = (await f.text()).trim(); salvarFaixa(x); n++; }
+    }
+    if (modoLetra) renderLetra();
+    toast(n ? plural(n, "letra adicionada", "letras adicionadas") : "Nenhuma música com o mesmo nome dessas letras");
+    return;
+  }
   if (!fs.length) { toast("Nenhum arquivo de áudio encontrado"); return; }
   if (importando) { toast("Espere a importação atual terminar"); return; }
   importando = true;
@@ -221,7 +237,10 @@ async function importar(lista) {
       id: uid("f"), sig, em: Date.now(), arq: f, capaBlob: m.capa || null, n: m.n || 0, d: 0, al: m.al || "",
       t: m.t || (partes.length > 1 ? partes.slice(1).join(" - ") : partes[0]).trim() || "Sem título",
       a: m.a || (partes.length > 1 ? partes[0].trim() : "Artista desconhecido"),
+      letra: m.letra || "", pasta: pastaDe(f),
     };
+    const lf = letras.get(semExt(f.name));
+    if (lf && lf.size < 512000) try { x.letra = (await lf.text()).trim(); } catch (e) { /* letra ilegível: ignora */ }
     montar(x);
     x.c = (x.capaBlob && (await coresDaCapa(x.capaBlob))) || coresDoNome(x.a + x.al + nome);
     x.d = await lerDuracao(x.url);
@@ -231,8 +250,13 @@ async function importar(lista) {
   importando = false;
   renderBib(); renderPl();
   if (!queue.length) filaPadrao();
+  let semEx = "";
+  if (novas && cfg.exemplos && !cfg.exemplosMexeu) { // primeira importação: as músicas de exemplo saem de cena
+    cfg.exemplos = false; cfg.exemplosMexeu = true; salvarCfg(); mudouExemplos();
+    semEx = ". Os exemplos foram escondidos";
+  }
   if (novas) {
-    toast(plural(novas, "música importada", "músicas importadas") + (repetidas ? `, ${repetidas} já ${repetidas > 1 ? "estavam" : "estava"} na biblioteca` : ""));
+    toast(plural(novas, "música importada", "músicas importadas") + semEx + (repetidas ? `, ${repetidas} já ${repetidas > 1 ? "estavam" : "estava"} na biblioteca` : ""));
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   } else toast(repetidas ? "Essas músicas já estavam na biblioteca" : "Não deu para importar esses arquivos");
 }
@@ -241,7 +265,10 @@ async function arquivosDoDrop(dt) {
   if (!entradas.length) return [...dt.files];
   const saida = [];
   const ler = async (en) => {
-    if (en.isFile) saida.push(await new Promise((ok) => en.file(ok, () => ok(null))));
+    if (en.isFile) {
+      const f = await new Promise((ok) => en.file(ok, () => ok(null)));
+      if (f) { try { f._pasta = en.fullPath.split("/").slice(1, -1).join("/"); } catch (e) { /* sem caminho */ } saida.push(f); }
+    }
     else if (en.isDirectory) {
       const r = en.createReader(); let lote;
       do { lote = await new Promise((ok) => r.readEntries(ok, () => ok([]))); for (const c of lote) await ler(c); } while (lote.length);
@@ -411,7 +438,7 @@ function carregar(auto) {
   if (!x) { playing = false; paint(); return; }
   pos = 0; novaEscuta(); clearTimeout(pausaPend);
   if (ctx) { pararSintese(); el.pause(); if (!x.demo) { el.src = x.url; el.dataset.id = x.id; } else el.dataset.id = ""; }
-  luz(x.c); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao();
+  luz(x.c); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra();
   if (auto) tocar(); else { playing = false; paint(); }
 }
 function fimDaFaixa() {
@@ -499,6 +526,7 @@ function quadro() {
     else {
       const fr = x.d ? Math.min(1, p / x.d) : 0;
       if (!arrastandoSeek) $("seek").value = Math.round(fr * 1000);
+      seguirLetra(p);
       const seg = Math.floor(p);
       if (seg !== ultimoSeg) {
         ultimoSeg = seg; $("cur").textContent = fmt(p);
@@ -563,7 +591,7 @@ function paint() {
   const fav = ehFav(x.id), bf = $("b-fav");
   bf.innerHTML = ico(fav ? "heartOn" : "heart"); bf.classList.toggle("act", fav); bf.setAttribute("aria-pressed", fav);
   bf.setAttribute("aria-label", fav ? "Tirar das favoritas" : "Adicionar às favoritas");
-  $("b-eq").innerHTML = ico("sliders", 18) + "EQ"; $("b-eq").classList.toggle("act", !!cfg.eq.on);
+  $("b-eq").innerHTML = ico("sliders", 18); $("b-eq").classList.toggle("act", !!cfg.eq.on);
   paintSono(); atualizarTela();
   document.title = playing ? `${x.t} · Compasso` : "Compasso Player";
 }
@@ -650,10 +678,26 @@ function renderBib() {
       <p class="sec-t">Músicas</p><div class="list">${ordem.map((x) => linhaFaixa(x)).join("")}</div>`;
     return;
   }
+  if (aberto && aberto.tipo === "pasta") {
+    const pa = pastas().find((g) => g.k === aberto.nome);
+    if (!pa) { aberto = null; return renderBib(); }
+    listaBib = { ids: pa.fx.map((x) => x.id), ctx: "pasta " + pa.n };
+    L.innerHTML = `<button class="back" data-voltar>${ico("back", 18)}Voltar</button>
+      <div class="hero"><span class="cover folder">${ico("folder", 52)}</span><div class="grow"><h1>${esc(pa.n)}</h1><p class="sub">${pa.k ? esc(pa.k) + " · " : ""}${plural(pa.fx.length, "música", "músicas")} · ${fmt(duracaoTotal(pa.fx))}</p></div></div>
+      ${botoesTocar()}<div class="list">${pa.fx.map((x) => linhaFaixa(x)).join("")}</div>`;
+    return;
+  }
+  if (aba === "pastas") {
+    const f = pastas().filter((g) => casa(g.k + " " + g.n));
+    L.innerHTML = f.length ? `<div class="list">${f.map((g) => `<div class="track"><button class="tp" data-pasta="${esc(g.k)}"><span class="thumb folder">${ico("folder", 22)}</span><span class="grow"><span class="t clip">${esc(g.n)}</span><span class="sub clip">${g.k && g.k !== g.n ? esc(g.k) + " · " : ""}${plural(g.fx.length, "música", "músicas")}</span></span></button></div>`).join("")}</div><p class="note">As pastas aparecem quando você importa uma pasta inteira ou arrasta pastas para a janela.</p>`
+      : vazio(importadas().length ? "Nenhuma pasta encontrada." : "As pastas aparecem quando você importa uma pasta inteira. As músicas de exemplo não ficam em pastas.");
+    return;
+  }
   if (aba === "musicas") {
     const f = ordenar(v).filter((x) => casa(x.t + " " + x.a + " " + (x.al || "")));
     listaBib = { ids: f.map((x) => x.id), ctx: q ? "busca" : "Biblioteca" };
-    L.innerHTML = `<div class="row"><div class="grow">${f.length ? botoesTocar() : ""}</div>
+    const nEx = v.filter((x) => x.demo).length;
+    L.innerHTML = (nEx && !q ? `<div class="card row aviso-ex"><span class="grow note">As ${nEx} músicas marcadas como exemplo servem só para testar o app.</span><button class="btn ghost sm" data-esconder-ex>Esconder</button></div>` : "") + `<div class="row"><div class="grow">${f.length ? botoesTocar() : ""}</div>
       <select id="ord" class="mini-sel" aria-label="Ordem das músicas">${Object.entries(ORDENS).map(([k, n]) => `<option value="${k}"${k === cfg.ord ? " selected" : ""}>${n}</option>`).join("")}</select></div>
       ${f.length ? `<div class="list">${f.map((x) => linhaFaixa(x)).join("")}</div>` : vazio("Nada encontrado para essa busca.")}`;
   } else if (aba === "albuns") {
@@ -664,6 +708,13 @@ function renderBib() {
     L.innerHTML = f.length ? `<div class="list">${f.map((a) => `<div class="track"><button class="tp" data-ar="${esc(a.n)}">${capaGrupo(a, "thumb round")}<span class="grow"><span class="t clip">${esc(a.n)}</span><span class="sub clip">${plural(a.albuns, "álbum", "álbuns")} · ${plural(a.fx.length, "música", "músicas")}</span></span></button></div>`).join("")}</div>` : vazio("Nenhum artista encontrado.");
   }
 }
+function pastas() {
+  const m = new Map();
+  for (const x of vis()) { if (x.demo) continue; const k = x.pasta || ""; if (!m.has(k)) m.set(k, []); m.get(k).push(x); }
+  const nomeArq = (x) => (x.sig || x.t).split("|")[0];
+  return [...m].map(([k, fx]) => ({ k, n: k ? k.split("/").pop() : "Arquivos avulsos", fx: fx.sort((a, b) => (a.al === b.al ? (a.n || 999) - (b.n || 999) : 0) || comparar(nomeArq(a), nomeArq(b))) }))
+    .sort((a, b) => (!a.k) - (!b.k) || comparar(a.k, b.k));
+}
 function abrirNaBib(tipo, nome) { aberto = { tipo, nome }; ir("biblioteca"); renderBib(); $("main").scrollTop = 0; }
 $("q").addEventListener("input", renderBib);
 $("seg").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) { aba = b.dataset.tab; renderBib(); } });
@@ -671,9 +722,11 @@ $("lib").addEventListener("change", (e) => { if (e.target.id === "ord") { cfg.or
 $("lib").addEventListener("click", (e) => {
   const t = e.target;
   if (t.closest("[data-importar]")) return menuImportar();
+  if (t.closest("[data-esconder-ex]")) { cfg.exemplos = false; cfg.exemplosMexeu = true; salvarCfg(); mudouExemplos(); return toast("Exemplos escondidos. Para ver de novo: Ajustes › Biblioteca"); }
   if (t.closest("[data-voltar]")) { aberto = null; renderBib(); return; }
   const al = t.closest("[data-al]"); if (al) return abrirNaBib("album", al.dataset.al);
   const ar = t.closest("[data-ar]"); if (ar) return abrirNaBib("artista", ar.dataset.ar);
+  const pa = t.closest("[data-pasta]"); if (pa) return abrirNaBib("pasta", pa.dataset.pasta);
   const m = t.closest("[data-more]"); if (m) return menuFaixa(m.dataset.more);
   if (t.closest("[data-tudo]")) return tocarLista(listaBib.ids, 0, listaBib.ctx);
   if (t.closest("[data-aleatorio]")) return tocarAleatorio(listaBib.ids, listaBib.ctx);
@@ -684,7 +737,7 @@ function menuImportar() {
   abrirFolha({
     titulo: "Importar músicas",
     html: `<div class="menu"><button data-i="arquivos">${ico("note")}Escolher arquivos</button><button data-i="pasta">${ico("folder")}Escolher uma pasta inteira</button></div>
-      <p class="note" style="padding:0 8px">As músicas ficam guardadas só neste navegador. No PC, você também pode arrastar arquivos e pastas para a janela.</p>`,
+      <p class="note" style="padding:0 8px">As músicas ficam guardadas só neste navegador. Letras em .lrc com o mesmo nome da música entram junto. No PC, você também pode arrastar arquivos e pastas para a janela.</p>`,
     clique(e) { const b = e.target.closest("[data-i]"); if (!b) return; fecharFolha(); $(b.dataset.i === "pasta" ? "folder" : "files").click(); },
   });
 }
@@ -745,7 +798,7 @@ function menuFaixa(id, deLista) {
   if (x.al) itens.push(["album", "Ver álbum", "album"]);
   itens.push(["artist", "Ver artista", "artista"]);
   if (deLista) itens.push(["x", "Tirar desta playlist", "tirarpl"]);
-  if (!x.demo) itens.push(["trash", "Remover da biblioteca", "apagar", true]);
+  if (!x.demo) itens.push(["lyrics", x.letra ? "Ver ou editar letra" : "Adicionar letra", "letra"], ["edit", "Editar informações", "editar"], ["eyeoff", "Ocultar da biblioteca", "ocultar"], ["trash", "Remover da biblioteca", "apagar", true]);
   abrirFolha({
     titulo: x.t,
     html: `<p class="sub" style="padding:0 8px;margin-top:-6px">${esc(linha2(x))}</p><div class="menu">${itens.map(([i, n, a, perigo]) => `<button data-a="${a}"${perigo ? ' class="danger"' : ""}>${ico(i)}${n}</button>`).join("")}</div>`,
@@ -759,6 +812,9 @@ function menuFaixa(id, deLista) {
       else if (a === "album") { fecharFolha(); abrirNaBib("album", nomeAlbum(x)); }
       else if (a === "artista") { fecharFolha(); abrirNaBib("artista", x.a); }
       else if (a === "tirarpl") { fecharFolha(); const p = pls.find((y) => y.id === deLista); if (p) { p.ids = p.ids.filter((q) => q !== id); salvarPl(p); renderPl(); toast("Tirada da playlist"); } }
+      else if (a === "letra") editarLetra(x);
+      else if (a === "editar") editarInfo(x);
+      else if (a === "ocultar") { fecharFolha(); ocultar(id, true); }
       else if (a === "apagar") confirmar("Remover da biblioteca?", `"${x.t}" sai do Compasso e de todas as playlists. O arquivo original continua no seu aparelho.`, "Remover", () => { removerFaixa(id); toast("Música removida"); });
     },
   });
@@ -966,7 +1022,11 @@ function renderTemas() {
       <div class="opt"><label for="r-raio">Cantos arredondados</label><input id="r-raio" type="range" min="0" max="28" step="2" value="${t.raio}"></div></div>
     <div class="card stack"><h2>Efeitos</h2>
       ${tg("amb", "Luz de fundo com as cores da capa")}${faixaAjuste("ambF", "Intensidade da luz", cfg.amb)}
-      ${tg("reage", "Reagir à batida da música")}${faixaAjuste("batF", "Força da batida", cfg.reage)}</div>
+      ${tg("reage", "Reagir à batida da música")}${faixaAjuste("batF", "Força da batida", cfg.reage)}
+      <div class="opt"><span>Imagem de fundo</span><div class="btns"><button class="btn ghost sm" data-fundo>${ico("image", 18)}${temFundo() ? "Trocar" : "Escolher"}</button>${temFundo() ? '<button class="btn ghost sm" data-semfundo>Tirar</button>' : ""}</div></div>
+      ${temFundo() ? `<div class="opt sub-opt"><label for="r-blur">Desfoque</label><input type="range" id="r-blur" data-rgx="fundoBlur" min="0" max="24" step="1" value="${cfg.fundoBlur}"></div>
+      <div class="opt sub-opt"><label for="r-veu">Cor do tema por cima</label><input type="range" id="r-veu" data-rgx="fundoVeu" min="0.15" max="0.9" step="0.05" value="${cfg.fundoVeu}"></div>` : ""}
+      <p class="note">A imagem fica só neste aparelho e não entra no JSON do tema.</p></div>
     <div class="card stack"><h2>Reprodução</h2>
       ${tg("fade", "Suavizar o volume ao pausar e tocar")}
       ${tg("tela", "Manter a tela ligada em Tocando agora")}
@@ -976,9 +1036,10 @@ function renderTemas() {
     <div class="card stack"><h2>Compartilhar tema</h2><p class="note">Um tema é um arquivo JSON pequeno. Exporte o tema em uso ou importe um de outra pessoa.</p>
       <div class="btns"><button class="btn ghost sm" data-exp="copiar">Copiar JSON</button><button class="btn ghost sm" data-exp="baixar">Baixar .json</button><button class="btn ghost sm" data-imp="arquivo">Abrir .json</button><button class="btn ghost sm" data-imp="colar">Colar JSON</button></div></div>
     <div class="card stack"><h2>Biblioteca</h2>${tg("exemplos", "Mostrar as músicas de exemplo")}
+      ${faixas.some((x) => x.oculta) ? `<div class="opt"><span>${plural(faixas.filter((x) => x.oculta).length, "música oculta", "músicas ocultas")}</span><button class="btn ghost sm" data-verocultas>Ver</button></div>` : ""}
       <p class="note" id="espaco">Calculando o espaço usado…</p>
       ${importadas().length ? '<div class="btns"><button class="btn danger sm" data-limparbib>Apagar todas as músicas importadas</button></div>' : ""}
-      <p class="note">Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música.</p></div>`;
+      <p class="note">Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita.</p></div>`;
   espaco();
 }
 async function espaco() {
@@ -1040,11 +1101,14 @@ $("tm").addEventListener("click", (e) => {
   const g = t.closest("[data-tg]");
   if (g) {
     const k = g.dataset.tg; cfg[k] = !cfg[k]; salvarCfg(); aplicarEfeitos();
-    if (k === "exemplos") mudouExemplos();
+    if (k === "exemplos") { cfg.exemplosMexeu = true; salvarCfg(); mudouExemplos(); }
     if (k === "tela") atualizarTela();
     renderTemas(); return;
   }
   if (t.closest("[data-abrireq]")) return abrirEQ();
+  if (t.closest("[data-fundo]")) return escolherFundo();
+  if (t.closest("[data-semfundo]")) { try { localStorage.removeItem("compasso.fundo"); } catch (err) { /* ignora */ } aplicarFundo(); renderTemas(); return toast("Imagem de fundo removida"); }
+  if (t.closest("[data-verocultas]")) return verOcultas();
   if (t.closest("[data-abrirsono]")) return abrirSono();
   const ex = t.closest("[data-exp]");
   if (ex) {
@@ -1078,6 +1142,7 @@ $("tm").addEventListener("input", (e) => {
   const t = e.target;
   if (t.id === "r-raio") ajustarAtual({ raio: +t.value });
   else if (t.dataset.rg) { cfg[t.dataset.rg] = +t.value; salvarCfg(); aplicarEfeitos(); }
+  else if (t.dataset.rgx) { cfg[t.dataset.rgx] = +t.value; salvarCfg(); aplicarFundo(); }
 });
 $("tm").addEventListener("change", (e) => { const k = e.target.dataset.sel; if (k) { cfg[k] = e.target.value; salvarCfg(); } });
 $("tema-file").addEventListener("change", async (e) => {
@@ -1230,7 +1295,7 @@ function verificarSono() {
 function textoSono() {
   if (sono.aoFim) return "Ao fim da música";
   if (sono.fim) return fmt((sono.fim - Date.now()) / 1000);
-  return "Timer";
+  return "";
 }
 function htmlSono() {
   const ops = [[0, "Desligado"], [15, "15 minutos"], [30, "30 minutos"], [45, "45 minutos"], [60, "1 hora"], [-1, "Ao fim desta música"], [-2, "Outro tempo…"]];
@@ -1260,7 +1325,9 @@ function abrirSono() {
 }
 function paintSono() {
   const b = $("b-timer"); if (!b) return;
-  b.innerHTML = ico("timer", 18) + textoSono();
+  const txt = textoSono();
+  b.innerHTML = ico("timer", 18) + (txt ? `<span>${txt}</span>` : "");
+  b.setAttribute("aria-label", txt ? "Temporizador: " + txt : "Temporizador de sono");
   b.classList.toggle("act", !!(sono.fim || sono.aoFim));
   if (folha && folha.modo === "timer") { const s = $("sono-st"); if (s && sono.fim) s.textContent = `Pausa em ${fmt((sono.fim - Date.now()) / 1000)}.`; }
 }
@@ -1395,6 +1462,155 @@ const AUTO = [
   { id: "auto:mais", nome: "Mais tocadas", ic: "stats", vazio: "Ouça algumas músicas e as mais tocadas aparecem aqui.", ids: () => rankFaixas("n").slice(0, 50).map((r) => r.x.id) },
 ].map((a) => ({ ...a, auto: true }));
 
+
+/* ===================== Letras ===================== */
+let modoLetra = false, letraCache = null, letraIdx = -1, letraMexeu = 0;
+function parseLetra(txt) {
+  const linhas = []; let off = 0;
+  for (const bruta of String(txt || "").replace(/\r/g, "").split("\n")) {
+    const mo = bruta.match(/^\s*\[offset:\s*([+-]?\d+)\s*\]/i); if (mo) { off = +mo[1] / 1000; continue; }
+    const ts = [...bruta.matchAll(/\[(\d{1,3}):(\d{1,2}(?:[.:]\d{1,3})?)\]/g)];
+    const texto = bruta.replace(/\[[^\]]*\]/g, "").trim();
+    if (ts.length) ts.forEach((m) => linhas.push({ t: +m[1] * 60 + parseFloat(m[2].replace(":", ".")) - off, txt: texto }));
+    else if (!/^\s*\[[a-z]+:.*\]\s*$/i.test(bruta)) linhas.push({ t: null, txt: bruta.trim() });
+  }
+  const sinc = linhas.filter((l) => l.t !== null);
+  if (sinc.length >= 2) return { sinc: true, linhas: sinc.sort((a, b) => a.t - b.t) };
+  const soltas = linhas.map((l) => ({ t: null, txt: l.txt }));
+  while (soltas.length && !soltas[0].txt) soltas.shift();
+  return { sinc: false, linhas: soltas };
+}
+function renderLetra() {
+  const P = $("letra"), x = cur();
+  letraIdx = -1;
+  $("b-letra").innerHTML = ico("lyrics", 18); $("b-letra").setAttribute("aria-label", modoLetra ? "Esconder a letra" : "Mostrar a letra"); $("b-letra").classList.toggle("act", modoLetra); $("b-letra").setAttribute("aria-pressed", modoLetra);
+  if (!modoLetra || !x) return;
+  if (x.demo) { letraCache = null; P.innerHTML = vazio("As músicas de exemplo não têm letra."); return; }
+  if (!x.letra) {
+    letraCache = null;
+    P.innerHTML = vazio("Esta música ainda não tem letra.", `<div class="btns" style="justify-content:center"><button class="btn sm" data-letra-arq>Abrir .lrc ou .txt</button><button class="btn ghost sm" data-letra-ed>Colar letra</button></div><p class="note">Dica: um arquivo .lrc com o mesmo nome da música entra sozinho ao importar, inclusive arrastando só o .lrc.</p>`);
+    return;
+  }
+  letraCache = { id: x.id, ...parseLetra(x.letra) };
+  P.innerHTML = `<div class="l-pad"></div>${letraCache.linhas.map((l, i) => `<p class="l${letraCache.sinc ? " s" : ""}${l.txt ? "" : " vazia"}" data-li="${i}">${esc(l.txt) || "♪"}</p>`).join("")}<div class="l-pad"></div>
+    <div class="btns" style="justify-content:center"><button class="btn ghost sm" data-letra-ed>${ico("edit", 18)}Editar letra</button></div>`;
+  P.scrollTop = 0;
+}
+function seguirLetra(p) {
+  if (!modoLetra || !letraCache || !letraCache.sinc || letraCache.id !== (cur() && cur().id)) return;
+  const L = letraCache.linhas; let i = -1;
+  for (let k = 0; k < L.length; k++) { if (L[k].t <= p + 0.15) i = k; else break; }
+  if (i === letraIdx) return;
+  letraIdx = i;
+  const P = $("letra");
+  P.querySelectorAll(".l").forEach((el, k) => { el.classList.toggle("on", k === i); el.classList.toggle("foi", k < i); });
+  const alvo = P.querySelector(`[data-li="${Math.max(0, i)}"]`);
+  if (alvo && Date.now() - letraMexeu > 3500) P.scrollTo({ top: alvo.offsetTop - P.clientHeight / 2 + alvo.offsetHeight / 2, behavior: calmo ? "auto" : "smooth" });
+}
+function editarLetra(x) {
+  if (!x || x.demo) return;
+  abrirFolha({
+    titulo: "Letra · " + x.t,
+    html: `<form class="stack"><textarea class="field letra-ed" name="v" id="le-txt" placeholder="Cole a letra aqui. Para sincronizar, use o formato .lrc: [00:12.50]Primeira linha">${esc(x.letra || "")}</textarea>
+      <div class="btns"><button class="btn" type="submit">Salvar letra</button><button class="btn ghost" type="button" data-letra-arq>Abrir arquivo</button>${x.letra ? '<button class="btn danger" type="button" data-letra-del>Apagar letra</button>' : ""}</div>
+      <p class="note">Linhas com tempo no formato [mm:ss.xx] acompanham a música. Sem tempo, a letra aparece inteira para rolar.</p></form>`,
+    enviar(d) { x.letra = String(d.get("v") || "").trim(); salvarFaixa(x); fecharFolha(); renderLetra(); toast(x.letra ? "Letra salva" : "Letra apagada"); },
+    clique(e) {
+      if (e.target.closest("[data-letra-arq]")) abrirArquivoLetra(x, (txt) => { $("le-txt").value = txt; });
+      if (e.target.closest("[data-letra-del]")) { x.letra = ""; salvarFaixa(x); fecharFolha(); renderLetra(); toast("Letra apagada"); }
+    },
+  });
+}
+function abrirArquivoLetra(x, depois) {
+  const inp = $("letra-file");
+  inp.onchange = async () => {
+    const f = inp.files[0]; inp.value = ""; if (!f) return;
+    if (f.size > 512000) return toast("Esse arquivo é grande demais para ser uma letra");
+    const txt = await f.text();
+    if (depois) depois(txt); else { x.letra = txt.trim(); salvarFaixa(x); renderLetra(); toast("Letra adicionada"); }
+  };
+  inp.click();
+}
+$("b-letra").addEventListener("click", () => { modoLetra = !modoLetra; $("app").dataset.letra = modoLetra ? "1" : ""; renderLetra(); if (modoLetra) seguirLetra(posAtual()); });
+$("letra").addEventListener("click", (e) => {
+  const x = cur(); if (!x) return;
+  if (e.target.closest("[data-letra-ed]")) return editarLetra(x);
+  if (e.target.closest("[data-letra-arq]")) return abrirArquivoLetra(x);
+  const l = e.target.closest(".l.s"); if (l && letraCache) { letraMexeu = 0; buscarSeg(letraCache.linhas[+l.dataset.li].t); if (!playing) tocar(); }
+});
+["wheel", "touchmove", "pointerdown"].forEach((ev) => $("letra").addEventListener(ev, () => { letraMexeu = Date.now(); }, { passive: true }));
+
+/* ===================== Editar informações e ocultar ===================== */
+function editarInfo(x) {
+  if (!x || x.demo) return;
+  abrirFolha({
+    titulo: "Editar informações",
+    html: `<form class="stack">
+      <label class="t" for="ed-t">Título</label><input class="field" id="ed-t" name="t" value="${esc(x.t)}" maxlength="150" required autocomplete="off">
+      <label class="t" for="ed-a">Artista</label><input class="field" id="ed-a" name="a" value="${esc(x.a)}" maxlength="150" autocomplete="off">
+      <label class="t" for="ed-al">Álbum</label><input class="field" id="ed-al" name="al" value="${esc(x.al || "")}" maxlength="150" autocomplete="off">
+      <label class="t" for="ed-n">Número da faixa</label><input class="field" id="ed-n" name="n" type="number" min="0" max="999" inputmode="numeric" value="${x.n || ""}">
+      <button class="btn" type="submit">Salvar</button><p class="note">Muda só dentro do Compasso. O arquivo original continua igual.</p></form>`,
+    enviar(d) {
+      x.t = String(d.get("t") || "").trim() || x.t;
+      x.a = String(d.get("a") || "").trim() || "Artista desconhecido";
+      x.al = String(d.get("al") || "").trim();
+      x.n = Math.max(0, Math.min(999, parseInt(d.get("n")) || 0));
+      salvarFaixa(x); fecharFolha();
+      renderBib(); renderPl(); marcarAtual(); if (cur() === x) metaSessao(x);
+      toast("Informações salvas");
+    },
+  });
+}
+function ocultar(id, sim) {
+  const x = porId.get(id); if (!x || x.demo) return;
+  if (sim) {
+    const eraAtual = cur() && cur().id === id, atualId = cur() && cur().id;
+    if (eraAtual && playing) pausar();
+    x.oculta = true;
+    const i = queue.indexOf(id);
+    if (i >= 0) { queue.splice(i, 1); if (i < qi) qi--; }
+    if (origem) origem = origem.filter((q) => q !== id);
+    if (!queue.length) filaPadrao();
+    else if (eraAtual) { qi = Math.min(qi, queue.length - 1); carregar(false); }
+    else qi = Math.max(0, queue.indexOf(atualId));
+  } else x.oculta = false;
+  salvarFaixa(x);
+  renderBib(); renderPl(); renderFilaAberta(); paint();
+  if ($("app").dataset.view === "temas" && !editando) renderTemas();
+  toast(sim ? "Música oculta. Para mostrar de novo: Ajustes › Biblioteca" : "A música voltou para a biblioteca");
+}
+function verOcultas() {
+  const html = () => { const o = faixas.filter((x) => x.oculta); return o.length ? `<div class="list">${o.map((x) => `<div class="track">${capa(x)}<span class="grow"><span class="t clip">${esc(x.t)}</span><span class="sub clip">${esc(linha2(x))}</span></span><button class="btn ghost sm" data-mostrar="${x.id}">Mostrar</button></div>`).join("")}</div>` : vazio("Nenhuma música oculta."); };
+  abrirFolha({ titulo: "Músicas ocultas", html: html(), clique(e) { const b = e.target.closest("[data-mostrar]"); if (b) { ocultar(b.dataset.mostrar, false); $("sheet-b").innerHTML = html(); } } });
+}
+
+/* ===================== Imagem de fundo ===================== */
+if (cfg.fundoBlur === undefined) cfg.fundoBlur = 6;
+if (cfg.fundoVeu === undefined) cfg.fundoVeu = 0.55;
+function aplicarFundo() {
+  let img = ""; try { img = localStorage.getItem("compasso.fundo") || ""; } catch (e) { /* sem armazenamento */ }
+  const b = $("bgimg");
+  b.hidden = !img; b.style.backgroundImage = img ? `url('${img}')` : "";
+  document.documentElement.style.setProperty("--blur", cfg.fundoBlur + "px");
+  document.documentElement.style.setProperty("--veu", cfg.fundoVeu);
+}
+const temFundo = () => { try { return !!localStorage.getItem("compasso.fundo"); } catch (e) { return false; } };
+function escolherFundo() {
+  const inp = $("fundo-file");
+  inp.onchange = async () => {
+    const f = inp.files[0]; inp.value = ""; if (!f) return;
+    try {
+      const bm = await createImageBitmap(f), k = Math.min(1, 1440 / Math.max(bm.width, bm.height)), cv = document.createElement("canvas");
+      cv.width = Math.round(bm.width * k); cv.height = Math.round(bm.height * k);
+      cv.getContext("2d").drawImage(bm, 0, 0, cv.width, cv.height);
+      localStorage.setItem("compasso.fundo", cv.toDataURL("image/jpeg", 0.82));
+      aplicarFundo(); renderTemas(); toast("Imagem de fundo aplicada");
+    } catch (e) { toast("Não deu para usar essa imagem"); }
+  };
+  inp.click();
+}
+
 /* ===================== Navegação ===================== */
 const TELAS = [["biblioteca", "Biblioteca", "lib"], ["tocando", "Tocando", "now"], ["playlists", "Playlists", "pls"], ["voce", "Você", "user"], ["temas", "Ajustes", "thm"]];
 $("nav").innerHTML = TELAS.map((v) => `<button data-v="${v[0]}">${ico(v[2])}<span>${v[1]}</span></button>`).join("");
@@ -1406,6 +1622,7 @@ function ir(v) {
   $("main").scrollTop = 0;
   if (v === "voce") renderVoce();
   if (v === "playlists") renderPl();
+  if (v === "temas" && !editando) renderTemas();
   atualizarTela();
   if (location.hash.slice(1) !== v) try { history.replaceState(null, "", "#" + v); } catch (e) { /* ignora */ }
 }
@@ -1462,7 +1679,7 @@ addEventListener("drop", async (e) => {
 });
 
 /* ===================== Início ===================== */
-aplicarTema();
+aplicarTema(); aplicarFundo(); renderLetra();
 ir(location.hash.slice(1) || "biblioteca");
 renderBib(); renderTemas(); paint();
 requestAnimationFrame(quadro);

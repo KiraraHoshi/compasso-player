@@ -2,18 +2,24 @@
 
 Ideias para as próximas versões. O núcleo continua grátis, offline e sem anúncios.
 
-## Próximas na versão web
+## Feito na versão web
 
-- **Playlists automáticas:** Favoritos (coração), Adicionadas recentemente, Tocadas recentemente e Mais tocadas.
-- **Estatísticas locais:** tempo de escuta e vezes que cada música tocou, base para a aba de perfil.
-- **Perfil sem conta:** nome, foto e um "Recap" do ano, tudo guardado só no aparelho.
-- **Equalizador:** 5 ou 10 bandas, predefinições (Rock, Jazz, Podcast e outras) e botões de graves e agudos.
-- **Temporizador de sono:** 10, 15 ou 30 minutos, tempo personalizado ou "parar quando a música acabar".
-- **Fade:** o volume desce ao pausar e sobe ao tocar.
-- **Letras sincronizadas:** arquivos .lrc, no estilo karaokê, com edição.
-- **Organização:** aba de Pastas, músicas ocultas e editor de tags.
-- **Ajustes:** manter a tela ligada e escolher o que o botão Anterior faz.
-- **Tema com foto de fundo:** o usuário escolhe uma imagem dele, com desfoque.
+- ✅ **Playlists automáticas:** Favoritas, Adicionadas recentemente, Tocadas recentemente e Mais tocadas (1.1.0).
+- ✅ **Estatísticas locais:** tempo de escuta, reproduções, últimos 7 dias, mais ouvidas e artistas (1.1.0).
+- ✅ **Perfil sem conta:** nome, foto e Recap do ano, tudo só no aparelho (1.1.0).
+- ✅ **Equalizador:** 5 bandas e 10 predefinições (1.1.0).
+- ✅ **Temporizador de sono:** 15, 30, 45 ou 60 minutos, tempo livre ou "ao fim desta música" (1.1.0).
+- ✅ **Fade, tela ligada e botão Anterior configurável** (1.1.0).
+- ✅ **Letras:** lidas das tags ou de arquivos .lrc, sincronizadas no estilo karaokê, com edição (1.2.0).
+- ✅ **Organização:** aba Pastas, músicas ocultas e editor de informações (1.2.0).
+- ✅ **Imagem de fundo** escolhida pelo usuário, com desfoque (1.2.0).
+- ✅ **Esconder as músicas de exemplo** pela Biblioteca, e sozinho na primeira importação (1.2.0).
+
+## Próximas ideias na versão web
+
+- Compartilhar o Recap do ano como imagem.
+- Backup e restauração de playlists, favoritas e estatísticas em um arquivo.
+- Mais predefinições de equalizador e equalizador de 10 bandas.
 
 ## Versão Android
 

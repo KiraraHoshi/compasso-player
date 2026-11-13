@@ -218,3 +218,21 @@ nav button.on{color:var(--accent);font-weight:600}
 nav{grid-template-columns:repeat(5,1fr)}
 .recap-btn .t,.recap-btn .sub{display:block}
 .np-bar .pill{padding:8px 12px}
+
+/* Lote 2: letras, pastas, imagem de fundo */
+.letra{display:none;width:100%;flex:1;min-height:240px;max-height:min(52vh,440px);overflow-y:auto;scrollbar-width:none;padding:0 6px;-webkit-mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent)}
+.letra::-webkit-scrollbar{display:none}
+.app[data-letra="1"] .dial{display:none}
+.app[data-letra="1"] .letra{display:block}
+.l-pad{height:30%}
+.l{font-family:var(--display);font-weight:700;font-size:21px;line-height:1.35;text-align:center;color:var(--text);padding:6px 0;text-wrap:balance;transition:opacity .35s,transform .35s}
+.l.s{opacity:.35;cursor:pointer}
+.l.s.foi{opacity:.22}
+.l.s.on{opacity:1;color:var(--accent);transform:scale(1.03)}
+.l.vazia{min-height:16px;color:var(--muted)}
+textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
+.folder{background:var(--card);color:var(--accent);border:1px solid var(--line);display:grid;place-items:center}
+.cover.folder{width:120px;height:120px}
+.bgimg{position:absolute;inset:-30px;z-index:-2;background:center/cover no-repeat;filter:blur(var(--blur,6px))}
+.bgimg::after{content:"";position:absolute;inset:0;background:var(--bg);opacity:var(--veu,.55)}
+@media (prefers-reduced-motion:reduce){.l{transition:none}}
