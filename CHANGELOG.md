@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.9.3
+- "Cores do visual seguem a capa": agora usa as cores que mais aparecem na capa, num degradê entre as duas principais. Capa em preto e branco fica em prata (tema escuro) ou grafite (tema claro), e não volta mais para a cor do tema.
+
 ## 1.9.2
 - Capas tiradas de vídeo (miniatura do YouTube com faixas pretas e laterais borradas) são recortadas sozinhas, ficando só a arte do álbum. As músicas que já estavam na biblioteca são acertadas uma vez.
 - A Aura não corta mais como se batesse numa borda: ela desenha numa área maior que o mostrador, e os picos muito altos são amaciados.
