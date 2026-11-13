@@ -799,12 +799,13 @@ function quadro() {
   alvoBatida *= Math.pow(0.93, fqQ); batida += (alvoBatida - batida) * sq(0.22);
   const naTela = APP.dataset.view === "tocando", leve = !!cfg.leve;
   // os tracinhos só se mexem quando o mostrador de relógio está na tela
-  if (naTela && !leve && APP.dataset.visual === "relogio" && APP.dataset.letra !== "1") for (let i = 0; i < 60; i++) {
-    const p = (i < 30 ? i : 59 - i) / 29, t = ativo ? (bins[1 + Math.round(60 * p * p)] / 255) * cfg.batF * 1.4 : 0;
-    const nv = nivel[i] + (Math.min(1, t) - nivel[i]) * sq(0.16);
+  // os tracinhos se mexem no Relógio e no Vinil: seguem a frequência de cada lado e ganham um empurrão em cada batida
+  if (naTela && !leve && (APP.dataset.visual === "relogio" || APP.dataset.visual === "vinil") && APP.dataset.letra !== "1") for (let i = 0; i < 60; i++) {
+    const p = (i < 30 ? i : 59 - i) / 29, t = ativo ? Math.pow(bins[1 + Math.round(60 * p * p)] / 255, 1.6) * cfg.batF * 1.5 + batida * 0.35 * cfg.batF : 0;
+    const nv = nivel[i] + (Math.min(1, t) - nivel[i]) * sq(t > nivel[i] ? 0.4 : 0.13);
     if (Math.abs(nv - nivel[i]) > 0.004 || (nv < 0.004 && nivel[i] !== 0)) {
       nivel[i] = nv < 0.004 ? 0 : nv;
-      linhas[i].setAttribute("y2", (12 + nivel[i] * 7).toFixed(1));
+      linhas[i].setAttribute("y2", (12 + nivel[i] * 12).toFixed(1));
     }
   }
   pulso += (alvo - pulso) * sq(0.1);
@@ -2595,7 +2596,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.13.0";
+const VERSAO = "1.13.1";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });

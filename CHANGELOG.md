@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.13.1
+- Os tracinhos do mostrador pulsam mais no ritmo: crescem até quase o dobro, reagem mais rápido, ganham um empurrão em cada batida e agora se mexem também no Vinil.
+
 ## 1.13.0
 - Novo visual LED: equalizador clássico em blocos, que vai do azul ao vermelho conforme sobe, com o pico segurando um instante antes de cair e um reflexo embaixo.
 
