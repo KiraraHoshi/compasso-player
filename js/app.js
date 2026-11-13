@@ -2147,7 +2147,7 @@ function abrirArquivoLetra(x, depois) {
   };
   inp.click();
 }
-$("b-letra").addEventListener("click", () => { modoLetra = !modoLetra; $("app").dataset.letra = modoLetra ? "1" : ""; renderLetra(); if (modoLetra) seguirLetra(posAtual()); });
+$("b-letra").addEventListener("click", () => { modoLetra = !modoLetra; $("app").dataset.letra = modoLetra ? "1" : ""; renderLetra(); if (modoLetra) seguirLetra(posAtual()); ajustarDial(); });
 $("letra").addEventListener("click", (e) => {
   const x = cur(); if (!x) return;
   if (e.target.closest("[data-letra-ed]")) return editarLetra(x);
@@ -2627,7 +2627,7 @@ async function alternarPalco(forcar) {
   $("app").dataset.palco = on ? "1" : "";
   $("b-palco").innerHTML = ico(on ? "x" : "expand", 20); $("b-palco").setAttribute("aria-label", on ? T("Sair da tela cheia") : T("Tela cheia"));
   try { if (on && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); else if (!on && document.fullscreenElement) await document.exitFullscreen(); } catch (e) { /* sem tela cheia aqui: fica o modo ampliado */ }
-  atualizarHora(); atualizarTela();
+  atualizarHora(); atualizarTela(); ajustarDial();
 }
 function atualizarHora() { if (emPalco()) $("hora").textContent = new Date().toLocaleTimeString(LOCALE(), { hour: "2-digit", minute: "2-digit" }); }
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && emPalco()) alternarPalco(false); });
@@ -2675,7 +2675,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.15.2";
+const VERSAO = "1.15.3";
 let instalar = null;
 const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
@@ -2726,8 +2726,26 @@ function ir(v) {
   if (v !== "tocando" && emPalco()) alternarPalco(false);
   if (v === "temas" && !editando) renderTemas();
   atualizarTela();
+  ajustarDial();
   if (location.hash.slice(1) !== v) try { history.replaceState(null, "", "#" + v); } catch (e) { /* ignora */ }
 }
+/* No celular em pé, o mostrador encolhe o que for preciso para todos os controles caberem na tela sem rolar */
+const DUAS_COLUNAS = matchMedia("(min-width:1000px) and (min-aspect-ratio:4/3), (orientation:landscape) and (max-height:560px) and (min-width:560px)");
+function ajustarDial() {
+  const dial = document.querySelector("#v-tocando .dial"), vw = $("v-tocando"), m = $("main");
+  if (!dial) return;
+  if (APP.dataset.view !== "tocando" || DUAS_COLUNAS.matches || emPalco() || APP.dataset.letra === "1") { dial.style.width = ""; vw.style.rowGap = ""; return; }
+  const cs = getComputedStyle(m), H = m.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  vw.style.rowGap = "";
+  let outros = 0, n = 0;
+  for (const el of vw.children) { if (el === dial || el.offsetParent === null) continue; outros += el.offsetHeight; n++; }
+  let livre = H - outros - (parseFloat(getComputedStyle(vw).rowGap) || 0) * n - 4;
+  if (livre < 220) { vw.style.rowGap = "8px"; livre = H - outros - 8 * n - 4; } // tela baixa: aperta os espaços antes de encolher mais o mostrador
+  const w = Math.max(140, Math.min(innerWidth * 0.8, 400, livre));
+  dial.style.width = Math.floor(w) + "px";
+}
+if (window.ResizeObserver) { const ro = new ResizeObserver(() => ajustarDial()); ro.observe($("main")); ro.observe(document.querySelector("#v-tocando .np-meta")); }
+DUAS_COLUNAS.addEventListener?.("change", ajustarDial);
 $("nav").addEventListener("click", (e) => {
   const b = e.target.closest("[data-v]"); if (!b) return;
   const v = b.dataset.v;

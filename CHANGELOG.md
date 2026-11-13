@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.15.3
+- Tocando agora no celular em pé: tudo cabe na tela, sem rolar. O mostrador se ajusta ao espaço que sobra, e o volume e os botões de fila, temporizador, equalizador e letra ficam sempre visíveis.
+- Os avisos com botão (como o de música importada) ficam numa faixa larga, em vez de uma bola estreita de várias linhas.
+
 ## 1.15.2
 - App Android: corrigido o fechamento do app ao começar a tocar. O Android 14 e mais novos exigem uma permissão própria para a notificação de mídia, que faltava no app.
 
