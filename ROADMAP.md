@@ -1,4 +1,4 @@
-# Planos do Compasso Player
+# Planos do Orolon Player
 
 Ideias para as próximas versões. O núcleo continua grátis, offline e sem anúncios.
 

@@ -1,4 +1,4 @@
-/* Compasso Player: player de música offline com temas customizáveis.
+/* Orolon Player: player de música offline com temas customizáveis.
    Tudo fica no aparelho: músicas e playlists no IndexedDB, ajustes e temas no localStorage.
    O app não envia nada para a internet. */
 "use strict";
@@ -78,7 +78,7 @@ const cfg = Object.assign(
 const salvarCfg = () => guardado.set("compasso.cfg", cfg);
 
 const FONTES = {
-  padrao: { n: T("Compasso"), d: '"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif', b: '"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' },
+  padrao: { n: T("Orolon"), d: '"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif', b: '"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' },
   sistema: { n: T("Do sistema"), d: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif', b: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' },
   serifada: { n: T("Serifada"), d: 'Georgia,"Times New Roman",serif', b: 'Georgia,"Times New Roman",serif' },
   mono: { n: T("Mono"), d: 'ui-monospace,"Cascadia Mono",Consolas,monospace', b: 'ui-monospace,"Cascadia Mono",Consolas,monospace' },
@@ -758,7 +758,7 @@ function paint() {
   mf.setAttribute("aria-label", fav ? T("Tirar das favoritas") : T("Adicionar às favoritas"));
   $("b-eq").innerHTML = ico("sliders", 18); $("b-eq").classList.toggle("act", !!cfg.eq.on);
   paintSono(); atualizarTela();
-  document.title = playing ? `${x.t} · Compasso` : T("Compasso Player");
+  document.title = playing ? `${x.t} · Orolon` : T("Orolon Player");
 }
 function marcarAtual() {
   const id = cur() && cur().id;
@@ -996,7 +996,7 @@ function menuFaixa(id, deLista) {
       else if (a === "letra") editarLetra(x);
       else if (a === "editar") editarInfo(x);
       else if (a === "ocultar") { fecharFolha(); ocultar(id, true); }
-      else if (a === "apagar") confirmar(T("Remover da biblioteca?"), T('"{0}" sai do Compasso e de todas as playlists. O arquivo original continua no seu aparelho.', x.t), T("Remover"), () => { removerFaixa(id); toast(T("Música removida")); });
+      else if (a === "apagar") confirmar(T("Remover da biblioteca?"), T('"{0}" sai do Orolon e de todas as playlists. O arquivo original continua no seu aparelho.', x.t), T("Remover"), () => { removerFaixa(id); toast(T("Música removida")); });
     },
   });
 }
@@ -1236,7 +1236,7 @@ function renderTemas() {
       <p class="note" id="espaco">${T("Calculando o espaço usado…")}</p>
       ${importadas().length ? `<div class="btns"><button class="btn danger sm" data-limparbib>${T("Apagar todas as músicas importadas")}</button></div>` : ""}
       <p class="note">${T("Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita, ↑ e ↓ mudam o volume, M deixa mudo.")}</p></div>
-    <div class="card stack"><h2>${T("Sobre")}</h2><p class="note">${T("Compasso Player {0}. Código aberto, sem anúncios e sem conta. Se o app te ajuda, apoiar o projeto mantém ele assim.", VERSAO)}</p>
+    <div class="card stack"><h2>${T("Sobre")}</h2><p class="note">${T("Orolon Player {0}. Código aberto, sem anúncios e sem conta. Se o app te ajuda, apoiar o projeto mantém ele assim.", VERSAO)}</p>
       <div class="btns"><a class="btn sm" href="https://github.com/sponsors/KiraraHoshi" target="_blank" rel="noopener">${ico("heartOn", 18)}${T("Apoiar o projeto")}</a><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player" target="_blank" rel="noopener">${T("Código no GitHub")}</a></div>
       <div class="btns">${instalado() ? "" : `<button class="btn ghost sm" data-instalar>${T("Instalar como app")}</button>`}<button class="btn ghost sm" data-boasvindas>${T("Ver as boas-vindas")}</button></div>
       <p class="note">${T("Os dois botões de cima abrem o GitHub no navegador. O app em si não se conecta a nada.")}</p></div>`;
@@ -1257,7 +1257,7 @@ function ajustarAtual(mudanca) {
 }
 const temaJSON = (t) => JSON.stringify({ formato: "orologia-tema", versao: 1, nome: t.nome, fundo: t.fundo, card: t.card, texto: t.texto, suave: t.suave, destaque: t.destaque, secundaria: t.secundaria, raio: t.raio, fonte: t.fonte }, null, 2);
 function validarTema(o) {
-  if (!o || typeof o !== "object" || Array.isArray(o)) throw new Error(T("Esse conteúdo não é um tema do Compasso."));
+  if (!o || typeof o !== "object" || Array.isArray(o)) throw new Error(T("Esse conteúdo não é um tema do Orolon."));
   const t = { nome: String(o.nome || T("Tema importado")).trim().slice(0, 40) || T("Tema importado") };
   for (const [k, n] of CAMPOS) {
     let v = String(o[k] || "").trim();
@@ -1345,7 +1345,7 @@ $("tm").addEventListener("click", (e) => {
     });
   }
   if (t.closest("[data-limparbib]")) {
-    return confirmar(T("Apagar músicas importadas?"), plural(importadas().length, "música sai", "músicas saem") + T(" do Compasso. Os arquivos originais continuam no seu aparelho. As playlists ficam, mas sem essas músicas."), T("Apagar tudo"), () => {
+    return confirmar(T("Apagar músicas importadas?"), plural(importadas().length, "música sai", "músicas saem") + T(" do Orolon. Os arquivos originais continuam no seu aparelho. As playlists ficam, mas sem essas músicas."), T("Apagar tudo"), () => {
       importadas().forEach((x) => removerFaixa(x.id));
       renderTemas(); toast(T("Biblioteca limpa"));
     });
@@ -1653,7 +1653,7 @@ function renderVoce() {
   const top = rankFaixas("s").slice(0, 5), arts = rankArtistas().slice(0, 5);
   topVoce = top.map((r) => r.x.id);
   const desde = stats.desde ? new Date(stats.desde).toLocaleDateString(LOCALE(), { day: "numeric", month: "long", year: "numeric" }) : "";
-  V.innerHTML = `<div class="perfil">${avatar()}<div class="grow"><h1 class="clip">${esc(perfil.nome || T("Você"))}</h1><p class="sub">${desde ? T("Ouvindo no Compasso desde {0}", desde) : T("Suas estatísticas aparecem aqui conforme você ouve.")}</p></div>
+  V.innerHTML = `<div class="perfil">${avatar()}<div class="grow"><h1 class="clip">${esc(perfil.nome || T("Você"))}</h1><p class="sub">${desde ? T("Ouvindo no Orolon desde {0}", desde) : T("Suas estatísticas aparecem aqui conforme você ouve.")}</p></div>
       <button class="btn ghost sm" data-editarperfil>${ico("edit", 18)}${T("Editar")}</button></div>
     <div class="tiles"><div class="tile"><b>${fmtTempo(total)}</b><span class="sub">${T("de escuta")}</span></div><div class="tile"><b>${plays}</b><span class="sub">${plays === 1 ? T("reprodução") : T("reproduções")}</span></div><div class="tile"><b>${diasOuvindo}</b><span class="sub">${diasOuvindo === 1 ? T("dia ouvindo") : T("dias ouvindo")}</span></div></div>
     <div class="card stack"><div class="row"><h2 class="grow">${T("Últimos 7 dias")}</h2><span class="sub">${fmtTempo(dias.reduce((s, d) => s + d.s, 0))}</span></div>
@@ -1817,7 +1817,7 @@ function desenharRecap() {
   g.addColorStop(0, v("--accent") || "#6A4BD8"); g.addColorStop(1, v("--accent2") || "#A8743A");
   c.fillStyle = g; c.fillRect(0, 0, W, H);
   c.fillStyle = "rgba(10,8,20,.42)"; c.fillRect(0, 0, W, H);
-  // mostrador de relógio de fundo, a marca do Compasso
+  // mostrador de relógio de fundo, a marca do Orolon
   c.save(); c.translate(W - 170, 300); c.strokeStyle = "rgba(255,255,255,.18)"; c.lineCap = "round";
   for (let i = 0; i < 60; i++) { c.lineWidth = i % 5 ? 5 : 9; c.beginPath(); c.moveTo(0, -(i % 5 ? 230 : 210)); c.lineTo(0, -250); c.stroke(); c.rotate(Math.PI / 30); }
   c.restore();
@@ -1840,7 +1840,7 @@ function desenharRecap() {
     y += 120; texto("TOP 5", X, y, `700 30px ${corpo}`, "rgba(255,255,255,.7)");
     R.fx.slice(0, 5).forEach((r, i) => { y += 66; texto(`${i + 1}`, X, y, `800 44px ${display}`, "rgba(255,255,255,.65)"); texto(`${r.x.t} · ${r.x.a}`, X + 70, y, `600 42px ${corpo}`, "#fff", W - 230); });
   }
-  texto(T("Feito no Compasso Player · offline e sem conta"), X, H - 90, `500 32px ${corpo}`, "rgba(255,255,255,.75)");
+  texto(T("Feito no Orolon Player · offline e sem conta"), X, H - 90, `500 32px ${corpo}`, "rgba(255,255,255,.75)");
   return new Promise((ok) => cv.toBlob((b) => ok({ blob: b, ano: R.ano }), "image/png"));
 }
 async function imagemRecap() {
@@ -1885,7 +1885,7 @@ function salvarBackup() {
   baixar(new Blob([json], { type: "application/json" }), `compasso-backup-${hojeStr()}.json`);
 }
 function restaurarBackup(o) {
-  if (!o || o.formato !== "compasso-backup") throw new Error(T("Esse arquivo não é um backup do Compasso."));
+  if (!o || o.formato !== "compasso-backup") throw new Error(T("Esse arquivo não é um backup do Orolon."));
   const mapa = new Map(faixas.map((x) => [chaveDe(x), x.id]));
   const id = (c) => mapa.get(c);
   let achadas = 0, total = 0;
@@ -2055,7 +2055,7 @@ function editarInfo(x) {
       <label class="t" for="ed-a">${T("Artista")}</label><input class="field" id="ed-a" name="a" value="${esc(x.a)}" maxlength="150" autocomplete="off">
       <label class="t" for="ed-al">${T("Álbum")}</label><input class="field" id="ed-al" name="al" value="${esc(x.al || "")}" maxlength="150" autocomplete="off">
       <label class="t" for="ed-n">${T("Número da faixa")}</label><input class="field" id="ed-n" name="n" type="number" min="0" max="999" inputmode="numeric" value="${x.n || ""}">
-      <button class="btn" type="submit">${T("Salvar")}</button><p class="note">${T("Muda só dentro do Compasso. O arquivo original continua igual.")}</p></form>`,
+      <button class="btn" type="submit">${T("Salvar")}</button><p class="note">${T("Muda só dentro do Orolon. O arquivo original continua igual.")}</p></form>`,
     enviar(d) {
       x.t = String(d.get("t") || "").trim() || x.t;
       x.a = String(d.get("a") || "").trim() || T("Artista desconhecido");
@@ -2168,7 +2168,7 @@ function aplicarVisual() {
 }
 function pintarCena() {
   const C = $("cena"), x = cur(), v = cfg.visual; if (!C) return;
-  const t = esc(x ? (x.t.length > 24 ? x.t.slice(0, 23) + "…" : x.t) : T("Compasso")), a = esc(x ? (x.a.length > 30 ? x.a.slice(0, 29) + "…" : x.a) : "");
+  const t = esc(x ? (x.t.length > 24 ? x.t.slice(0, 23) + "…" : x.t) : T("Orolon")), a = esc(x ? (x.a.length > 30 ? x.a.slice(0, 29) + "…" : x.a) : "");
   const rolo = (cx) => `<g class="rolo"><circle cx="${cx}" cy="96" r="12" fill="none" stroke="var(--text)" stroke-width="3"/><path d="M${cx} 86v20M${cx - 8.7} 91l17.4 10M${cx - 8.7} 101l17.4-10" stroke="var(--text)" stroke-width="2.4" stroke-linecap="round" fill="none"/></g>`;
   if (v === "cassete") C.innerHTML = `<svg viewBox="0 0 200 200"><rect x="8" y="40" width="184" height="122" rx="11" fill="var(--card)" stroke="var(--muted)" stroke-width="1.5"/>
     <rect x="19" y="50" width="162" height="70" rx="6" fill="var(--accent)"/><text x="100" y="65" text-anchor="middle" font-size="9.500" font-weight="700" fill="var(--on-accent)" font-family="var(--body)">${t}</text><text x="100" y="75.500" text-anchor="middle" font-size="6.500" fill="var(--on-accent)" opacity=".85" font-family="var(--body)">${a}</text>
@@ -2359,15 +2359,15 @@ function acaoSel(a) {
   const reais = ids.filter((id) => !porId.get(id).demo);
   if (!reais.length) return toast(T("As músicas de exemplo não podem ser ocultadas nem removidas aqui"));
   if (a === "ocultar") { reais.forEach((id) => ocultar(id, true)); sel = null; renderBib(); return toast(plural(reais.length, "música oculta", "músicas ocultas") + T(". Para mostrar de novo: Ajustes › Biblioteca")); }
-  if (a === "remover") confirmar(T("Remover da biblioteca?"), plural(reais.length, "música sai", "músicas saem") + T(" do Compasso e das playlists. Os arquivos originais continuam no seu aparelho."), T("Remover"), () => { reais.forEach(removerFaixa); sel = null; renderBib(); toast(plural(reais.length, "música removida", "músicas removidas")); });
+  if (a === "remover") confirmar(T("Remover da biblioteca?"), plural(reais.length, "música sai", "músicas saem") + T(" do Orolon e das playlists. Os arquivos originais continuam no seu aparelho."), T("Remover"), () => { reais.forEach(removerFaixa); sel = null; renderBib(); toast(plural(reais.length, "música removida", "músicas removidas")); });
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.8.0";
+const VERSAO = "1.8.1";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
-addEventListener("appinstalled", () => { instalar = null; toast(T("Compasso instalado")); });
+addEventListener("appinstalled", () => { instalar = null; toast(T("Orolon instalado")); });
 async function pedirInstalacao() {
   if (!instalar) return toast(T("No menu do navegador, toque em Instalar app ou Adicionar à tela inicial"));
   instalar.prompt(); try { await instalar.userChoice; } catch (e) { /* fechado */ }
@@ -2380,10 +2380,10 @@ function boasVindas() {
       <div class="btns"><button class="btn sm" data-bv="arquivos">${ico("note", 18)}${T("Escolher arquivos")}</button><button class="btn ghost sm" data-bv="pasta">${ico("folder", 18)}${T("Escolher pasta")}</button></div></div>
     <div class="card stack"><div class="row"><span class="passo">2</span><h2 class="grow">${T("Escolha o visual")}</h2></div>
       <div class="btns">${["claro", "escuro"].map((k) => `<button class="btn ${cfg.tema === k ? "" : "ghost"} sm" data-bv-tema="${k}" aria-pressed="${cfg.tema === k}">${BASE[k].nome}</button>`).join("")}</div><p class="note">${T("Em Ajustes você cria seus temas, muda o mostrador e liga o som de época (vinil, cassete, rádio).")}</p></div>
-    ${instalado() ? "" : `<div class="card stack"><div class="row"><span class="passo">3</span><h2 class="grow">${T("Instale como app")}</h2></div>${instalar ? `<div class="btns"><button class="btn sm" data-bv="instalar">${T("Instalar o Compasso")}</button></div>` : `<p class="note">${T("No menu do navegador, toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>. Ele abre em tela cheia e funciona offline.")}</p>`}</div>`}
+    ${instalado() ? "" : `<div class="card stack"><div class="row"><span class="passo">3</span><h2 class="grow">${T("Instale como app")}</h2></div>${instalar ? `<div class="btns"><button class="btn sm" data-bv="instalar">${T("Instalar o Orolon")}</button></div>` : `<p class="note">${T("No menu do navegador, toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>. Ele abre em tela cheia e funciona offline.")}</p>`}</div>`}
     <button class="btn" data-bv="fechar">${T("Começar")}</button>`;
   abrirFolha({
-    titulo: T("Bem-vindo ao Compasso"), html: html(),
+    titulo: T("Bem-vindo ao Orolon"), html: html(),
     clique(e) {
       const t = e.target.closest("[data-bv-tema]"); if (t) { cfg.tema = t.dataset.bvTema; aplicarTema(); $("sheet-b").innerHTML = html(); return; }
       const b = e.target.closest("[data-bv]"); if (!b) return;

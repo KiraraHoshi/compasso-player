@@ -1,4 +1,4 @@
-/* Compasso: leitura de tags dos arquivos de áudio, sem nenhuma biblioteca externa.
+/* Orolon: leitura de tags dos arquivos de áudio, sem nenhuma biblioteca externa.
    Formatos: MP3 (ID3v2.2/2.3/2.4), FLAC, M4A/MP4 (iTunes), OGG Vorbis e Opus.
    lerTags(arquivo) devolve {t: título, a: artista, al: álbum, n: faixa, capa: Blob}. */
 "use strict";
