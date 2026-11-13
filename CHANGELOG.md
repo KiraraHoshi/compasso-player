@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.9.2
+- Capas tiradas de vídeo (miniatura do YouTube com faixas pretas e laterais borradas) são recortadas sozinhas, ficando só a arte do álbum. As músicas que já estavam na biblioteca são acertadas uma vez.
+- A Aura não corta mais como se batesse numa borda: ela desenha numa área maior que o mostrador, e os picos muito altos são amaciados.
+- A Aura pinta a capa de leve com a cor do visual, um pouco mais nas batidas.
+
 ## 1.9.1
 - A Aura ficou mais fluida, no estilo dos visualizadores tipo Trap Nation: reage na hora, a forma é suavizada como um líquido, duas camadas de eco acompanham com atraso e o conjunto gira devagar. O preenchimento não passa mais por cima da capa.
 

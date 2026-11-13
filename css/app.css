@@ -258,6 +258,7 @@ textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
 .app[data-visual="barras"] #viz,.app[data-visual="onda"] #viz,.app[data-visual="aura"] #viz,.app[data-visual="espectro"] #viz,.app[data-visual="neon"] #viz{display:block}
 .app[data-visual="espectro"] #ticks,.app[data-visual="aura"] #ticks,.app[data-visual="neon"] :is(#ticks,.disc){display:none}
 #viz{pointer-events:none}
+.app:is([data-visual="aura"],[data-visual="espectro"]) #viz{inset:-25%;width:150%;height:150%}
 .app[data-visual="cassete"] .cena,.app[data-visual="radio"] .cena{display:block}
 .app:is([data-visual="barras"],[data-visual="onda"],[data-visual="cassete"],[data-visual="radio"]) :is(#ticks,.disc){display:none}
 .app[data-visual="vinil"] .gira{background:repeating-radial-gradient(circle,#0d0d0f 0 2px,#1d1d21 2px 3px);animation:gira 1.8s linear infinite;animation-play-state:paused}

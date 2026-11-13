@@ -198,6 +198,34 @@ function coresDoNome(s) {
   let h = 0; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) % 360;
   return [`hsl(${h} 62% 52%)`, `hsl(${(h + 48) % 360} 68% 60%)`];
 }
+/* Capas tiradas de vídeo (miniatura do YouTube): corta as faixas pretas e, se sobrar um retângulo,
+   fica com o quadrado do meio, onde normalmente está a arte do álbum. Devolve null se a capa já está boa. */
+async function cortarCapa(blob) {
+  try {
+    const bm = await createImageBitmap(blob), W0 = bm.width, H0 = bm.height;
+    if (!W0 || !H0) return null;
+    const esc = Math.min(1, 160 / Math.max(W0, H0)), w = Math.max(1, Math.round(W0 * esc)), h = Math.max(1, Math.round(H0 * esc));
+    const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+    const c = cv.getContext("2d"); c.drawImage(bm, 0, 0, w, h);
+    const d = c.getImageData(0, 0, w, h).data;
+    const px = (x, y) => { const i = (y * w + x) * 4; return d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11; };
+    const faixaVazia = (vals) => { let s = 0, mx = 0; for (const v of vals) { s += v; mx = Math.max(mx, v); } return s / vals.length < 22 && mx < 60; };
+    const linha = (y) => Array.from({ length: w }, (_, x) => px(x, y)), coluna = (x) => Array.from({ length: h }, (_, y) => px(x, y));
+    let t = 0, b = h - 1, l = 0, r = w - 1;
+    while (t < h / 3 && faixaVazia(linha(t))) t++;
+    while (b > (h * 2) / 3 && faixaVazia(linha(b))) b--;
+    while (l < w / 3 && faixaVazia(coluna(l))) l++;
+    while (r > (w * 2) / 3 && faixaVazia(coluna(r))) r--;
+    let x0 = l / esc, y0 = t / esc, cw = (r - l + 1) / esc, ch = (b - t + 1) / esc;
+    if (cw / ch > 1.12) { x0 += (cw - ch) / 2; cw = ch; } // mais larga que alta: o quadrado do meio
+    else if (ch / cw > 1.12) { y0 += (ch - cw) / 2; ch = cw; }
+    if (x0 < 2 && y0 < 2 && Math.abs(cw - W0) < 3 && Math.abs(ch - H0) < 3) return null; // já era quadrada e sem faixas
+    const lado = Math.min(640, Math.round(Math.min(cw, ch))), out = document.createElement("canvas");
+    out.width = out.height = lado;
+    out.getContext("2d").drawImage(bm, x0, y0, cw, ch, 0, 0, lado, lado);
+    return await new Promise((ok) => out.toBlob((bl) => ok(bl), "image/jpeg", 0.9));
+  } catch (e) { return null; }
+}
 async function coresDaCapa(blob) {
   try {
     const bm = await createImageBitmap(blob), cv = document.createElement("canvas");
@@ -284,7 +312,7 @@ async function importar(lista) {
     sigs.add(sig);
     const nome = f.name.replace(/\.[^.]+$/, ""), partes = nome.split(" - "), m = await lerTags(f);
     const x = {
-      id: uid("f"), sig, em: Date.now(), arq: f, capaBlob: m.capa || null, n: m.n || 0, d: 0, al: m.al || "",
+      id: uid("f"), sig, em: Date.now(), arq: f, capaBlob: (m.capa && (await cortarCapa(m.capa))) || m.capa || null, n: m.n || 0, d: 0, al: m.al || "",
       t: m.t || (partes.length > 1 ? partes.slice(1).join(" - ") : partes[0]).trim() || T("Sem título"),
       a: m.a || (partes.length > 1 ? partes[0].trim() : T("Artista desconhecido")),
       letra: m.letra || "", pasta: pastaDe(f),
@@ -2060,6 +2088,20 @@ async function relerLetras() {
   cfg.tagsVer = 2; salvarCfg();
   if (n) { toast(T("Letras encontradas em {0}", plural(n, "música", "músicas"))); if (modoLetra) renderLetra(); }
 }
+/* Uma vez: recorta as capas que já estavam na biblioteca */
+async function acertarCapas() {
+  let n = 0;
+  for (const x of importadas()) {
+    if (!x.capaBlob) continue;
+    const nova = await cortarCapa(x.capaBlob); if (!nova) continue;
+    if (x.cover) URL.revokeObjectURL(x.cover);
+    x.capaBlob = nova; x.cover = URL.createObjectURL(nova);
+    x.c = (await coresDaCapa(nova)) || x.c; salvarFaixa(x); n++;
+    await new Promise((ok) => setTimeout(ok, 30));
+  }
+  cfg.capasVer = 1; salvarCfg();
+  if (n) { renderBib(); renderPl(); paint(); const x = cur(); if (x) { luz(x.c); atualizarCorViz(); } }
+}
 async function procurarLetra(x) {
   if (!x || !x.arq) return;
   let m = {};
@@ -2222,6 +2264,7 @@ function pintarCena() {
   } else C.innerHTML = "";
 }
 let nivelViz = new Float32Array(28);
+const FOLGA_VIZ = 1.5; // Aura e Espectro desenham numa área 50% maior que o mostrador
 let auraNiv = new Float32Array(64), ondinhas = [], ultOndinha = 0, auraLimpa = true;
 /* Aura: um anel suave em volta da capa (Relógio e Vinil) que respira com a música, sem exagero */
 const temAura = (v) => v === "aura" && APP.dataset.letra !== "1";
@@ -2260,17 +2303,17 @@ function desenharViz() {
 /* Espectro: anel fino com picos para fora e poeira que acelera nas batidas */
 const espNiv = new Float32Array(110), poeira = Array.from({ length: 42 }, () => ({ a: Math.random() * Math.PI * 2, d: Math.random(), v: 0.6 + Math.random(), t: 0.5 + Math.random() * 1.5 }));
 // poeira: sai do anel e se afasta devagar; nas batidas corre um pouco mais
-function desenharPoeira(c, W, R, k, graves) {
-  const cx = W / 2, vel = 0.0016 * (1 + batida * 4 * k + graves);
+function desenharPoeira(c, W, R, k, graves, Wc = W) {
+  const cx = Wc / 2, vel = 0.0016 * (1 + batida * 4 * k + graves);
   c.fillStyle = corViz;
   for (const q of poeira) {
     q.d += vel * q.v; if (q.d > 1) { q.d = 0; q.a = Math.random() * Math.PI * 2; }
-    const r = R + q.d * (W * 0.5 - R), al = Math.sin(q.d * Math.PI) * 0.55;
+    const r = R + q.d * (Wc * 0.48 - R), al = Math.sin(q.d * Math.PI) * 0.55;
     c.globalAlpha = al; c.beginPath(); c.arc(cx + Math.cos(q.a) * r, cx + Math.sin(q.a) * r, W * 0.0035 * q.t, 0, Math.PI * 2); c.fill();
   }
 }
-function desenharEspectro(c, W, vivo) {
-  const n = espNiv.length, k = cfg.reage ? cfg.batF : 0.3, cx = W / 2;
+function desenharEspectro(c, Wc, vivo) {
+  const W = Wc / FOLGA_VIZ, n = espNiv.length, k = cfg.reage ? cfg.batF : 0.3, cx = Wc / 2; // a tela de desenho é maior que o mostrador
   if (vivo) an.getByteFrequencyData(bins);
   for (let i = 0; i < n; i++) {
     const p = i / (n - 1), alvo = vivo ? bins[3 + Math.round(150 * Math.pow(p, 1.3))] / 255 : 0;
@@ -2278,11 +2321,11 @@ function desenharEspectro(c, W, vivo) {
   }
   const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0;
   const R = W * 0.34 * escDisco + W * 0.01, A = W * 0.1 * (0.45 + k * 0.75), N = n * 2;
-  desenharPoeira(c, W, R, k, graves);
+  desenharPoeira(c, W, R, k, graves, Wc);
   // picos: uma linha quebrada (não suavizada), espelhada entre a esquerda e a direita
   c.beginPath();
   for (let j = 0; j <= N; j++) {
-    const jj = j % N, nv = espNiv[jj < n ? jj : N - 1 - jj], r = R + Math.pow(nv, 3) * A, ang = (jj / N) * Math.PI * 2 - Math.PI / 2;
+    const jj = j % N, nv = espNiv[jj < n ? jj : N - 1 - jj], r = Math.min(Wc / 2 - 3, R + Math.pow(nv, 3) * A), ang = (jj / N) * Math.PI * 2 - Math.PI / 2;
     const x = cx + Math.cos(ang) * r, y = cx + Math.sin(ang) * r; if (j) c.lineTo(x, y); else c.moveTo(x, y);
   }
   c.lineJoin = "miter"; c.globalAlpha = 0.07; c.fill();
@@ -2324,9 +2367,9 @@ function desenharNeon(c, W, vivo) {
 const AURA_N = 64, auraEco1 = new Float32Array(AURA_N), auraEco2 = new Float32Array(AURA_N), auraTmp = new Float32Array(AURA_N);
 let auraGiro = 0;
 function curvaAura(c, niv, R, A, cx, giro, buraco) {
-  const n = niv.length, N = n * 2, pts = [];
+  const n = niv.length, N = n * 2, pts = [], teto = cx - 4; // nunca encosta na borda da tela de desenho
   for (let j = 0; j < N; j++) {
-    const nv = niv[j < n ? j : N - 1 - j], r = R + Math.pow(nv, 1.7) * A, ang = (j / N) * Math.PI * 2 - Math.PI / 2 + giro;
+    const nv = niv[j < n ? j : N - 1 - j], r0 = R + Math.pow(nv, 1.7) * A, r = r0 < teto * 0.9 ? r0 : teto * 0.9 + (teto * 0.1) * Math.tanh((r0 - teto * 0.9) / (teto * 0.1)), ang = (j / N) * Math.PI * 2 - Math.PI / 2 + giro;
     pts.push([cx + Math.cos(ang) * r, cx + Math.sin(ang) * r]);
   }
   c.beginPath();
@@ -2336,8 +2379,8 @@ function curvaAura(c, niv, R, A, cx, giro, buraco) {
   }
   if (buraco) { c.moveTo(cx + buraco, cx); c.arc(cx, cx, buraco, 0, Math.PI * 2, true); } // não pinta por cima da capa
 }
-function desenharAura(c, W, vivo) {
-  const n = AURA_N, k = cfg.reage ? cfg.batF : 0.3, cx = W / 2;
+function desenharAura(c, Wc, vivo) {
+  const W = Wc / FOLGA_VIZ, n = AURA_N, k = cfg.reage ? cfg.batF : 0.3, cx = Wc / 2; // a tela de desenho é maior que o mostrador
   if (vivo) an.getByteFrequencyData(bins);
   for (let i = 0; i < n; i++) {
     const p = i / (n - 1), alvo = vivo ? bins[2 + Math.round(110 * Math.pow(p, 1.5))] / 255 : 0;
@@ -2357,7 +2400,7 @@ function desenharAura(c, W, vivo) {
   const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0;
   auraGiro += 0.0012 + batida * 0.004 * k; // gira bem devagar, um pouco mais nas batidas
   const R = W * 0.34 * escDisco + W * 0.01, A = W * 0.13 * (0.45 + k * 0.75);
-  desenharPoeira(c, W, R, k, graves);
+  desenharPoeira(c, W, R, k, graves, Wc);
   c.lineJoin = "round"; c.fillStyle = c.strokeStyle = corViz;
   // ecos atrás: maiores, mais transparentes e atrasados
   const Rc = W * 0.34 * escDisco - 1; // borda da capa
@@ -2368,6 +2411,7 @@ function desenharAura(c, W, vivo) {
   curvaAura(c, auraNiv, R, A, cx, auraGiro, Rc);
   c.globalAlpha = 0.16 + batida * 0.08 * k; c.fill("evenodd");
   curvaAura(c, auraNiv, R, A, cx, auraGiro);
+  c.globalAlpha = 0.07 + batida * 0.07 * k; c.fill(); // véu leve da cor por cima da capa, mais forte nas batidas
   c.globalAlpha = 0.18; c.lineWidth = W * 0.022; c.stroke();
   c.globalAlpha = 0.85; c.lineWidth = W * 0.005; c.stroke();
   // uma onda sai da capa em cada batida forte
@@ -2434,7 +2478,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.9.1";
+const VERSAO = "1.9.2";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
@@ -2608,6 +2652,7 @@ requestAnimationFrame(quadro);
   restaurarSessao();
   renderBib(); renderPl(); renderTemas(); paint();
   if (cfg.tagsVer !== 2) setTimeout(relerLetras, 1500);
+  if (cfg.capasVer !== 1) setTimeout(acertarCapas, 2500);
   if (!guardado.get("compasso.boasvindas", false) && !importadas().length) boasVindas();
 })();
 
