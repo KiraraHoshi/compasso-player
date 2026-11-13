@@ -1,4 +1,4 @@
-/* Compasso: interface em coluna de celular; o mostrador de relógio é a peça central e o resto fica quieto.
+/* Orolon: interface em coluna de celular; o mostrador de relógio é a peça central e o resto fica quieto.
    Todas as cores vêm do tema ativo (js/app.js grava as variáveis abaixo no :root). */
 :root{
   --bg:#F1EFF6; --card:#FFFFFF; --text:#1D1830; --muted:#6B6580;

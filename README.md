@@ -1,4 +1,4 @@
-# Compasso Player
+# Orolon Player
 
 Player de música **offline** com **temas customizáveis**. As músicas, as playlists e os temas ficam só no seu aparelho: o app não tem conta, não tem servidor e não envia nada para a internet. O `index.html` traz uma política de segurança (CSP) que proíbe qualquer conexão para fora.
 

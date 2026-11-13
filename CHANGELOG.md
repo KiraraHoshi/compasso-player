@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.8.1
+- O app agora se chama Orolon Player, da família Orologia. O endereço continua o mesmo, e as músicas, playlists e ajustes ficam onde estavam.
+
 ## 1.8.0
 - Dois visuais novos no mostrador: Espectro (anel fino em volta da capa com picos para fora e poeira que acelera nas batidas) e Neon (onda espelhada com brilho, mais forte no centro).
 

@@ -1,4 +1,4 @@
-# Compasso Player
+# Orolon Player
 
 An **offline** music player with **customizable themes**. Your music, playlists and themes stay on your device: no account, no server, no ads, and nothing is sent to the internet. `index.html` ships a Content Security Policy that forbids any outside connection.
 
