@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.15.0
+- App Android:
+  - Controles na notificação e na tela de bloqueio, com capa, tocar/pausar, anterior, próxima e a barra de posição. O som segue tocando com o app fechado.
+  - O app respeita a barra de status e a barra de navegação do Android, sem conteúdo por baixo delas, e os ícones da barra mudam de cor junto com o tema.
+  - Saíram os textos de navegador e de PC (instalar como app, atalhos de teclado, arrastar arquivos e escolher pasta) e o link de apoio.
+  - Atualizado para o Capacitor 8.
+- No site, a tela também respeita o notch e as barras do sistema quando o app é instalado.
+
 ## Android (em preparo)
 - Projeto do app Android com Capacitor (pacote `com.joah.orolon`, desenvolvedor Jo-ah). O GitHub monta um APK de teste a cada atualização e publica na página de Releases como "Android (teste)".
 

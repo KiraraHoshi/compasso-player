@@ -67,6 +67,10 @@ const I = {
   vol0: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/>' + tr("M16 9.5l5 5M21 9.5l-5 5"),
   note: tr("M9 17V6l10-2v11") + '<circle cx="6.8" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16.8" cy="15" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/>',
 };
+/* App Android (Capacitor): esconde o que só faz sentido no navegador e liga os controles de mídia nativos */
+const NATIVO = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const PLUG = (NATIVO && window.Capacitor.Plugins) || {};
+if (NATIVO) document.documentElement.classList.add("nativo");
 const ico = (n, s = 24) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
 const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>';
 
@@ -179,6 +183,7 @@ function aplicar(t) {
   set("--display", f.d); set("--body", f.b); set("color-scheme", e ? "dark" : "light");
   aplicarEfeitos();
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t.fundo;
+  if (PLUG.SystemBars) PLUG.SystemBars.setStyle({ style: e ? "DARK" : "LIGHT" }).catch(() => {}); // ícones claros no tema escuro e vice-versa
 }
 function aplicarEfeitos() {
   const r = document.documentElement.style;
@@ -659,7 +664,32 @@ function restaurarSessao() {
 
 /* ---- Controles do sistema (tela de bloqueio, fones, teclado de mídia) ---- */
 const sessao = "mediaSession" in navigator ? navigator.mediaSession : null;
+/* No Android a WebView não mostra os controles de mídia: o plugin nativo cria a notificação com capa e botões */
+const MS = PLUG.MediaSession || null;
+const capaPequena = new Map();
+async function capaParaNotificacao(x) {
+  if (!x.capaBlob) return null;
+  if (capaPequena.has(x.id)) return capaPequena.get(x.id);
+  try {
+    const bm = await createImageBitmap(x.capaBlob), cv = document.createElement("canvas"); cv.width = cv.height = 384;
+    cv.getContext("2d").drawImage(bm, 0, 0, 384, 384);
+    const url = cv.toDataURL("image/jpeg", 0.85); capaPequena.set(x.id, url); return url;
+  } catch (e) { return null; }
+}
+let msEstado = "";
+function estadoNativo() {
+  if (!MS) return; const e = playing ? "playing" : cur() ? "paused" : "none";
+  if (e !== msEstado) { msEstado = e; MS.setPlaybackState({ playbackState: e }).catch(() => {}); }
+}
+if (MS) {
+  const h = (a, f) => MS.setActionHandler({ action: a }, f).catch(() => {});
+  h("play", () => tocar()); h("pause", () => pausar()); h("previoustrack", () => anterior()); h("nexttrack", () => proxima());
+  h("seekto", (d) => d && d.seekTime !== undefined && buscarSeg(d.seekTime));
+  h("seekbackward", () => buscarSeg(posAtual() - 10)); h("seekforward", () => buscarSeg(posAtual() + 10));
+  h("stop", () => pausar());
+}
 function metaSessao(x) {
+  if (MS) capaParaNotificacao(x).then((art) => MS.setMetadata({ title: x.t, artist: x.a, album: x.al || "", artwork: art ? [{ src: art, sizes: "384x384", type: "image/jpeg" }] : [] }).catch(() => {}));
   if (!sessao || typeof MediaMetadata === "undefined") return;
   try {
     sessao.metadata = new MediaMetadata({
@@ -776,6 +806,7 @@ function quadro() {
       if (seg !== ultimoSeg) {
         ultimoSeg = seg; $("cur").textContent = fmt(p);
         $("mini").style.setProperty("--prog", (fr * 100).toFixed(1) + "%");
+        if (MS && x.d > 0) MS.setPositionState({ duration: x.d, position: Math.min(p, x.d), playbackRate: x.demo ? 1 : cfg.vel || 1 }).catch(() => {});
         if (sessao && sessao.setPositionState && x.d > 0) try { sessao.setPositionState({ duration: x.d, position: Math.min(p, x.d), playbackRate: x.demo ? 1 : cfg.vel || 1 }); } catch (e) { /* ignora */ }
         if (playing && Date.now() - ultimaSessao > 5000) salvarSessao();
         const ag = document.getElementById("agulha"); if (ag) ag.setAttribute("transform", `translate(${(30 + fr * 140).toFixed(1)} 0)`);
@@ -827,7 +858,7 @@ function quadro() {
 /* ===================== Tela: Tocando agora e mini player ===================== */
 function paint() {
   const x = cur();
-  $("app").dataset.playing = playing ? "1" : ""; ajustarRuido();
+  $("app").dataset.playing = playing ? "1" : ""; ajustarRuido(); estadoNativo();
   $("b-play").innerHTML = ico(playing ? "pause" : "play", 30); $("b-play").setAttribute("aria-label", playing ? T("Pausar") : T("Tocar"));
   $("mini-play").innerHTML = ico(playing ? "pause" : "play"); $("mini-play").setAttribute("aria-label", playing ? T("Pausar") : T("Tocar"));
   $("b-shuf").classList.toggle("act", shuffle); $("b-shuf").setAttribute("aria-pressed", shuffle);
@@ -919,7 +950,7 @@ function renderBib() {
   const L = $("lib");
   const casa = (s) => !q || s.toLowerCase().includes(q);
   if (!v.length) {
-    L.innerHTML = vazio(T("Sua biblioteca está vazia. Importe arquivos MP3, FLAC, M4A, OGG ou Opus do seu aparelho."), `<button class="btn" data-importar>${ico("plus", 18)}${T("Importar músicas")}</button><p class="note">${T("No PC, você também pode arrastar arquivos e pastas para esta janela.")}</p>`);
+    L.innerHTML = vazio(T("Sua biblioteca está vazia. Importe arquivos MP3, FLAC, M4A, OGG ou Opus do seu aparelho."), `<button class="btn" data-importar>${ico("plus", 18)}${T("Importar músicas")}</button>${NATIVO ? "" : `<p class="note">${T("No PC, você também pode arrastar arquivos e pastas para esta janela.")}</p>`}`);
     return;
   }
   if (aberto && aberto.tipo === "album") {
@@ -1015,8 +1046,8 @@ $("b-import").addEventListener("click", menuImportar);
 function menuImportar() {
   abrirFolha({
     titulo: T("Importar músicas"),
-    html: `<div class="menu"><button data-i="arquivos">${ico("note")}${T("Escolher arquivos")}</button><button data-i="pasta">${ico("folder")}${T("Escolher uma pasta inteira")}</button></div>
-      <p class="note" style="padding:0 8px">${T("As músicas ficam guardadas só neste navegador. Letras em .lrc com o mesmo nome da música entram junto. No PC, você também pode arrastar arquivos e pastas para a janela.")}</p>`,
+    html: `<div class="menu"><button data-i="arquivos">${ico("note")}${T("Escolher arquivos")}</button>${NATIVO ? "" : `<button data-i="pasta">${ico("folder")}${T("Escolher uma pasta inteira")}</button>`}</div>
+      <p class="note" style="padding:0 8px">${NATIVO ? T("As músicas ficam guardadas só neste aparelho. Letras em .lrc com o mesmo nome da música entram junto.") : T("As músicas ficam guardadas só neste navegador. Letras em .lrc com o mesmo nome da música entram junto. No PC, você também pode arrastar arquivos e pastas para a janela.")}</p>`,
     clique(e) { const b = e.target.closest("[data-i]"); if (!b) return; fecharFolha(); $(b.dataset.i === "pasta" ? "folder" : "files").click(); },
   });
 }
@@ -1339,16 +1370,16 @@ function renderTemas() {
       ${faixas.some((x) => x.oculta) ? `<div class="opt"><span>${plural(faixas.filter((x) => x.oculta).length, "música oculta", "músicas ocultas")}</span><button class="btn ghost sm" data-verocultas>${T("Ver")}</button></div>` : ""}
       <p class="note" id="espaco">${T("Calculando o espaço usado…")}</p>
       ${importadas().length ? `<div class="btns"><button class="btn danger sm" data-limparbib>${T("Apagar todas as músicas importadas")}</button></div>` : ""}
-      <p class="note">${T("Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita, ↑ e ↓ mudam o volume, M deixa mudo.")}</p></div>
+      ${NATIVO ? "" : `<p class="note">${T("Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita, ↑ e ↓ mudam o volume, M deixa mudo.")}</p>`}</div>
     <div class="card stack"><h2>${T("Sobre")}</h2><p class="note">${T("Orolon Player {0}. Código aberto, sem anúncios e sem conta. Se o app te ajuda, apoiar o projeto mantém ele assim.", VERSAO)}</p>
-      <div class="btns"><a class="btn sm" href="https://github.com/sponsors/KiraraHoshi" target="_blank" rel="noopener">${ico("heartOn", 18)}${T("Apoiar o projeto")}</a><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player" target="_blank" rel="noopener">${T("Código no GitHub")}</a></div>
+      ${NATIVO ? "" : `<div class="btns"><a class="btn sm" href="https://github.com/sponsors/KiraraHoshi" target="_blank" rel="noopener">${ico("heartOn", 18)}${T("Apoiar o projeto")}</a><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player" target="_blank" rel="noopener">${T("Código no GitHub")}</a></div>`}
       <div class="btns">${instalado() ? "" : `<button class="btn ghost sm" data-instalar>${T("Instalar como app")}</button>`}<button class="btn ghost sm" data-boasvindas>${T("Ver as boas-vindas")}</button></div>
-      <p class="note">${T("Os dois botões de cima abrem o GitHub no navegador. O app em si não se conecta a nada.")}</p></div>`;
+      ${NATIVO ? "" : `<p class="note">${T("Os dois botões de cima abrem o GitHub no navegador. O app em si não se conecta a nada.")}</p>`}</div>`;
   espaco();
 }
 async function espaco() {
   const imp = importadas(), soma = imp.reduce((s, x) => s + (x.arq ? x.arq.size : 0), 0);
-  let txt = imp.length ? `${plural(imp.length, "música importada ocupa", "músicas importadas ocupam")} ${mb(soma)} neste navegador.` : T("Nenhuma música importada ainda.");
+  let txt = imp.length ? `${plural(imp.length, "música importada ocupa", "músicas importadas ocupam")} ${mb(soma)}${NATIVO ? T(" neste aparelho.") : T(" neste navegador.")}` : T("Nenhuma música importada ainda.");
   try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); if (e.quota) txt += T(" Espaço livre para o app: cerca de {0}.", mb(Math.max(0, e.quota - e.usage))); } } catch (e) { /* sem estimativa */ }
   if (!db) txt += " " + T("Este navegador não deixou guardar a biblioteca, então as músicas somem ao fechar.");
   const p = $("espaco"); if (p) p.textContent = txt;
@@ -2636,9 +2667,9 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.14.1";
+const VERSAO = "1.15.0";
 let instalar = null;
-const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
 addEventListener("appinstalled", () => { instalar = null; toast(T("Orolon instalado")); });
 async function pedirInstalacao() {
@@ -2648,11 +2679,11 @@ async function pedirInstalacao() {
 }
 function boasVindas() {
   guardado.set("compasso.boasvindas", true);
-  const html = () => `<p class="note" style="padding:0 6px">${T("Um player de música que funciona sem internet, sem conta e sem anúncios. Três passos e está pronto.")}</p>
+  const html = () => `<p class="note" style="padding:0 6px">${NATIVO ? T("Um player de música que funciona sem internet, sem conta e sem anúncios. Dois passos e está pronto.") : T("Um player de música que funciona sem internet, sem conta e sem anúncios. Três passos e está pronto.")}</p>
     <div class="card stack"><div class="row"><span class="passo">1</span><h2 class="grow">${T("Traga suas músicas")}</h2></div><p class="note">${T("Elas ficam guardadas só neste aparelho. Servem MP3, FLAC, M4A, OGG e Opus.")}</p>
-      <div class="btns"><button class="btn sm" data-bv="arquivos">${ico("note", 18)}${T("Escolher arquivos")}</button><button class="btn ghost sm" data-bv="pasta">${ico("folder", 18)}${T("Escolher pasta")}</button></div></div>
+      <div class="btns"><button class="btn sm" data-bv="arquivos">${ico("note", 18)}${T("Escolher arquivos")}</button>${NATIVO ? "" : `<button class="btn ghost sm" data-bv="pasta">${ico("folder", 18)}${T("Escolher pasta")}</button>`}</div></div>
     <div class="card stack"><div class="row"><span class="passo">2</span><h2 class="grow">${T("Escolha o visual")}</h2></div>
-      <div class="btns">${["claro", "escuro"].map((k) => `<button class="btn ${cfg.tema === k ? "" : "ghost"} sm" data-bv-tema="${k}" aria-pressed="${cfg.tema === k}">${BASE[k].nome}</button>`).join("")}</div><p class="note">${T("Em Ajustes você cria seus temas, muda o mostrador e liga o som de época (vinil, cassete, rádio).")}</p></div>
+      <div class="btns">${["claro", "escuro"].map((k) => `<button class="btn ${cfg.tema === k ? "" : "ghost"} sm" data-bv-tema="${k}" aria-pressed="${cfg.tema === k}">${BASE[k].nome}</button>`).join("")}</div><p class="note">${T("Em Ajustes você cria seus temas, muda o mostrador e liga o som de época (rádio, vinil, fita e CD).")}</p></div>
     ${instalado() ? "" : `<div class="card stack"><div class="row"><span class="passo">3</span><h2 class="grow">${T("Instale como app")}</h2></div>${instalar ? `<div class="btns"><button class="btn sm" data-bv="instalar">${T("Instalar o Orolon")}</button></div>` : `<p class="note">${T("No menu do navegador, toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>. Ele abre em tela cheia e funciona offline.")}</p>`}</div>`}
     <button class="btn" data-bv="fechar">${T("Começar")}</button>`;
   abrirFolha({
