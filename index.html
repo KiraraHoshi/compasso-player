@@ -37,7 +37,7 @@
       <div class="np-meta"><span aria-hidden="true"></span><div class="meta"><h1 class="clip" id="np-t"></h1><p class="sub clip" id="np-a"></p></div><button class="ic" id="b-fav" aria-label="Adicionar às favoritas"></button></div>
       <div class="seek">
         <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Posição da música">
-        <div class="times"><span id="cur">0:00</span><span id="tot">0:00</span></div>
+        <div class="times"><span id="cur">0:00</span><span class="pulos"><button class="ic sm" id="b-menos10" aria-label="Voltar 10 segundos"></button><button class="vel" id="b-vel" aria-label="Velocidade">1×</button><button class="ic sm" id="b-mais10" aria-label="Avançar 10 segundos"></button></span><span id="tot">0:00</span></div>
       </div>
       <div class="ctl">
         <button class="ic" id="b-shuf" aria-label="Ordem aleatória"></button>
@@ -78,7 +78,7 @@
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="drop" id="drop" hidden>Solte as músicas para importar</div>
-<input id="files" type="file" accept="audio/*,.mp3,.flac,.m4a,.aac,.ogg,.oga,.opus,.wav,.webm,.lrc" multiple hidden>
+<input id="files" type="file" accept="audio/*,video/mp4,video/webm,video/quicktime,.mp3,.flac,.m4a,.aac,.ogg,.oga,.opus,.wav,.aif,.aiff,.webm,.mp4,.m4v,.mov,.lrc" multiple hidden>
 <input id="folder" type="file" webkitdirectory multiple hidden>
 <input id="perfil-file" type="file" accept="image/*" hidden>
 <input id="letra-file" type="file" accept=".lrc,.txt,text/plain" hidden>

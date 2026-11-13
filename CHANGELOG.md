@@ -1,5 +1,16 @@
 # Histórico de versões
 
+## 1.7.0
+- Trocar o idioma não para mais a música: o app muda na hora, sem recarregar.
+- Som mais estável no celular: o áudio usa um buffer maior, o que evita engasgos.
+- Botões de voltar e avançar 10 segundos e de velocidade direto no Tocando agora.
+- Etiqueta FLAC, WAV ou AIFF nas músicas sem perda de qualidade.
+- Vídeos MP4, WEBM e MOV podem ser importados, e o app toca só o áudio.
+- Músicas de 10 minutos ou mais (audiolivros, podcasts, mixes) continuam de onde pararam, com a opção "Do início".
+- Depois de importar, o aviso tem o botão "Ver", que abre as músicas adicionadas.
+- "Procurar no arquivo de novo" mostra a letra antes, com "Aplicar" e "Descartar".
+- Opção de esconder o coração das favoritas nas listas (Ajustes › Biblioteca).
+
 ## 1.6.1
 - Letras: o app passou a achar letras guardadas de mais jeitos (campos "UNSYNCED LYRICS" e "SYNCEDLYRICS" no FLAC, FLAC com etiqueta ID3 no começo e letra sincronizada SYLT no MP3). As músicas já importadas são relidas uma vez, e a tela de letra ganhou o botão "Procurar no arquivo de novo".
 - Foto do perfil: recorte com arrastar e zoom (controle, dois dedos ou roda do mouse).

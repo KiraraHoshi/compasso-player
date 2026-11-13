@@ -26,6 +26,8 @@ function embaralhar(a) {
 /* ===================== Ícones ===================== */
 const tr = (d) => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`;
 const I = {
+  menos10: tr("M5.2 9.5A7.3 7.3 0 1 1 4.8 14M4.5 5v4.6h4.6") + '<text x="12" y="15.4" text-anchor="middle" font-size="6.6" font-weight="700" fill="currentColor" font-family="system-ui,sans-serif">10</text>',
+  mais10: tr("M18.8 9.5A7.3 7.3 0 1 0 19.2 14M19.5 5v4.6h-4.6") + '<text x="12" y="15.4" text-anchor="middle" font-size="6.6" font-weight="700" fill="currentColor" font-family="system-ui,sans-serif">10</text>',
   play: '<path d="M8 5v14l11-7z" fill="currentColor"/>',
   pause: '<path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/>',
   next: '<path d="M6 5l9 7-9 7zM16 5h2.5v14H16z" fill="currentColor"/>',
@@ -70,7 +72,7 @@ const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i>
 
 /* ===================== Ajustes e temas ===================== */
 const cfg = Object.assign(
-  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, mudo: false, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false },
+  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, mudo: false, coracoes: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false },
   guardado.get("compasso.cfg", {})
 );
 const salvarCfg = () => guardado.set("compasso.cfg", cfg);
@@ -151,6 +153,15 @@ const fundoDe = (x) => (x.cover ? `url('${x.cover}') center/cover` : grad(x.c));
 const inicial = (s) => esc((String(s || "?").trim()[0] || "?").toUpperCase());
 const capa = (x, cls = "thumb") => `<span class="${cls}" style="background:${fundoDe(x)}">${x.cover ? "" : inicial(x.t)}</span>`;
 const linha2 = (x) => x.a + (x.al ? " · " + x.al : "");
+/* Formato sem perdas (FLAC, WAV, AIFF): ganha a etiqueta no app */
+function semPerdas(x) {
+  if (!x || x.demo) return "";
+  const nome = (x.arq && x.arq.name) || (x.sig || "").split("|")[0] || "", tipo = (x.arq && x.arq.type) || "";
+  if (/\.flac$/i.test(nome) || /flac/i.test(tipo)) return "FLAC";
+  if (/\.wav$/i.test(nome) || /wav/i.test(tipo)) return "WAV";
+  if (/\.aiff?$/i.test(nome) || /aiff/i.test(tipo)) return "AIFF";
+  return "";
+}
 const duracaoTotal = (lista) => lista.reduce((s, x) => s + (x.d || 0), 0);
 function coresDoNome(s) {
   let h = 0; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) % 360;
@@ -198,8 +209,10 @@ const salvarFaixa = (x) => dbPut("faixas", { id: x.id, t: x.t, a: x.a, al: x.al,
 function montar(x) { x.url = URL.createObjectURL(x.arq); if (x.capaBlob) x.cover = URL.createObjectURL(x.capaBlob); }
 
 /* ---- Importar ---- */
-const EXT = /\.(mp3|flac|m4a|aac|ogg|oga|opus|wav|webm)$/i;
-const ehAudio = (f) => f && ((f.type && f.type.startsWith("audio/")) || EXT.test(f.name));
+const EXT = /\.(mp3|flac|m4a|aac|ogg|oga|opus|wav|aif|aiff|webm|mp4|m4v|mov)$/i;
+const EXT_VIDEO = /\.(mp4|m4v|mov|webm)$/i;
+// vídeos entram como música: o app toca só o áudio deles
+const ehAudio = (f) => f && ((f.type && (f.type.startsWith("audio/") || /^video\/(mp4|webm|quicktime)$/.test(f.type))) || EXT.test(f.name));
 function lerDuracao(url) {
   return new Promise((ok) => {
     const a = new Audio(); let feito = false;
@@ -262,7 +275,8 @@ async function importar(lista) {
     semEx = T(". Os exemplos foram escondidos");
   }
   if (novas) {
-    toast(plural(novas, "música importada", "músicas importadas") + semEx + (repetidas ? T(repetidas > 1 ? ", {0} já estavam na biblioteca" : ", {0} já estava na biblioteca", repetidas) : ""));
+    toast(plural(novas, "música importada", "músicas importadas") + semEx + (repetidas ? T(repetidas > 1 ? ", {0} já estavam na biblioteca" : ", {0} já estava na biblioteca", repetidas) : ""),
+      [T("Ver"), () => { plAberta = "auto:novas"; ir("playlists"); renderPl(); }]);
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   } else toast(repetidas ? T("Essas músicas já estavam na biblioteca") : T("Não deu para importar esses arquivos"));
 }
@@ -362,11 +376,17 @@ function tirarDaFila(i) {
 let ctx, an, mestre, el, bins, relogio, filtros, entrada, ganhoEl, pausaPend, passo = 0, proxT = 0, pos = 0, posBase = 0, inicioT = 0, erros = 0;
 let volNo = null, els = [], ganhos = [], elAtivo = 0, trocando = null, eraIn, eraNos = [], ruido = null, comp = null, ondas;
 function usarEl(i) { elAtivo = i; el = els[i]; ganhoEl = ganhos[i]; }
-function aplicarVel() { els.forEach((a) => { a.defaultPlaybackRate = a.playbackRate = cfg.vel || 1; }); }
+const VELS = [0.75, 1, 1.25, 1.5, 2];
+function aplicarVel() {
+  els.forEach((a) => { a.defaultPlaybackRate = a.playbackRate = cfg.vel || 1; });
+  const b = $("b-vel"); if (b) { b.textContent = decimal(String(cfg.vel || 1)) + "×"; b.classList.toggle("act", (cfg.vel || 1) !== 1); b.setAttribute("aria-label", T("Velocidade {0}×. Toque para mudar", decimal(String(cfg.vel || 1)))); }
+}
 function cancelarTroca() { if (trocando) { clearTimeout(trocando.t); trocando.sai.pause(); trocando = null; } }
 function prepararAudio() {
   if (ctx) return;
-  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  // "playback" pede um buffer de áudio maior: no celular isso evita falhas e engasgos no som
+  const AC = window.AudioContext || window.webkitAudioContext;
+  try { ctx = new AC({ latencyHint: "playback" }); } catch (e) { ctx = new AC(); }
   an = ctx.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.75;
   volNo = ctx.createGain(); an.connect(volNo); volNo.connect(ctx.destination); aplicarVolume(true);
   bins = new Uint8Array(an.frequencyBinCount); ondas = new Uint8Array(an.fftSize);
@@ -461,6 +481,12 @@ function carregar(auto) {
       const go = ganhos[1 - elAtivo].gain; go.cancelScheduledValues(ctx.currentTime); go.setValueAtTime(0, ctx.currentTime);
     } else el.dataset.id = "";
   }
+  const guardada = ehLonga(x) ? posicoes[x.id] || 0 : 0;
+  if (guardada > 15 && guardada < x.d - 15) {
+    pos = guardada;
+    if (el && el.dataset.id === x.id) try { el.currentTime = guardada; } catch (e) { /* aplica ao tocar */ }
+    if (!restaurando) toast(T("Continuando de {0}", fmt(guardada)), [T("Do início"), () => { esquecerPosicao(x.id); buscarSeg(0); pos = 0; }]);
+  }
   aoTrocar(x);
   if (auto) tocar(); else { playing = false; paint(); }
 }
@@ -481,6 +507,7 @@ function vigiarTroca(x, p) {
 }
 function iniciarTroca(ni, dur) {
   const sai = el, gSai = ganhoEl.gain, t0 = ctx.currentTime;
+  if (cur()) esquecerPosicao(cur().id);
   usarEl(1 - elAtivo); aplicarVel();
   try { el.currentTime = 0; } catch (e) { /* ignora */ }
   ganhoEl.gain.cancelScheduledValues(t0); ganhoEl.gain.setValueAtTime(0, t0); ganhoEl.gain.linearRampToValueAtTime(1, t0 + dur);
@@ -490,6 +517,7 @@ function iniciarTroca(ni, dur) {
   qi = ni; pos = 0; novaEscuta(); aoTrocar(cur());
 }
 function fimDaFaixa() {
+  if (cur()) esquecerPosicao(cur().id);
   if (sono.aoFim) { sono.aoFim = false; if (qi < queue.length - 1) qi++; carregar(false); paintSono(); toast(T("Temporizador: música pausada")); return; }
   if (repeat === "one") { pos = 0; novaEscuta(); if (el) el.currentTime = 0; return tocar(); }
   if (qi < queue.length - 1) { qi++; return carregar(true); }
@@ -510,10 +538,26 @@ function buscarSeg(s) {
   else pos = s;
 }
 
+/* ---- Músicas longas (audiolivros, podcasts, mixes) continuam de onde pararam ---- */
+const LONGA = 600; // 10 minutos ou mais
+let posicoes = guardado.get("compasso.posicoes", {});
+const ehLonga = (x) => x && !x.demo && (x.d || 0) >= LONGA;
+function lembrarPosicao() {
+  const x = cur(); if (!ehLonga(x)) return;
+  const p = posAtual();
+  if (p > 15 && p < x.d - 15) {
+    if (Math.abs((posicoes[x.id] || 0) - p) < 1) return;
+    posicoes[x.id] = Math.round(p);
+    const ids = Object.keys(posicoes); if (ids.length > 200) delete posicoes[ids[0]];
+    guardado.set("compasso.posicoes", posicoes);
+  }
+}
+function esquecerPosicao(id) { if (id && posicoes[id] !== undefined) { delete posicoes[id]; guardado.set("compasso.posicoes", posicoes); } }
+
 /* ---- Sessão: volta de onde parou ---- */
-let ultimaSessao = 0;
+let ultimaSessao = 0, restaurando = false;
 function salvarSessao() {
-  ultimaSessao = Date.now();
+  ultimaSessao = Date.now(); lembrarPosicao();
   guardado.set("compasso.sessao", { queue, atual: queue[qi], pos: posAtual(), contexto, shuffle, repeat, origem });
 }
 function restaurarSessao() {
@@ -523,7 +567,7 @@ function restaurarSessao() {
   queue = q; qi = Math.max(0, q.indexOf(s.atual)); contexto = s.contexto || T("Biblioteca");
   shuffle = !!s.shuffle; repeat = ["off", "all", "one"].includes(s.repeat) ? s.repeat : "off";
   origem = Array.isArray(s.origem) ? s.origem.filter((id) => porId.has(id)) : null;
-  carregar(false);
+  restaurando = true; carregar(false); restaurando = false;
   pos = cur() && s.atual === cur().id ? Math.max(0, +s.pos || 0) : 0;
 }
 
@@ -699,7 +743,7 @@ function paint() {
     return;
   }
   $("np-ctx").textContent = T("Tocando · {0}", contexto);
-  $("np-t").textContent = x.t; $("np-a").textContent = linha2(x) + (x.demo ? T(" · exemplo") : "");
+  $("np-t").textContent = x.t; $("np-a").textContent = linha2(x) + (x.demo ? T(" · exemplo") : semPerdas(x) ? " · " + semPerdas(x) : "");
   $("selo").style.background = fundoDe(x); $("selo").textContent = x.cover ? "" : (x.t[0] || "?").toUpperCase();
   $("mini-th").innerHTML = capa(x); $("mini-t").textContent = x.t; $("mini-a").textContent = x.a;
   $("tot").textContent = fmt(x.d);
@@ -760,8 +804,8 @@ function linhaFaixa(x, o = {}) {
   return `<div class="track${atual ? " cur" : ""}" data-row="${x.id}">` +
     (o.grip ? `<button class="grip" data-grip aria-label="${T("Mover {0}. Use as setas para cima e para baixo", esc(x.t))}">${ico("grip", 20)}</button>` : "") +
     `<button class="tp" data-play="${x.id}">${o.num !== undefined ? `<span class="idx">${o.num || "·"}</span>` : capa(x)}` +
-    `<span class="grow"><span class="t clip">${atual ? eqIcone() : ""}${ehFav(x.id) ? `<span class="fav-mini" aria-label="${T("Favorita")}">${ico("heartOn", 13)}</span>` : ""}${esc(x.t)}</span><span class="sub clip">${esc(o.sub ? o.sub(x) : linha2(x))}</span></span></button>` +
-    (x.demo ? `<span class="chip">${T("exemplo")}</span>` : "") +
+    `<span class="grow"><span class="t clip">${atual ? eqIcone() : ""}${cfg.coracoes !== false && ehFav(x.id) ? `<span class="fav-mini" aria-label="${T("Favorita")}">${ico("heartOn", 13)}</span>` : ""}${esc(x.t)}</span><span class="sub clip">${esc(o.sub ? o.sub(x) : linha2(x))}</span></span></button>` +
+    (x.demo ? `<span class="chip">${T("exemplo")}</span>` : semPerdas(x) ? `<span class="chip hq" title="${T("Sem perda de qualidade")}">${semPerdas(x)}</span>` : "") +
     `<span class="dur">${x.d ? fmt(x.d) : ""}</span>` +
     `<button class="ic sm" data-more="${x.id}" aria-label="${T("Opções de {0}", esc(x.t))}">${ico("more", 20)}</button></div>`;
 }
@@ -826,7 +870,7 @@ function renderBib() {
   }
   if (aba === "musicas") {
     const f = ordenar(v).filter((x) => casa(x.t + " " + x.a + " " + (x.al || "")));
-    listaBib = { ids: f.map((x) => x.id), ctx: q ? "busca" : T("Biblioteca") };
+    listaBib = { ids: f.map((x) => x.id), ctx: q ? T("busca") : T("Biblioteca") };
     const nEx = v.filter((x) => x.demo).length;
     L.innerHTML = (nEx && !q ? `<div class="card row aviso-ex"><span class="grow note">${T("As {0} músicas marcadas como exemplo servem só para testar o app.", nEx)}</span><button class="btn ghost sm" data-esconder-ex>${T("Esconder")}</button></div>` : "") + `<div class="row"><div class="grow">${f.length && !sel ? botoesTocar(`<button class="btn ghost sm" data-selecionar>${T("Selecionar")}</button>`) : ""}</div>
       <select id="ord" class="mini-sel" aria-label="${T("Ordem das músicas")}">${Object.entries(ORDENS).map(([k, n]) => `<option value="${k}"${k === cfg.ord ? " selected" : ""}>${n}</option>`).join("")}</select></div>
@@ -905,9 +949,11 @@ $("scrim").addEventListener("click", fecharFolha);
 $("sheet-x").addEventListener("click", fecharFolha);
 $("sheet-x").innerHTML = ico("x", 20);
 let toastT;
-function toast(msg) {
-  const t = $("toast"); t.textContent = msg; t.classList.add("on");
-  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2200);
+function toast(msg, acao) { // acao opcional: [rótulo, função] vira um botão no aviso
+  const t = $("toast"); t.textContent = msg; t.classList.toggle("acao", !!acao);
+  if (acao) { const b = document.createElement("button"); b.type = "button"; b.textContent = acao[0]; b.onclick = () => { t.classList.remove("on", "acao"); acao[1](); }; t.append(b); }
+  t.classList.add("on");
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on", "acao"), acao ? 5000 : 2200);
 }
 function perguntar(titulo, rotulo, valor, botao, cb) {
   abrirFolha({
@@ -1185,7 +1231,7 @@ function renderTemas() {
       <div class="btns"><button class="btn ghost sm" data-bkp>${T("Salvar backup")}</button><button class="btn ghost sm" data-rst>${T("Restaurar backup")}</button></div></div>
     <div class="card stack"><h2>${T("Compartilhar tema")}</h2><p class="note">${T("Um tema é um arquivo JSON pequeno. Exporte o tema em uso ou importe um de outra pessoa.")}</p>
       <div class="btns"><button class="btn ghost sm" data-exp="copiar">${T("Copiar JSON")}</button><button class="btn ghost sm" data-exp="baixar">${T("Baixar .json")}</button><button class="btn ghost sm" data-imp="arquivo">${T("Abrir .json")}</button><button class="btn ghost sm" data-imp="colar">${T("Colar JSON")}</button></div></div>
-    <div class="card stack"><h2>${T("Biblioteca")}</h2>${tg("exemplos", T("Mostrar as músicas de exemplo"))}
+    <div class="card stack"><h2>${T("Biblioteca")}</h2>${tg("exemplos", T("Mostrar as músicas de exemplo"))}${tg("coracoes", T("Mostrar o coração das favoritas nas listas"))}
       ${faixas.some((x) => x.oculta) ? `<div class="opt"><span>${plural(faixas.filter((x) => x.oculta).length, "música oculta", "músicas ocultas")}</span><button class="btn ghost sm" data-verocultas>${T("Ver")}</button></div>` : ""}
       <p class="note" id="espaco">${T("Calculando o espaço usado…")}</p>
       ${importadas().length ? `<div class="btns"><button class="btn danger sm" data-limparbib>${T("Apagar todas as músicas importadas")}</button></div>` : ""}
@@ -1259,6 +1305,7 @@ $("tm").addEventListener("click", (e) => {
     if (k === "tela") atualizarTela();
     if (k === "nivelar" && ctx) montarFiltros();
     if (k === "eraRuido") ajustarRuido();
+    if (k === "coracoes") { renderBib(); renderPl(); }
     renderTemas(); return;
   }
   if (t.closest("[data-alternar-leve]")) return definirLeve(!cfg.leve);
@@ -1311,7 +1358,7 @@ $("tm").addEventListener("input", (e) => {
   else if (t.dataset.rgx) { cfg[t.dataset.rgx] = +t.value; salvarCfg(); aplicarFundo(); }
 });
 $("tm").addEventListener("change", (e) => {
-  if (e.target.id === "s-lang") { cfg.lang = e.target.value; salvarCfg(); salvarSessao(); location.reload(); return; }
+  if (e.target.id === "s-lang") return mudarIdioma(e.target.value);
   const k = e.target.dataset.sel; if (!k) return;
   cfg[k] = k === "xfade" || k === "vel" ? +e.target.value : e.target.value; salvarCfg();
   if (k === "vel") aplicarVel();
@@ -1868,7 +1915,7 @@ function restaurarBackup(o) {
   for (const t of o.temas || []) { try { const v = validarTema(t); if (!meusTemas.some((m) => m.nome === v.nome)) { v.id = uid("t"); meusTemas.push(v); } } catch (err) { /* tema inválido: pula */ } }
   salvarTemas();
   const aj = o.ajustes || {};
-  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "leve"]) if (k in aj) cfg[k] = aj[k];
+  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "leve", "coracoes"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
   if (aj.ajustes) cfg.ajustes = aj.ajustes;
@@ -1977,11 +2024,24 @@ async function relerLetras() {
 }
 async function procurarLetra(x) {
   if (!x || !x.arq) return;
-  try {
-    const m = await lerTags(x.arq);
-    if (m.letra) { x.letra = m.letra; salvarFaixa(x); renderLetra(); toast(T("Letra encontrada no arquivo")); }
-    else toast(T("O arquivo não tem letra guardada"));
-  } catch (e) { toast(T("O arquivo não tem letra guardada")); }
+  let m = {};
+  try { m = await lerTags(x.arq); } catch (e) { /* arquivo ilegível */ }
+  if (m.letra) previaLetra(x, m.letra);
+  else toast(T("O arquivo não tem letra guardada"));
+}
+/* Mostra a letra encontrada antes de salvar: Aplicar ou Descartar */
+function previaLetra(x, letra) {
+  const l = parseLetra(letra), txt = l.linhas.map((q) => q.txt).filter(Boolean).join("\n");
+  abrirFolha({
+    titulo: T("Letra encontrada"),
+    html: `<p class="note">${l.sinc ? T("Sincronizada: acompanha a música linha por linha.") : T("Sem tempo marcado: aparece inteira para rolar.")}</p>
+      <div class="previa">${esc(txt.slice(0, 4000))}${txt.length > 4000 ? "…" : ""}</div>
+      <div class="btns"><button class="btn" data-aplicar>${T("Aplicar")}</button><button class="btn ghost" data-descartar>${T("Descartar")}</button></div>`,
+    clique(e) {
+      if (e.target.closest("[data-aplicar]")) { x.letra = letra; salvarFaixa(x); fecharFolha(); renderLetra(); toast(T("Letra adicionada")); }
+      else if (e.target.closest("[data-descartar]")) fecharFolha();
+    },
+  });
 }
 
 /* ===================== Editar informações e ocultar ===================== */
@@ -2204,7 +2264,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.6.1";
+const VERSAO = "1.7.0";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
@@ -2241,7 +2301,8 @@ const GALERIA = [{"nome": T("Entardecer"), "fundo": "#0E1119", "card": "#1A1F2B"
 
 /* ===================== Navegação ===================== */
 const TELAS = [["biblioteca", T("Biblioteca"), "lib"], ["tocando", T("Tocando"), "now"], ["playlists", T("Playlists"), "pls"], ["voce", T("Você"), "user"], ["temas", T("Ajustes"), "thm"]];
-$("nav").innerHTML = TELAS.map((v) => `<button data-v="${v[0]}">${ico(v[2])}<span>${v[1]}</span></button>`).join("");
+const montarNav = () => { $("nav").innerHTML = TELAS.map((v) => `<button data-v="${v[0]}">${ico(v[2])}<span>${v[1]}</span></button>`).join(""); };
+montarNav();
 function ir(v) {
   if (!TELAS.some((x) => x[0] === v)) v = "biblioteca";
   $("app").dataset.view = v;
@@ -2268,6 +2329,39 @@ $("nav").addEventListener("click", (e) => {
 });
 addEventListener("hashchange", () => ir(location.hash.slice(1)));
 
+
+/* ===================== Trocar idioma sem recarregar (a música continua) ===================== */
+const TEXTOS_FIXOS = [];
+(function marcar() {
+  const visitar = (o) => {
+    if (!o || typeof o !== "object") return;
+    for (const k of Object.keys(o)) {
+      const v = o[k];
+      if (typeof v === "string") { const pt = chavePt(v); if (pt !== undefined) TEXTOS_FIXOS.push([o, k, pt]); }
+      else if (typeof v === "object" && typeof v !== "function") visitar(v);
+    }
+  };
+  [FONTES, BASE, CAMPOS, DESTAQUES, ORDENS, EQ_P, AUTO, ERAS, ERA_DESC, VISUAIS, GALERIA, TELAS].forEach(visitar);
+})();
+function mudarIdioma(l) {
+  if (!IDIOMAS[l] || l === LANG) return;
+  const ctxPt = chavePt(contexto), bibPt = chavePt(listaBib.ctx);
+  LANG = l; cfg.lang = l; salvarCfg();
+  document.documentElement.lang = l === "en" ? "en" : "pt-BR";
+  for (const [o, k, pt] of TEXTOS_FIXOS) o[k] = T(pt);
+  if (ctxPt !== undefined) contexto = T(ctxPt);
+  if (bibPt !== undefined) listaBib.ctx = T(bibPt);
+  if (folha) fecharFolha();
+  traduzirPagina(document.body);
+  montarNav();
+  const v = $("app").dataset.view;
+  renderBib(); renderPl(); renderTemas(); renderLetra(); paint();
+  if (v === "voce") renderVoce();
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+  const nb = document.querySelector(`nav button[data-v="${v}"]`); if (nb) nb.setAttribute("aria-current", "page");
+  toast(T("Idioma: {0}", IDIOMAS[l]));
+}
+
 /* ===================== Controles ===================== */
 $("seek").addEventListener("input", () => { arrastandoSeek = true; const x = cur(); if (x) $("cur").textContent = fmt(($("seek").value / 1000) * x.d); });
 $("seek").addEventListener("change", (e) => { arrastandoSeek = false; const x = cur(); if (x) buscarSeg((e.target.value / 1000) * x.d); });
@@ -2282,6 +2376,14 @@ $("mini-open").addEventListener("click", () => ir("tocando"));
 $("b-fav").addEventListener("click", () => cur() && alternarFav(cur().id));
 $("mini-fav").addEventListener("click", () => cur() && alternarFav(cur().id));
 $("b-timer").addEventListener("click", abrirSono);
+$("b-menos10").addEventListener("click", () => buscarSeg(posAtual() - 10));
+$("b-mais10").addEventListener("click", () => buscarSeg(posAtual() + 10));
+$("b-menos10").innerHTML = ico("menos10", 24); $("b-mais10").innerHTML = ico("mais10", 24);
+$("b-vel").addEventListener("click", () => {
+  cfg.vel = VELS[(VELS.indexOf(+cfg.vel || 1) + 1) % VELS.length]; salvarCfg(); aplicarVel();
+  const x = cur(); toast(x && x.demo ? T("Velocidade {0}×. As músicas de exemplo tocam sempre em 1×", decimal(String(cfg.vel))) : T("Velocidade {0}×", decimal(String(cfg.vel))));
+  if ($("app").dataset.view === "temas") renderTemas();
+});
 $("b-eq").addEventListener("click", abrirEQ);
 $("b-shuf").innerHTML = ico("shuf"); $("b-prev").innerHTML = ico("prev", 28); $("b-next").innerHTML = ico("next", 28); $("mini-next").innerHTML = ico("next", 22);
 
@@ -2316,7 +2418,7 @@ addEventListener("drop", async (e) => {
 /* ===================== Início ===================== */
 traduzirPagina(document.body);
 APP.dataset.leve = cfg.leve ? "1" : "";
-aplicarVolume(true);
+aplicarVolume(true); aplicarVel();
 aplicarTema(); aplicarFundo(); aplicarVisual(); renderLetra();
 ir(location.hash.slice(1) || "biblioteca");
 renderBib(); renderTemas(); paint();
