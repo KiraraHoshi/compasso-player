@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#F1EFF6">
+<meta name="description" content="Player de música offline com temas customizáveis. Suas músicas ficam só no seu aparelho.">
+<title>Compasso Player</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app" id="app" data-view="biblioteca">
+  <div class="amb" id="amb"><i id="ambA"></i><i id="ambB"></i></div>
+  <main id="main">
+    <section class="view" id="v-biblioteca" aria-labelledby="h-bib">
+      <div class="row">
+        <div class="grow"><h1 id="h-bib">Biblioteca</h1><p class="sub" id="count"></p></div>
+        <button class="btn" id="b-import">Importar</button>
+      </div>
+      <input class="search" id="q" type="search" placeholder="Buscar música, artista ou álbum" aria-label="Buscar na biblioteca" autocomplete="off">
+      <div class="seg" id="seg">
+        <button data-tab="musicas">Músicas</button><button data-tab="albuns">Álbuns</button><button data-tab="artistas">Artistas</button>
+      </div>
+      <div id="lib" class="stack"></div>
+    </section>
+
+    <section class="view" id="v-tocando" aria-label="Tocando agora">
+      <p class="sub clip" id="np-ctx">Tocando agora</p>
+      <div class="dial"><svg viewBox="0 0 200 200" id="ticks" aria-hidden="true"></svg><div class="disc" id="disc"></div></div>
+      <div class="meta"><h1 class="clip" id="np-t"></h1><p class="sub clip" id="np-a"></p></div>
+      <div class="seek">
+        <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Posição da música">
+        <div class="times"><span id="cur">0:00</span><span id="tot">0:00</span></div>
+      </div>
+      <div class="ctl">
+        <button class="ic" id="b-shuf" aria-label="Ordem aleatória"></button>
+        <button class="ic" id="b-prev" aria-label="Anterior"></button>
+        <button class="ic big" id="b-play" aria-label="Tocar"></button>
+        <button class="ic" id="b-next" aria-label="Próxima"></button>
+        <button class="ic rep" id="b-rep" aria-label="Repetir"></button>
+      </div>
+      <div class="np-bar">
+        <button class="pill" id="b-fila"></button>
+        <button class="pill" id="b-npmais" aria-label="Mais opções da música"></button>
+      </div>
+    </section>
+
+    <section class="view" id="v-playlists" aria-label="Playlists"><div id="pl" class="stack"></div></section>
+    <section class="view" id="v-temas" aria-label="Temas"><div id="tm" class="stack"></div></section>
+  </main>
+
+  <div class="mini" id="mini">
+    <button class="tp" id="mini-open" aria-label="Abrir tocando agora"><span id="mini-th"></span><span class="grow"><span class="t clip" id="mini-t"></span><span class="sub clip" id="mini-a"></span></span></button>
+    <button class="ic" id="mini-play" aria-label="Tocar"></button>
+    <button class="ic" id="mini-next" aria-label="Próxima"></button>
+  </div>
+  <nav id="nav" aria-label="Seções"></nav>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-t" hidden>
+  <div class="grab"></div>
+  <div class="sheet-h"><h2 class="grow clip" id="sheet-t"></h2><button class="ic sm" id="sheet-x" aria-label="Fechar"></button></div>
+  <div class="sheet-b" id="sheet-b"></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="drop" id="drop" hidden>Solte as músicas para importar</div>
+<input id="files" type="file" accept="audio/*,.mp3,.flac,.m4a,.aac,.ogg,.oga,.opus,.wav,.webm" multiple hidden>
+<input id="folder" type="file" webkitdirectory multiple hidden>
+<input id="tema-file" type="file" accept=".json,application/json" hidden>
+
+<script src="js/tags.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
