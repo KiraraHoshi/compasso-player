@@ -10,6 +10,11 @@ let LANG = (function () {
 })();
 document.documentElement.lang = LANG === "en" ? "en" : "pt-BR";
 const EN = {
+ "As músicas ficam guardadas só neste aparelho. Letras em .lrc com o mesmo nome da música entram junto.": "Your music is stored only on this device. .lrc lyrics with the same name as a song come along.",
+ " neste aparelho.": " on this device.",
+ " neste navegador.": " in this browser.",
+ "Um player de música que funciona sem internet, sem conta e sem anúncios. Dois passos e está pronto.": "A music player that works without internet, accounts or ads. Two steps and you're set.",
+ "Em Ajustes você cria seus temas, muda o mostrador e liga o som de época (rádio, vinil, fita e CD).": "In Settings you can create themes, change the dial and turn on era sound (radio, vinyl, tape and CD).",
  "Cores do LED": "LED colors",
  "Arte da capa": "Cover art",
  "Cores da capa": "Cover colors",
