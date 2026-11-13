@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.11.0
+- Layout adaptativo: o app acompanha o tamanho da tela aos poucos. No PC ele ocupa a janela toda, com barra lateral, conteúdo largo, mini player de ponta a ponta e o Tocando agora em duas colunas (capa à esquerda, controles à direita). Com o celular deitado, o Tocando agora também fica em duas colunas e a navegação vai para a lateral. Em pé, a capa cresce de acordo com a altura do celular.
+- A tela cheia continua igual, em uma coluna com o relógio grande.
+
 ## 1.10.0
 - Capa quadrada com cantos arredondados, para quem curte a arte do álbum. Agora é o padrão (Ajustes › Tocando agora › Formato da capa), e a Aura e o Espectro seguem o contorno quadrado. No Vinil a capa continua redonda.
 - "Cores do visual seguem a capa da música" passa a vir ligado.
