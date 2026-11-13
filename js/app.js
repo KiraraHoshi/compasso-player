@@ -72,7 +72,7 @@ const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i>
 
 /* ===================== Ajustes e temas ===================== */
 const cfg = Object.assign(
-  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false },
+  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false, corCapa: false },
   guardado.get("compasso.cfg", {})
 );
 const salvarCfg = () => guardado.set("compasso.cfg", cfg);
@@ -108,8 +108,39 @@ const contraste = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, 
 const escuro = (t) => lum(t.fundo) < 0.2;
 
 let corViz = "#6A4BD8";
+/* Cor dos visuais: a do tema ou, com a opção ligada, uma cor tirada da capa (ajustada para dar contraste) */
+function paraRgb(s) {
+  s = String(s || "").trim(); let m;
+  if ((m = s.match(/^#([0-9a-f]{6})$/i))) return [0, 2, 4].map((i) => parseInt(m[1].substr(i, 2), 16));
+  if ((m = s.match(/^rgb\(\s*(\d+)\D+(\d+)\D+(\d+)/i))) return [+m[1], +m[2], +m[3]];
+  if ((m = s.match(/^hsl\(\s*([\d.]+)\D+([\d.]+)%\D+([\d.]+)%/i))) return hslRgb(+m[1] / 360, +m[2] / 100, +m[3] / 100);
+  return null;
+}
+function rgbHsl([r, g, b]) {
+  r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; let h = 0, s = 0;
+  if (mx !== mn) { const d = mx - mn; s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6; }
+  return [h, s, l];
+}
+function hslRgb(h, s, l) {
+  const f = (n) => { const k = (n + h * 12) % 12, a = s * Math.min(l, 1 - l); return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); };
+  return [f(0), f(8), f(4)];
+}
+const hex = (rgb) => "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("");
+function corDaCapa(x, t) {
+  if (!x || !x.c) return null;
+  const cs = x.c.map(paraRgb).filter(Boolean).map(rgbHsl).sort((a, b) => b[1] - a[1]);
+  const c = cs[0]; if (!c || c[1] < 0.12) return null; // capa em preto e branco: fica a cor do tema
+  const e = escuro(t), l = e ? Math.min(0.76, Math.max(0.6, c[2])) : Math.min(0.48, Math.max(0.34, c[2]));
+  return hex(hslRgb(c[0], Math.max(0.5, c[1]), l));
+}
+function atualizarCorViz(t) {
+  t = t || temaAtual();
+  let x = null; try { x = cfg.corCapa ? cur() : null; } catch (e) { /* ainda carregando */ }
+  corViz = (x && corDaCapa(x, t)) || t.destaque;
+  document.documentElement.style.setProperty("--viz", corViz);
+}
 function aplicar(t) {
-  corViz = t.destaque;
+  atualizarCorViz(t);
   const r = document.documentElement.style, e = escuro(t), f = FONTES[t.fonte] || FONTES.padrao;
   const set = (k, v) => r.setProperty(k, v);
   set("--bg", t.fundo); set("--card", t.card); set("--text", t.texto); set("--muted", t.suave);
@@ -467,7 +498,7 @@ function posAtual() {
   if (!x.demo) return el && el.dataset.id === x.id ? el.currentTime : pos;
   return playing && ctx ? posBase + (ctx.currentTime - inicioT) : pos;
 }
-function aoTrocar(x) { luz(x.c); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
+function aoTrocar(x) { luz(x.c); atualizarCorViz(); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
 function carregar(auto) {
   const x = cur();
   if (!x) { playing = false; paint(); return; }
@@ -665,7 +696,7 @@ function definirLeve(on) {
   if (APP.dataset.view === "temas" && !editando) renderTemas();
   toast(cfg.leve ? T("Modo leve ligado") : T("Modo leve desligado"));
 }
-let acesas = -1, arrastandoSeek = false, pulso = 0.4, batida = 0, alvoBatida = 0, media = 0, ultimaBatida = 0, ultimoSeg = -1;
+let acesas = -1, arrastandoSeek = false, pulso = 0.4, graveEnv = 0, gravePiso = 0, escDisco = 1, ultEsc = "", batida = 0, alvoBatida = 0, media = 0, ultimaBatida = 0, ultimoSeg = -1;
 const nivel = new Float32Array(60);
 const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function quadro() {
@@ -699,7 +730,9 @@ function quadro() {
     const g = (bins[0] + bins[1] + bins[2] + bins[3]) / 4, agora = performance.now();
     if (g > media * 1.3 && g > 90 && agora - ultimaBatida > 450) { alvoBatida = 1; ultimaBatida = agora; }
     media += (g - media) * 0.06;
-  } else if (!playing) alvo = 0.25;
+    // pulso da capa: segue a força dos graves acima do nível médio da música, para pulsar mesmo em músicas altas
+    const gv = g / 255; graveEnv += (gv - graveEnv) * (gv > graveEnv ? 0.35 : 0.1); gravePiso += (graveEnv - gravePiso) * 0.015;
+  } else { if (!playing) alvo = 0.25; graveEnv *= 0.92; }
   alvoBatida *= 0.93; batida += (alvoBatida - batida) * 0.22;
   const naTela = APP.dataset.view === "tocando", leve = !!cfg.leve;
   // os tracinhos só se mexem quando o mostrador de relógio está na tela
@@ -718,6 +751,9 @@ function quadro() {
     const pv = pulso.toFixed(2), bv = batida.toFixed(2);
     if (pv !== ultPulso) { ultPulso = pv; AMB.style.setProperty("--pulse", pv); DIAL.style.setProperty("--pulse", pv); }
     if (bv !== ultBatida) { ultBatida = bv; DIAL.style.setProperty("--beat", bv); }
+    const k = cfg.reage ? cfg.batF : 0, env = Math.max(0, Math.min(1, (graveEnv - gravePiso * 0.88) / Math.max(0.12, 1 - gravePiso * 0.88)));
+    escDisco = 1 + k * (0.07 * env + 0.03 * batida);
+    const ev = escDisco.toFixed(3); if (ev !== ultEsc) { ultEsc = ev; DIAL.style.setProperty("--ds", ev); }
   }
   if (naTela && playing) medirQuadro();
   if (!leve || (quadros++ & 1)) desenharViz();
@@ -1215,6 +1251,7 @@ function renderTemas() {
       <p class="note">${T("A imagem fica só neste aparelho e não entra no JSON do tema.")}</p></div>
     <div class="card stack"><h2>${T("Tocando agora")}</h2>
       <p class="t">${T("Visual do mostrador")}</p><div class="chips" role="group" aria-label="${T("Visual do mostrador")}">${Object.entries(VISUAIS).map(([k, n]) => `<button data-vis="${k}" aria-pressed="${cfg.visual === k}" class="${cfg.visual === k ? "on" : ""}">${n}</button>`).join("")}</div>
+      ${tg("corCapa", T("Cores do visual seguem a capa da música"))}
       <p class="t">${T("Época do som")}</p><div class="chips" role="group" aria-label="${T("Época do som")}">${Object.entries(ERAS).map(([k, [n]]) => `<button data-epoca="${k}" aria-pressed="${String(cfg.era) === k}" class="${String(cfg.era) === k ? "on" : ""}">${n}</button>`).join("")}</div>
       <p class="note">${ERA_DESC[cfg.era] || ERA_DESC.off} ${T("Cada época também troca o visual, e você pode escolher outro depois.")}</p>
       ${cfg.era !== "off" && cfg.era !== "90" ? tg("eraRuido", T("Chiado e estalos")) : ""}</div>
@@ -1306,7 +1343,7 @@ $("tm").addEventListener("click", (e) => {
     if (k === "nivelar" && ctx) montarFiltros();
     if (k === "eraRuido") ajustarRuido();
     if (k === "coracoes") { renderBib(); renderPl(); }
-    if (k === "aura") ondinhas = [];
+    if (k === "corCapa") atualizarCorViz();
     renderTemas(); return;
   }
   if (t.closest("[data-alternar-leve]")) return definirLeve(!cfg.leve);
@@ -1916,7 +1953,7 @@ function restaurarBackup(o) {
   for (const t of o.temas || []) { try { const v = validarTema(t); if (!meusTemas.some((m) => m.nome === v.nome)) { v.id = uid("t"); meusTemas.push(v); } } catch (err) { /* tema inválido: pula */ } }
   salvarTemas();
   const aj = o.ajustes || {};
-  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "leve", "coracoes", "aura"]) if (k in aj) cfg[k] = aj[k];
+  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "leve", "coracoes", "corCapa"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
   if (aj.ajustes) cfg.ajustes = aj.ajustes;
@@ -2240,7 +2277,7 @@ function desenharEspectro(c, W, vivo) {
     espNiv[i] += (alvo - espNiv[i]) * (alvo > espNiv[i] ? 0.6 : 0.16);
   }
   const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0;
-  const R = W * 0.34 * (1 + pulso * 0.02 * k + batida * k * 0.055) + W * 0.01, A = W * 0.1 * (0.45 + k * 0.75), N = n * 2;
+  const R = W * 0.34 * escDisco + W * 0.01, A = W * 0.1 * (0.45 + k * 0.75), N = n * 2;
   desenharPoeira(c, W, R, k, graves);
   // picos: uma linha quebrada (não suavizada), espelhada entre a esquerda e a direita
   c.beginPath();
@@ -2292,7 +2329,7 @@ function desenharAura(c, W, vivo) {
   }
   const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0;
   // o raio acompanha o leve "pulo" da capa no CSS
-  const R = W * 0.34 * (1 + pulso * 0.02 * k + batida * k * 0.055) + W * 0.012, A = W * 0.12 * (0.45 + k * 0.75), N = n * 2, pts = [];
+  const R = W * 0.34 * escDisco + W * 0.012, A = W * 0.12 * (0.45 + k * 0.75), N = n * 2, pts = [];
   desenharPoeira(c, W, R, k, graves);
   for (let j = 0; j < N; j++) {
     const nv = auraNiv[j < n ? j : N - 1 - j], r = R + Math.pow(nv, 2) * A, ang = (j / N) * Math.PI * 2 - Math.PI / 2;
@@ -2370,7 +2407,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.8.2";
+const VERSAO = "1.9.0";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });

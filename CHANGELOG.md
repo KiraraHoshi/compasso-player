@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.9.0
+- A capa pulsa com os graves da música o tempo todo, e não só nas batidas fortes. A Aura e o Espectro se movem junto com ela.
+- Nova opção "Cores do visual seguem a capa da música" (Ajustes › Tocando agora): os tracinhos, a Aura, o Espectro, o Neon e as barras pegam uma cor da capa, ajustada para combinar com o tema.
+
 ## 1.8.2
 - Aura virou um visual próprio: uma forma macia envolve a capa, com poeira flutuando e uma onda discreta nas batidas, sem os tracinhos do relógio. O Relógio voltou a ficar limpo, sem o anel encostando nos tracinhos.
 

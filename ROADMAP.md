@@ -59,6 +59,10 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - Reprodução em segundo plano sem cortes.
 - Widgets na tela inicial, modo condução e Android Auto.
 
+## Pacote pago: visuais do mostrador (ideia)
+
+Os visuais de hoje (Relógio, Vinil, Aura, Espectro, Neon, Cassete, Rádio, Barras e Onda) continuam grátis. Os modelos novos podem entrar num pacote pago, com compra única e offline. Exemplos: galáxia de partículas, túnel, anel duplo, chuva de luz e visuais por época.
+
 ## Pacote pago: épocas (compra única)
 
 Cada época muda o visual e o som juntos. Tudo funciona offline, com o processamento de áudio do próprio aparelho.
