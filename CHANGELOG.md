@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.8.0
+- Dois visuais novos no mostrador: Espectro (anel fino em volta da capa com picos para fora e poeira que acelera nas batidas) e Neon (onda espelhada com brilho, mais forte no centro).
+
 ## 1.7.1
 - Aura: no Relógio e no Vinil, um anel suave em volta da capa respira com a música, e cada batida forte solta uma onda discreta. Segue a "Força da batida", desliga em Ajustes › Efeitos e fica de fora no modo leve.
 

@@ -255,7 +255,8 @@ textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
 .hora{display:none;font-family:var(--display);font-weight:700;font-size:clamp(40px,9vw,84px);font-variant-numeric:tabular-nums;line-height:1}
 .gira,.selo{position:absolute;inset:0;display:grid;place-items:center;border-radius:50%}
 #viz,.cena{position:absolute;inset:0;width:100%;height:100%;display:none}
-.app[data-visual="barras"] #viz,.app[data-visual="onda"] #viz,.app[data-visual="relogio"] #viz,.app[data-visual="vinil"] #viz{display:block}
+.app[data-visual="barras"] #viz,.app[data-visual="onda"] #viz,.app[data-visual="relogio"] #viz,.app[data-visual="vinil"] #viz,.app[data-visual="espectro"] #viz,.app[data-visual="neon"] #viz{display:block}
+.app[data-visual="espectro"] #ticks,.app[data-visual="neon"] :is(#ticks,.disc){display:none}
 .app[data-leve="1"]:is([data-visual="relogio"],[data-visual="vinil"]) #viz{display:none}
 #viz{pointer-events:none}
 .app[data-visual="cassete"] .cena,.app[data-visual="radio"] .cena{display:block}

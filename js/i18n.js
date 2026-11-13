@@ -10,6 +10,8 @@ let LANG = (function () {
 })();
 document.documentElement.lang = LANG === "en" ? "en" : "pt-BR";
 const EN = {
+ "Espectro": "Spectrum",
+ "Neon": "Neon",
  "Aura em volta da capa": "Glow ring around the cover",
  "Velocidade {0}×. Toque para mudar": "Speed {0}×. Tap to change",
  "Continuando de {0}": "Resuming from {0}",
