@@ -2305,11 +2305,18 @@ let nivelViz = new Float32Array(28);
 /* Capa quadrada de cantos arredondados: a borda é uma superelipse, e a Aura e o Espectro seguem esse contorno */
 let capaQuad = false;
 const SE_N = 6, LADO_Q = 0.32; // meia largura da capa quadrada, em fração do mostrador
-const seR = (ang) => { const co = Math.abs(Math.cos(ang)), si = Math.abs(Math.sin(ang)); return 1 / Math.pow(Math.pow(co, SE_N) + Math.pow(si, SE_N), 1 / SE_N); };
+// distância do centro até a borda de um quadrado de cantos arredondados (o mesmo do CSS: raio = 24% do lado), em frações da meia largura
+const RC_Q = 0.48;
+const seR = (ang) => {
+  const dx = Math.abs(Math.cos(ang)), dy = Math.abs(Math.sin(ang)), m = Math.max(dx, dy), t = 1 / m, o = Math.min(dx, dy) * t;
+  if (o <= 1 - RC_Q) return t; // bate no lado reto
+  const cc = 1 - RC_Q, dc = (dx + dy) * cc; // bate no canto arredondado (círculo de centro (cc, cc))
+  return dc + Math.sqrt(Math.max(0, dc * dc - 2 * cc * cc + RC_Q * RC_Q));
+};
 const baseR = (W, ang, off) => (capaQuad ? W * LADO_Q * escDisco * seR(ang) : W * 0.34 * escDisco) + off;
 function contornoCapa(c, W, cx, off, inverso) { // contorno da capa (mais um afastamento), como caminho
   if (!capaQuad) { const r = W * 0.34 * escDisco + off; c.moveTo(cx + r, cx); c.arc(cx, cx, r, 0, Math.PI * 2, !!inverso); return; }
-  const N = 96;
+  const N = 160;
   for (let j = 0; j <= N; j++) {
     const ang = ((inverso ? N - j : j) / N) * Math.PI * 2, r = baseR(W, ang, off);
     const x = cx + Math.cos(ang) * r, y = cx + Math.sin(ang) * r; if (j) c.lineTo(x, y); else c.moveTo(x, y);
@@ -2380,12 +2387,12 @@ function desenharEspectro(c, Wc, vivo) {
   // picos: uma linha quebrada (não suavizada), espelhada entre a esquerda e a direita
   c.beginPath();
   for (let j = 0; j <= N; j++) {
-    const jj = j % N, ang = (jj / N) * Math.PI * 2 - Math.PI / 2, nv = espNiv[jj < n ? jj : N - 1 - jj], r = Math.min(Wc / 2 - 3, baseR(W, ang, W * 0.01) + Math.pow(nv, 3) * A);
+    const jj = j % N, ang = (jj / N) * Math.PI * 2 - Math.PI / 2, nv = espNiv[jj < n ? jj : N - 1 - jj], r = Math.min(Wc / 2 - 3, baseR(W, ang, 0) + Math.pow(nv, 3) * A);
     const x = cx + Math.cos(ang) * r, y = cx + Math.sin(ang) * r; if (j) c.lineTo(x, y); else c.moveTo(x, y);
   }
   c.lineJoin = "miter"; c.globalAlpha = 0.07; c.fill();
   c.globalAlpha = 0.85; c.lineWidth = W * 0.003; c.stroke();
-  c.globalAlpha = 0.55 + batida * 0.4 * k; c.lineWidth = W * (0.005 + batida * 0.004 * k); c.beginPath(); contornoCapa(c, W, cx, W * 0.01); c.stroke();
+  c.globalAlpha = 0.55 + batida * 0.4 * k; c.lineWidth = W * (0.005 + batida * 0.004 * k); c.beginPath(); contornoCapa(c, W, cx, 0); c.stroke();
   c.globalAlpha = 1;
 }
 /* Neon: onda espelhada de ponta a ponta, mais forte no centro, com brilho */
@@ -2432,7 +2439,7 @@ function curvaAura(c, niv, W, off, A, cx, giro, buraco) {
     const p0 = pts[j % N], p1 = pts[(j + 1) % N], mx = (p0[0] + p1[0]) / 2, my = (p0[1] + p1[1]) / 2;
     if (j === 0) c.moveTo(mx, my); else c.quadraticCurveTo(p0[0], p0[1], mx, my);
   }
-  if (buraco) contornoCapa(c, W, cx, -1, true); // não pinta por cima da capa
+  if (buraco) contornoCapa(c, W, cx, -0.5, true); // não pinta por cima da capa
 }
 function desenharAura(c, Wc, vivo) {
   const W = Wc / FOLGA_VIZ, n = AURA_N, k = cfg.reage ? cfg.batF : 0.3, cx = Wc / 2; // a tela de desenho é maior que o mostrador
@@ -2458,7 +2465,7 @@ function desenharAura(c, Wc, vivo) {
   desenharPoeira(c, W, R, k, graves, Wc);
   c.lineJoin = "round"; c.fillStyle = c.strokeStyle = tinta;
   // ecos atrás: maiores, mais transparentes e atrasados
-  const off = W * 0.01;
+  const off = 0;
   curvaAura(c, auraEco2, W, off, A * 1.25, cx, -auraGiro * 0.6, true); c.globalAlpha = 0.08; c.fill("evenodd");
   curvaAura(c, auraEco1, W, off, A * 1.12, cx, auraGiro * 0.5, true); c.globalAlpha = 0.12; c.fill("evenodd");
   curvaAura(c, auraEco1, W, off, A * 1.12, cx, auraGiro * 0.5); c.globalAlpha = 0.3; c.lineWidth = W * 0.003; c.stroke();
@@ -2474,7 +2481,7 @@ function desenharAura(c, Wc, vivo) {
   c.lineWidth = W * 0.005;
   for (let i = ondinhas.length - 1; i >= 0; i--) {
     const t = (ondinhas[i] += 0.022 * fqV); if (t >= 1) { ondinhas.splice(i, 1); continue; }
-    c.globalAlpha = 0.3 * (1 - t) * k; c.beginPath(); contornoCapa(c, W, cx, W * 0.01 + t * W * 0.14); c.stroke();
+    c.globalAlpha = 0.3 * (1 - t) * k; c.beginPath(); contornoCapa(c, W, cx, t * W * 0.14); c.stroke();
   }
   c.globalAlpha = 1;
 }
@@ -2533,7 +2540,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.11.2";
+const VERSAO = "1.11.3";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
