@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.14.1
+- LED com a arte da capa: os blocos apagados não aparecem mais de fundo, nem com a música pausada. A arte só surge nos blocos que sobem.
+- LED: degradê na diagonal, igual ao da Aura. No modo Cores da capa ele pinta o painel, e no modo Arte da capa ele se mistura à arte para combinar com o resto.
+
 ## 1.14.0
 - LED com escolha de cores (Ajustes › Tocando agora, quando o LED está escolhido):
   - **Arte da capa** (padrão): a capa vira um mosaico nos blocos. Os apagados mostram a arte bem fraquinha, e os acesos brilham com a cor dela.

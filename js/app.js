@@ -2427,13 +2427,16 @@ function desenharAnel(c, Wc, vivo) {
   c.globalAlpha = 1; c.lineCap = "butt";
 }
 /* Cores do LED: clássico (azul ao vermelho), cores da capa, cores do tema ou a própria arte da capa em mosaico */
-let ledArte = null, ledPal = null, ledId = null;
+let ledArte = null, ledPal = null, ledId = null, ledGrad = null;
 const mistura = (a, b, t) => { const x = paraRgb(a) || [128, 128, 128], y = paraRgb(b) || x; return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(",")})`; };
 async function prepararLed(x) {
   if (!x) return; const t = temaAtual(), chave = x.id + "|" + t.id;
   if (ledId === chave) return; ledId = chave; ledArte = null; ledPal = null;
   const p = await paletaDaCapa(x, t);
   ledPal = p.neutro ? NEUTRO(t).slice().reverse() : [ajustarL(p.h2, t, 0.4), ajustarL(p.h1, t)];
+  // degradê na diagonal, como o da Aura: cor principal em cima à esquerda, a segunda embaixo à direita
+  ledGrad = new Array(LED_N * LED_S);
+  for (let j = 0; j < LED_S; j++) for (let i = 0; i < LED_N; i++) ledGrad[j * LED_N + i] = mistura(ledPal[1], ledPal[0], Math.min(1, Math.max(0, ((i / (LED_N - 1)) + (1 - j / (LED_S - 1))) / 2 * 1.4 - 0.2)));
   if (x.capaBlob) try {
     const bm = await createImageBitmap(x.capaBlob), cv = document.createElement("canvas"); cv.width = LED_N; cv.height = LED_S;
     const g = cv.getContext("2d"), alvo = LED_N / LED_S, w = bm.width, h = bm.height;
@@ -2442,7 +2445,7 @@ async function prepararLed(x) {
     const d = g.getImageData(0, 0, LED_N, LED_S).data, arte = new Array(LED_N * LED_S);
     for (let j = 0; j < LED_S; j++) for (let i = 0; i < LED_N; i++) {
       const k = ((LED_S - 1 - j) * LED_N + i) * 4, hsl = rgbHsl([d[k], d[k + 1], d[k + 2]]); // linha 0 é a de baixo
-      arte[j * LED_N + i] = hex(hslRgb(hsl[0], Math.min(1, hsl[1] * 1.15), Math.min(0.85, Math.max(0.22, hsl[2] * 1.12))));
+      arte[j * LED_N + i] = mistura(hex(hslRgb(hsl[0], Math.min(1, hsl[1] * 1.15), Math.min(0.85, Math.max(0.22, hsl[2] * 1.12)))), ledGrad[j * LED_N + i], 0.35); // a arte puxada para o degradê
     }
     if (cur() === x) ledArte = arte;
   } catch (e) { /* capa ilegível: fica o degradê */ }
@@ -2450,7 +2453,7 @@ async function prepararLed(x) {
 const corLedFileira = (j) => {
   const p = j / (LED_S - 1), m = cfg.ledCor;
   if (m === "tema") { const t = temaAtual(); return mistura(t.secundaria, t.destaque, p); }
-  if ((m === "capa" || m === "arte") && ledPal) return mistura(ledPal[0], ledPal[1], p);
+  if (m === "arte" && ledPal) return mistura(ledPal[0], ledPal[1], p);
   return LED_COR[j];
 };
 /* LED: equalizador clássico em blocos, do azul ao vermelho, com o pico caindo devagar e reflexo embaixo */
@@ -2465,12 +2468,13 @@ function desenharLed(c, W, vivo) {
     else if ((ledEspera[i] -= fqV) <= 0) ledPico[i] = Math.max(ledNiv[i], ledPico[i] - 0.012 * fqV);
   }
   const x0 = W * 0.03, larg = W * 0.94, base = W * 0.66, alt = W * 0.56, bw = larg / LED_N, vao = bw * 0.22, sh = alt / LED_S, sg = sh * 0.24;
-  const arte = cfg.ledCor === "arte" && ledArte;
-  if (arte) { // a capa vira um mosaico: os blocos apagados mostram a arte bem fraquinha, os acesos brilham com a cor dela
+  const arte = (cfg.ledCor === "arte" && ledArte) || (cfg.ledCor === "capa" && ledGrad); // os dois pintam bloco a bloco
+  if (arte) { // a capa vira um mosaico: cada bloco aceso mostra a cor daquele pedaço da arte (os apagados não aparecem)
     for (let j = 0; j < LED_S; j++) { const lim = (j + 0.5) / LED_S; for (let i = 0; i < LED_N; i++) {
-      c.fillStyle = arte[j * LED_N + i]; c.globalAlpha = ledNiv[i] >= lim ? 1 : 0.13;
+      if (ledNiv[i] < lim) continue;
+      c.fillStyle = arte[j * LED_N + i]; c.globalAlpha = 1; // (no modo Cores da capa, "arte" é o degradê)
       c.fillRect(x0 + i * bw + vao / 2, base - (j + 1) * sh + sg / 2, bw - vao, sh - sg);
-      if (j < 7 && ledNiv[i] >= lim) { c.globalAlpha = 0.2 * (1 - j / 7); c.fillRect(x0 + i * bw + vao / 2, base + j * sh * 0.8 + sg, bw - vao, sh * 0.8 - sg); }
+      if (j < 7) { c.globalAlpha = 0.2 * (1 - j / 7); c.fillRect(x0 + i * bw + vao / 2, base + j * sh * 0.8 + sg, bw - vao, sh * 0.8 - sg); }
     } }
   } else for (let j = 0; j < LED_S; j++) { // uma cor por fileira: poucas trocas de cor por quadro
     c.fillStyle = corLedFileira(j); const lim = (j + 0.5) / LED_S;
@@ -2632,7 +2636,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.14.0";
+const VERSAO = "1.14.1";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
