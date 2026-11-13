@@ -374,3 +374,7 @@ main{contain:content}
 /* Tela cheia continua em uma coluna, com o relógio em cima */
 .app[data-palco="1"] #v-tocando.on{display:flex}
 .app[data-palco="1"] .dial{width:min(78vw,52vh)}
+/* Títulos longos no Tocando agora: quebram em até duas linhas e nunca empurram a coluna para fora da tela */
+.np-meta{grid-template-columns:44px minmax(0,1fr) 44px}
+#v-tocando>*{min-width:0;max-width:100%}
+#v-tocando #np-t{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
