@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.9.1
+- A Aura ficou mais fluida, no estilo dos visualizadores tipo Trap Nation: reage na hora, a forma é suavizada como um líquido, duas camadas de eco acompanham com atraso e o conjunto gira devagar. O preenchimento não passa mais por cima da capa.
+
 ## 1.9.0
 - A capa pulsa com os graves da música o tempo todo, e não só nas batidas fortes. A Aura e o Espectro se movem junto com ela.
 - Nova opção "Cores do visual seguem a capa da música" (Ajustes › Tocando agora): os tracinhos, a Aura, o Espectro, o Neon e as barras pegam uma cor da capa, ajustada para combinar com o tema.
