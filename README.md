@@ -119,3 +119,11 @@ docs/               capturas de tela
 ## Licença
 
 MIT. Veja `LICENSE`.
+
+## App Android (em preparo)
+
+O mesmo app, empacotado com [Capacitor](https://capacitorjs.com/). Nada precisa ser instalado no PC: o GitHub monta o APK sozinho (veja `.github/workflows/android.yml`).
+
+- APK de teste: página de **Releases** › "Android (teste)". No celular, baixe o `.apk` e abra.
+- Pacote: `com.joah.orolon` · Desenvolvedor: Jo-ah
+- Para montar localmente (com Node e Android Studio): `npm install`, `npm run www`, `npx cap add android`, `npx cap open android`.
