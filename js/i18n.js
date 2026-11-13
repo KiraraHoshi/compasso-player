@@ -10,6 +10,11 @@ let LANG = (function () {
 })();
 document.documentElement.lang = LANG === "en" ? "en" : "pt-BR";
 const EN = {
+ "Cores do LED": "LED colors",
+ "Arte da capa": "Cover art",
+ "Cores da capa": "Cover colors",
+ "Cores do tema": "Theme colors",
+ "Clássico": "Classic",
  "LED": "LED",
  "Anel": "Ring",
  "Formato da capa": "Cover shape",
