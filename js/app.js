@@ -71,7 +71,7 @@ const I = {
 const NATIVO = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 // os plugins nativos podem estar em Capacitor.Plugins ou precisar ser registrados por nome (depende da versão)
 const pegarPlugin = (n) => { if (!NATIVO) return null; try { const P = window.Capacitor.Plugins; if (P && P[n]) return P[n]; if (window.Capacitor.registerPlugin) return window.Capacitor.registerPlugin(n); } catch (e) { /* sem o plugin */ } return null; };
-const PLUG = { MediaSession: pegarPlugin("MediaSession"), SystemBars: pegarPlugin("SystemBars") };
+const PLUG = { MediaSession: pegarPlugin("MediaSession"), SystemBars: pegarPlugin("SystemBars"), App: pegarPlugin("App") };
 if (NATIVO) document.documentElement.classList.add("nativo");
 // Chamadas para o lado nativo nunca podem derrubar o app: algumas devolvem promessa, outras um código, outras falham na hora
 function nat(f) { try { const r = f(); if (r && typeof r.catch === "function") r.catch(() => {}); return r; } catch (e) { return null; } }
@@ -1379,10 +1379,10 @@ function renderTemas() {
       <p class="note" id="espaco">${T("Calculando o espaço usado…")}</p>
       ${importadas().length ? `<div class="btns"><button class="btn danger sm" data-limparbib>${T("Apagar todas as músicas importadas")}</button></div>` : ""}
       ${NATIVO ? "" : `<p class="note">${T("Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita, ↑ e ↓ mudam o volume, M deixa mudo.")}</p>`}</div>
-    <div class="card stack"><h2>${T("Sobre")}</h2><p class="note">${T("Orolon Player {0}. Código aberto, sem anúncios e sem conta. Se o app te ajuda, apoiar o projeto mantém ele assim.", VERSAO)}</p>
+    <div class="card stack"><h2>${T("Sobre")}</h2><p class="note">${NATIVO ? T("Orolon Player {0}. Sem anúncios, sem conta e sem coleta de dados: tudo o que você guarda fica neste aparelho.", VERSAO) : T("Orolon Player {0}. Código aberto, sem anúncios e sem conta. Se o app te ajuda, apoiar o projeto mantém ele assim.", VERSAO)}</p>
       ${NATIVO ? "" : `<div class="btns"><a class="btn sm" href="https://github.com/sponsors/KiraraHoshi" target="_blank" rel="noopener">${ico("heartOn", 18)}${T("Apoiar o projeto")}</a><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player" target="_blank" rel="noopener">${T("Código no GitHub")}</a></div>`}
-      <div class="btns">${instalado() ? "" : `<button class="btn ghost sm" data-instalar>${T("Instalar como app")}</button>`}<button class="btn ghost sm" data-boasvindas>${T("Ver as boas-vindas")}</button></div>
-      ${NATIVO ? "" : `<p class="note">${T("Os dois botões de cima abrem o GitHub no navegador. O app em si não se conecta a nada.")}</p>`}</div>`;
+      <div class="btns">${instalado() ? "" : `<button class="btn ghost sm" data-instalar>${T("Instalar como app")}</button>`}<button class="btn ghost sm" data-boasvindas>${T("Ver as boas-vindas")}</button><a class="btn ghost sm" href="${linkPrivacidade()}" target="_blank" rel="noopener">${T("Política de privacidade")}</a></div>
+      ${NATIVO ? "" : `<p class="note">${T("Os dois botões de cima e o da política de privacidade abrem o navegador. O app em si não se conecta a nada.")}</p>`}</div>`;
   espaco();
 }
 async function espaco() {
@@ -1769,7 +1769,11 @@ setInterval(() => {
   if (playing && x) vigiarTroca(x, posAtual());
   if (statsSujo && agora - statsSalvo > 10000) salvarStats();
 }, 1000);
-addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && statsSujo) salvarStats(); atualizarTela(); });
+addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { if (statsSujo) salvarStats(); if (cur()) salvarSessao(); } // se o Android fechar o app em segundo plano, ele volta de onde parou
+  else if (playing && ctx && ctx.state === "suspended") ctx.resume().catch(() => {}); // depois de uma ligação, por exemplo
+  atualizarTela();
+});
 addEventListener("pagehide", () => { if (statsSujo) salvarStats(); });
 
 /* ===================== Tela: Você (perfil e estatísticas) ===================== */
@@ -2675,7 +2679,8 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.15.5";
+const VERSAO = "1.16.0";
+const linkPrivacidade = () => "https://kirarahoshi.github.io/compasso-player/privacidade.html" + (LANG === "en" ? "#en" : "#pt");
 let instalar = null;
 const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
@@ -2815,6 +2820,21 @@ $("b-vel").addEventListener("click", () => {
 });
 $("b-eq").addEventListener("click", abrirEQ);
 $("b-shuf").innerHTML = ico("shuf"); $("b-prev").innerHTML = ico("prev", 28); $("b-next").innerHTML = ico("next", 28); $("mini-next").innerHTML = ico("next", 22);
+
+/* Botão voltar do Android: desfaz um passo de cada vez, como nos outros apps; na tela inicial, só minimiza (a música continua) */
+function voltarUmPasso() {
+  if (folha) { fecharFolha(); return true; }
+  if (emPalco()) { alternarPalco(false); return true; }
+  if (modoLetra && APP.dataset.view === "tocando") { $("b-letra").click(); return true; }
+  const v = APP.dataset.view;
+  if (v === "biblioteca" && sel) { sel = null; renderBib(); return true; }
+  if (v === "biblioteca" && aberto) { aberto = null; renderBib(); return true; }
+  if (v === "playlists" && plAberta) { plAberta = null; renderPl(); return true; }
+  if (v === "temas" && editando) { editando = null; aplicarTema(); renderTemas(); return true; }
+  if (v !== "biblioteca") { ir("biblioteca"); return true; }
+  return false;
+}
+if (PLUG.App) nat(() => PLUG.App.addListener("backButton", () => { if (!voltarUmPasso()) nat(() => PLUG.App.minimizeApp()); }));
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && folha) return fecharFolha();

@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.16.0
+- App Android:
+  - O botão voltar desfaz um passo de cada vez: fecha menus, sai da tela cheia e da letra, volta de álbuns e playlists e, por fim, volta para a Biblioteca. Na Biblioteca, ele só minimiza o app, e a música continua.
+  - Se o Android fechar o app em segundo plano, ele volta na mesma música e no mesmo ponto.
+  - Depois de uma interrupção, como uma ligação, o som volta sozinho.
+  - Novo build da Google Play (.aab assinado), feito no GitHub quando você pedir.
+- Política de privacidade em português e inglês, com link em Ajustes › Sobre.
+
 ## 1.15.5
 - APK de teste: agora sempre assinado com a mesma chave, então cada versão nova instala por cima da anterior, sem desinstalar e sem perder nada.
 
