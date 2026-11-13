@@ -5,7 +5,7 @@ name: App Android
 on:
   push:
     branches: [main]
-    paths: ["index.html", "css/**", "js/**", "icons/**", "temas/**", "manifest.json", "android-assets/**", "capacitor.config.json", "package.json", "scripts/**", ".github/workflows/android.yml"]
+    paths: ["index.html", "css/**", "js/**", "icons/**", "temas/**", "manifest.json", "android-assets/**", "capacitor.config.json", "package.json", "scripts/**", "android-teste/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
 permissions:
@@ -47,6 +47,8 @@ jobs:
 
       - name: Gerar o APK de teste
         run: |
+          # chave fixa: cada APK de teste novo atualiza o anterior sem desinstalar
+          mkdir -p ~/.android && cp android-teste/teste-debug.keystore ~/.android/debug.keystore
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
