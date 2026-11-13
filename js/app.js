@@ -2120,7 +2120,7 @@ function escolherFundo() {
 /* ===================== Épocas (som) e visuais do mostrador ===================== */
 const ERAS = { off: [T("Desligado"), "relogio"], 60: [T("Anos 60"), "radio"], 70: [T("Anos 70"), "vinil"], 80: [T("Anos 80"), "cassete"], 90: [T("Anos 90"), "barras"] };
 const ERA_DESC = { off: T("Som original, sem efeito."), 60: T("Rádio valvulado: mono, abafado e com chiado."), 70: T("Vinil: graves quentes, estalos de agulha e leve oscilação."), 80: T("Fita cassete: chiado de fita e velocidade oscilando de leve."), 90: T("CD player: som limpo com graves e brilho reforçados.") };
-const VISUAIS = { relogio: T("Relógio"), vinil: T("Vinil"), cassete: T("Cassete"), radio: T("Rádio"), barras: T("Barras"), onda: T("Onda") };
+const VISUAIS = { relogio: T("Relógio"), vinil: T("Vinil"), espectro: T("Espectro"), neon: T("Neon"), cassete: T("Cassete"), radio: T("Rádio"), barras: T("Barras"), onda: T("Onda") };
 function curvaSat(k) { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = (i * 2) / n - 1; c[i] = Math.tanh(k * x) / Math.tanh(k); } return c; }
 function bufRuido(tipo) {
   const sr = ctx.sampleRate, n = sr * 4, b = ctx.createBuffer(1, n, sr), d = b.getChannelData(0);
@@ -2190,7 +2190,7 @@ let auraNiv = new Float32Array(36), ondinhas = [], ultOndinha = 0, auraLimpa = t
 const temAura = (v) => (v === "relogio" || v === "vinil") && cfg.reage && cfg.aura !== false && !cfg.leve && APP.dataset.letra !== "1";
 function desenharViz() {
   const v = cfg.visual, aura = temAura(v);
-  if ((v !== "barras" && v !== "onda" && !aura) || $("app").dataset.view !== "tocando") {
+  if ((v !== "barras" && v !== "onda" && v !== "espectro" && v !== "neon" && !aura) || $("app").dataset.view !== "tocando") {
     if (!aura && !auraLimpa && (v === "relogio" || v === "vinil")) { const cv = $("viz"); cv.getContext("2d").clearRect(0, 0, cv.width, cv.height); auraLimpa = true; }
     return;
   }
@@ -2199,6 +2199,8 @@ function desenharViz() {
   const c = cv.getContext("2d"), W = cv.width, vivo = playing && an && !calmo;
   c.clearRect(0, 0, W, W); c.fillStyle = c.strokeStyle = corViz;
   if (aura) { auraLimpa = false; return desenharAura(c, W, vivo); }
+  if (v === "espectro") return desenharEspectro(c, W, vivo);
+  if (v === "neon") return desenharNeon(c, W, vivo);
   if (v === "barras") {
     if (vivo) an.getByteFrequencyData(bins);
     const n = 28, vao = W * 0.012, bw = (W - vao * (n - 1)) / n;
@@ -2217,6 +2219,65 @@ function desenharViz() {
     for (let i = 0; i <= 96; i++) { const val = vivo ? (ondas[Math.floor((i * (ondas.length - 1)) / 96)] - 128) / 128 : 0, y = W / 2 + val * W * 0.42; if (i) c.lineTo((i / 96) * W, y); else c.moveTo(0, y); }
     c.stroke();
   }
+}
+/* Espectro: anel fino com picos para fora e poeira que acelera nas batidas */
+const espNiv = new Float32Array(110), poeira = Array.from({ length: 42 }, () => ({ a: Math.random() * Math.PI * 2, d: Math.random(), v: 0.6 + Math.random(), t: 0.5 + Math.random() * 1.5 }));
+function desenharEspectro(c, W, vivo) {
+  const n = espNiv.length, k = cfg.reage ? cfg.batF : 0.3, cx = W / 2;
+  if (vivo) an.getByteFrequencyData(bins);
+  for (let i = 0; i < n; i++) {
+    const p = i / (n - 1), alvo = vivo ? bins[3 + Math.round(150 * Math.pow(p, 1.3))] / 255 : 0;
+    espNiv[i] += (alvo - espNiv[i]) * (alvo > espNiv[i] ? 0.6 : 0.16);
+  }
+  const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0;
+  const R = W * 0.34 * (1 + pulso * 0.02 * k + batida * k * 0.055) + W * 0.01, A = W * 0.1 * (0.45 + k * 0.75), N = n * 2;
+  // poeira: sai do anel e se afasta devagar; nas batidas corre um pouco mais
+  const vel = 0.0016 * (1 + batida * 4 * k + graves);
+  c.fillStyle = corViz;
+  for (const q of poeira) {
+    q.d += vel * q.v; if (q.d > 1) { q.d = 0; q.a = Math.random() * Math.PI * 2; }
+    const r = R + q.d * (W * 0.5 - R), al = Math.sin(q.d * Math.PI) * 0.55;
+    c.globalAlpha = al; c.beginPath(); c.arc(cx + Math.cos(q.a) * r, cx + Math.sin(q.a) * r, W * 0.0035 * q.t, 0, Math.PI * 2); c.fill();
+  }
+  // picos: uma linha quebrada (não suavizada), espelhada entre a esquerda e a direita
+  c.beginPath();
+  for (let j = 0; j <= N; j++) {
+    const jj = j % N, nv = espNiv[jj < n ? jj : N - 1 - jj], r = R + Math.pow(nv, 3) * A, ang = (jj / N) * Math.PI * 2 - Math.PI / 2;
+    const x = cx + Math.cos(ang) * r, y = cx + Math.sin(ang) * r; if (j) c.lineTo(x, y); else c.moveTo(x, y);
+  }
+  c.lineJoin = "miter"; c.globalAlpha = 0.07; c.fill();
+  c.globalAlpha = 0.85; c.lineWidth = W * 0.003; c.stroke();
+  c.globalAlpha = 0.55 + batida * 0.4 * k; c.lineWidth = W * (0.005 + batida * 0.004 * k); c.beginPath(); c.arc(cx, cx, R, 0, Math.PI * 2); c.stroke();
+  c.globalAlpha = 1;
+}
+/* Neon: onda espelhada de ponta a ponta, mais forte no centro, com brilho */
+const neonNiv = new Float32Array(80);
+function desenharNeon(c, W, vivo) {
+  const n = neonNiv.length, k = cfg.reage ? cfg.batF : 0.3, cy = W / 2;
+  if (vivo) an.getByteFrequencyData(bins);
+  for (let i = 0; i < n; i++) {
+    const p = i / (n - 1), alvo = vivo ? bins[2 + Math.round(130 * Math.pow(p, 1.4))] / 255 : 0;
+    neonNiv[i] += (alvo - neonNiv[i]) * (alvo > neonNiv[i] ? 0.5 : 0.14);
+  }
+  const A = W * 0.17 * (0.5 + k * 0.7) * (1 + batida * 0.15 * k), M = n * 2 - 1, pts = [];
+  for (let j = 0; j <= M; j++) {
+    const i = Math.abs(n - 1 - j), borda = Math.sin((j / M) * Math.PI); // os graves no meio, a onda morre nas pontas
+    pts.push([(j / M) * W, Math.pow(neonNiv[i], 2.4) * A * borda + W * 0.003]);
+  }
+  const forma = (esc) => {
+    c.beginPath(); c.moveTo(0, cy);
+    for (const [x, h] of pts) c.lineTo(x, cy - h * esc);
+    for (let j = pts.length - 1; j >= 0; j--) c.lineTo(pts[j][0], cy + pts[j][1] * esc);
+    c.closePath();
+  };
+  c.fillStyle = corViz;
+  c.strokeStyle = corViz; c.lineJoin = "round";
+  c.globalAlpha = 0.1; forma(1.5); c.fill();
+  c.globalAlpha = 0.22; forma(1.18); c.fill();
+  c.globalAlpha = 0.5; forma(1); c.fill();
+  c.globalAlpha = 0.95; c.lineWidth = W * 0.004; c.stroke();
+  c.globalAlpha = 0.9; c.fillStyle = "#fff"; c.fillRect(0, cy - W * 0.0018, W, W * 0.0036);
+  c.globalAlpha = 1;
 }
 function desenharAura(c, W, vivo) {
   const n = auraNiv.length, k = cfg.batF, cx = W / 2;
@@ -2302,7 +2363,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.7.1";
+const VERSAO = "1.8.0";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
