@@ -1,0 +1,13 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Orologia Claro",
+  "fundo": "#F1EFF6",
+  "card": "#FFFFFF",
+  "texto": "#1D1830",
+  "suave": "#6B6580",
+  "destaque": "#6A4BD8",
+  "secundaria": "#A8743A",
+  "raio": 16,
+  "fonte": "padrao"
+}

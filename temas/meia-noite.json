@@ -1,0 +1,13 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Meia-noite",
+  "fundo": "#000000",
+  "card": "#101014",
+  "texto": "#F2F2F5",
+  "suave": "#9A9AA8",
+  "destaque": "#7C9BFF",
+  "secundaria": "#E3C98A",
+  "raio": 14,
+  "fonte": "sistema"
+}

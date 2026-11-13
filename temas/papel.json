@@ -1,0 +1,13 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Papel",
+  "fundo": "#F3F1EC",
+  "card": "#FFFEFB",
+  "texto": "#22201C",
+  "suave": "#6B665C",
+  "destaque": "#2F5FA8",
+  "secundaria": "#9A4B2F",
+  "raio": 6,
+  "fonte": "serifada"
+}
