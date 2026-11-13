@@ -1,6 +1,6 @@
 {
   "name": "orolon-player",
-  "version": "1.14.1",
+  "version": "1.16.0",
   "private": true,
   "description": "Orolon Player: player de música offline. Este arquivo só serve para montar o app Android com Capacitor (o site não usa).",
   "scripts": {
@@ -10,7 +10,8 @@
   "dependencies": {
     "@capacitor/android": "^8.0.0",
     "@capacitor/core": "^8.0.0",
-    "@capgo/capacitor-media-session": "^8.0.0"
+    "@capgo/capacitor-media-session": "^8.0.0",
+    "@capacitor/app": "^8.0.0"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
