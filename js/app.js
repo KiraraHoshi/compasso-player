@@ -2222,7 +2222,7 @@ function pintarCena() {
   } else C.innerHTML = "";
 }
 let nivelViz = new Float32Array(28);
-let auraNiv = new Float32Array(36), ondinhas = [], ultOndinha = 0, auraLimpa = true;
+let auraNiv = new Float32Array(64), ondinhas = [], ultOndinha = 0, auraLimpa = true;
 /* Aura: um anel suave em volta da capa (Relógio e Vinil) que respira com a música, sem exagero */
 const temAura = (v) => v === "aura" && APP.dataset.letra !== "1";
 function desenharViz() {
@@ -2319,30 +2319,57 @@ function desenharNeon(c, W, vivo) {
   c.globalAlpha = 0.9; c.fillStyle = "#fff"; c.fillRect(0, cy - W * 0.0018, W, W * 0.0036);
   c.globalAlpha = 1;
 }
-/* Aura: uma forma macia que envolve a capa e respira com a música (sem os tracinhos do relógio) */
-function desenharAura(c, W, vivo) {
-  const n = auraNiv.length, k = cfg.reage ? cfg.batF : 0.3, cx = W / 2;
-  if (vivo) an.getByteFrequencyData(bins);
-  for (let i = 0; i < n; i++) {
-    const p = i / (n - 1), alvo = vivo ? bins[2 + Math.round(64 * p * p)] / 255 : 0;
-    auraNiv[i] += (alvo - auraNiv[i]) * (alvo > auraNiv[i] ? 0.22 : 0.08); // sobe rápido, desce devagar
-  }
-  const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0;
-  // o raio acompanha o leve "pulo" da capa no CSS
-  const R = W * 0.34 * escDisco + W * 0.012, A = W * 0.12 * (0.45 + k * 0.75), N = n * 2, pts = [];
-  desenharPoeira(c, W, R, k, graves);
+/* Aura: uma forma macia que envolve a capa e flui com a música, no estilo dos visualizadores tipo Trap Nation:
+   reação rápida, forma suavizada entre vizinhos (parece líquido) e duas camadas de eco atrás que acompanham com atraso */
+const AURA_N = 64, auraEco1 = new Float32Array(AURA_N), auraEco2 = new Float32Array(AURA_N), auraTmp = new Float32Array(AURA_N);
+let auraGiro = 0;
+function curvaAura(c, niv, R, A, cx, giro, buraco) {
+  const n = niv.length, N = n * 2, pts = [];
   for (let j = 0; j < N; j++) {
-    const nv = auraNiv[j < n ? j : N - 1 - j], r = R + Math.pow(nv, 2) * A, ang = (j / N) * Math.PI * 2 - Math.PI / 2;
+    const nv = niv[j < n ? j : N - 1 - j], r = R + Math.pow(nv, 1.7) * A, ang = (j / N) * Math.PI * 2 - Math.PI / 2 + giro;
     pts.push([cx + Math.cos(ang) * r, cx + Math.sin(ang) * r]);
   }
-  c.lineJoin = "round"; c.fillStyle = c.strokeStyle = corViz; c.beginPath();
+  c.beginPath();
   for (let j = 0; j <= N; j++) { // curva suave pelos pontos médios
-    const a = pts[j % N], b = pts[(j + 1) % N], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
-    if (j === 0) c.moveTo(mx, my); else c.quadraticCurveTo(a[0], a[1], mx, my);
+    const p0 = pts[j % N], p1 = pts[(j + 1) % N], mx = (p0[0] + p1[0]) / 2, my = (p0[1] + p1[1]) / 2;
+    if (j === 0) c.moveTo(mx, my); else c.quadraticCurveTo(p0[0], p0[1], mx, my);
   }
-  c.globalAlpha = 0.16 + batida * 0.08 * k; c.fill();
-  c.globalAlpha = 0.18; c.lineWidth = W * 0.025; c.stroke();
-  c.globalAlpha = 0.8; c.lineWidth = W * 0.005; c.stroke();
+  if (buraco) { c.moveTo(cx + buraco, cx); c.arc(cx, cx, buraco, 0, Math.PI * 2, true); } // não pinta por cima da capa
+}
+function desenharAura(c, W, vivo) {
+  const n = AURA_N, k = cfg.reage ? cfg.batF : 0.3, cx = W / 2;
+  if (vivo) an.getByteFrequencyData(bins);
+  for (let i = 0; i < n; i++) {
+    const p = i / (n - 1), alvo = vivo ? bins[2 + Math.round(110 * Math.pow(p, 1.5))] / 255 : 0;
+    auraTmp[i] = alvo;
+  }
+  // suaviza entre vizinhos (3 passadas): os picos viram ondas, como um líquido
+  for (let pass = 0; pass < 3; pass++) for (let i = 0; i < n; i++) {
+    const a = auraTmp[Math.max(0, i - 1)], b = auraTmp[Math.min(n - 1, i + 1)];
+    auraTmp[i] = auraTmp[i] * 0.5 + (a + b) * 0.25;
+  }
+  for (let i = 0; i < n; i++) {
+    const alvo = auraTmp[i];
+    auraNiv[i] += (alvo - auraNiv[i]) * (alvo > auraNiv[i] ? 0.55 : 0.18); // sobe na hora, desce rápido
+    auraEco1[i] += (auraNiv[i] - auraEco1[i]) * 0.12;
+    auraEco2[i] += (auraEco1[i] - auraEco2[i]) * 0.08;
+  }
+  const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0;
+  auraGiro += 0.0012 + batida * 0.004 * k; // gira bem devagar, um pouco mais nas batidas
+  const R = W * 0.34 * escDisco + W * 0.01, A = W * 0.13 * (0.45 + k * 0.75);
+  desenharPoeira(c, W, R, k, graves);
+  c.lineJoin = "round"; c.fillStyle = c.strokeStyle = corViz;
+  // ecos atrás: maiores, mais transparentes e atrasados
+  const Rc = W * 0.34 * escDisco - 1; // borda da capa
+  curvaAura(c, auraEco2, R, A * 1.25, cx, -auraGiro * 0.6, Rc); c.globalAlpha = 0.08; c.fill("evenodd");
+  curvaAura(c, auraEco1, R, A * 1.12, cx, auraGiro * 0.5, Rc); c.globalAlpha = 0.12; c.fill("evenodd");
+  curvaAura(c, auraEco1, R, A * 1.12, cx, auraGiro * 0.5); c.globalAlpha = 0.3; c.lineWidth = W * 0.003; c.stroke();
+  // camada principal
+  curvaAura(c, auraNiv, R, A, cx, auraGiro, Rc);
+  c.globalAlpha = 0.16 + batida * 0.08 * k; c.fill("evenodd");
+  curvaAura(c, auraNiv, R, A, cx, auraGiro);
+  c.globalAlpha = 0.18; c.lineWidth = W * 0.022; c.stroke();
+  c.globalAlpha = 0.85; c.lineWidth = W * 0.005; c.stroke();
   // uma onda sai da capa em cada batida forte
   if (vivo && ultimaBatida !== ultOndinha && performance.now() - ultimaBatida < 60) { ultOndinha = ultimaBatida; if (ondinhas.length < 3) ondinhas.push(0); }
   c.lineWidth = W * 0.005;
@@ -2407,7 +2434,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.9.0";
+const VERSAO = "1.9.1";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
