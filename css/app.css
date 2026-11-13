@@ -239,3 +239,5 @@ textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
 .fav-mini{display:inline-flex;color:var(--accent);margin-right:5px;vertical-align:-1px}
 .mini .ic{width:40px;height:40px}
 #mini-fav.act,#b-fav.act{color:var(--accent)}
+.recap-img{width:100%;max-width:340px;align-self:center;border-radius:var(--radius);box-shadow:0 12px 40px -16px rgba(0,0,0,.5)}
+.sheet .seg button{font-size:13px}

@@ -4,6 +4,8 @@ Ideias para as próximas versões. O núcleo continua grátis, offline e sem an�
 
 ## Feito na versão web
 
+Toda a lista da versão web está pronta. Os próximos passos são a versão Android e o pacote pago.
+
 - ✅ **Playlists automáticas:** Favoritas, Adicionadas recentemente, Tocadas recentemente e Mais tocadas (1.1.0).
 - ✅ **Estatísticas locais:** tempo de escuta, reproduções, últimos 7 dias, mais ouvidas e artistas (1.1.0).
 - ✅ **Perfil sem conta:** nome, foto e Recap do ano, tudo só no aparelho (1.1.0).
@@ -15,11 +17,9 @@ Ideias para as próximas versões. O núcleo continua grátis, offline e sem an�
 - ✅ **Imagem de fundo** escolhida pelo usuário, com desfoque (1.2.0).
 - ✅ **Esconder as músicas de exemplo** pela Biblioteca, e sozinho na primeira importação (1.2.0).
 
-## Próximas ideias na versão web
-
-- Compartilhar o Recap do ano como imagem.
-- Backup e restauração de playlists, favoritas e estatísticas em um arquivo.
-- Mais predefinições de equalizador e equalizador de 10 bandas.
+- ✅ **Recap em imagem** para compartilhar (1.3.0).
+- ✅ **Backup e restauração** de playlists, favoritas, estatísticas, letras, perfil, temas e ajustes (1.3.0).
+- ✅ **Equalizador de 10 bandas** e 15 predefinições (1.3.0).
 
 ## Versão Android
 

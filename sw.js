@@ -1,6 +1,6 @@
 /* Compasso: modo offline. Guarda os arquivos do app no aparelho e abre mesmo sem internet.
    Estratégia: entrega da cópia guardada na hora e atualiza a cópia em segundo plano. */
-const CACHE = "compasso-v1.2.2";
+const CACHE = "compasso-v1.3.0";
 const ARQUIVOS = ["./", "index.html", "css/app.css", "js/tags.js", "js/app.js", "manifest.json",
   "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png"];
 
