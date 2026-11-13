@@ -175,7 +175,7 @@ nav button.on{color:var(--accent);font-weight:600}
 .menu button.danger svg{color:currentColor}
 .sec-t{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 8px 2px}
 
-.toast{position:fixed;left:50%;bottom:150px;transform:translate(-50%,20px);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:99px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:30;max-width:calc(100% - 32px);text-align:center}
+.toast{position:fixed;left:50%;bottom:150px;transform:translate(-50%,20px);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:99px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:30;width:max-content;max-width:min(calc(100vw - 32px),440px);text-align:center;line-height:1.35}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .drop{position:fixed;inset:12px;border:3px dashed var(--accent);border-radius:24px;background:color-mix(in srgb,var(--bg) 85%,transparent);display:grid;place-items:center;font-family:var(--display);font-size:22px;font-weight:700;z-index:40}
 
@@ -385,3 +385,7 @@ main{contain:content}
 .app{padding-top:var(--topo);padding-left:var(--esq);padding-right:var(--dir)}
 nav{padding-bottom:calc(8px + var(--base))}
 .sheet{padding-bottom:var(--base)}
+
+/* Avisos com botão: texto à esquerda, sem virar uma bola quando quebra linha */
+.toast.acao{text-align:left;border-radius:18px}
+.toast.acao button{flex:none}
