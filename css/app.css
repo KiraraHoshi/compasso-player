@@ -236,3 +236,6 @@ textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
 .bgimg{position:absolute;inset:-30px;z-index:-2;background:center/cover no-repeat;filter:blur(var(--blur,6px))}
 .bgimg::after{content:"";position:absolute;inset:0;background:var(--bg);opacity:var(--veu,.55)}
 @media (prefers-reduced-motion:reduce){.l{transition:none}}
+.fav-mini{display:inline-flex;color:var(--accent);margin-right:5px;vertical-align:-1px}
+.mini .ic{width:40px;height:40px}
+#mini-fav.act,#b-fav.act{color:var(--accent)}
