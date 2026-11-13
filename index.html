@@ -14,6 +14,7 @@
 </head>
 <body>
 <div class="app" id="app" data-view="biblioteca">
+  <div class="bgimg" id="bgimg" hidden></div>
   <div class="amb" id="amb"><i id="ambA"></i><i id="ambB"></i></div>
   <main id="main">
     <section class="view" id="v-biblioteca" aria-labelledby="h-bib">
@@ -23,7 +24,7 @@
       </div>
       <input class="search" id="q" type="search" placeholder="Buscar música, artista ou álbum" aria-label="Buscar na biblioteca" autocomplete="off">
       <div class="seg" id="seg">
-        <button data-tab="musicas">Músicas</button><button data-tab="albuns">Álbuns</button><button data-tab="artistas">Artistas</button>
+        <button data-tab="musicas">Músicas</button><button data-tab="albuns">Álbuns</button><button data-tab="artistas">Artistas</button><button data-tab="pastas">Pastas</button>
       </div>
       <div id="lib" class="stack"></div>
     </section>
@@ -31,6 +32,7 @@
     <section class="view" id="v-tocando" aria-label="Tocando agora">
       <p class="sub clip" id="np-ctx">Tocando agora</p>
       <div class="dial"><svg viewBox="0 0 200 200" id="ticks" aria-hidden="true"></svg><div class="disc" id="disc"></div></div>
+      <div class="letra" id="letra" aria-label="Letra da música"></div>
       <div class="np-meta"><span aria-hidden="true"></span><div class="meta"><h1 class="clip" id="np-t"></h1><p class="sub clip" id="np-a"></p></div><button class="ic" id="b-fav" aria-label="Adicionar às favoritas"></button></div>
       <div class="seek">
         <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Posição da música">
@@ -47,6 +49,7 @@
         <button class="pill" id="b-fila"></button>
         <button class="pill" id="b-timer" aria-label="Temporizador de sono"></button>
         <button class="pill" id="b-eq" aria-label="Equalizador"></button>
+        <button class="pill" id="b-letra" aria-label="Mostrar a letra"></button>
         <button class="pill" id="b-npmais" aria-label="Mais opções da música"></button>
       </div>
     </section>
@@ -72,9 +75,11 @@
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="drop" id="drop" hidden>Solte as músicas para importar</div>
-<input id="files" type="file" accept="audio/*,.mp3,.flac,.m4a,.aac,.ogg,.oga,.opus,.wav,.webm" multiple hidden>
+<input id="files" type="file" accept="audio/*,.mp3,.flac,.m4a,.aac,.ogg,.oga,.opus,.wav,.webm,.lrc" multiple hidden>
 <input id="folder" type="file" webkitdirectory multiple hidden>
 <input id="perfil-file" type="file" accept="image/*" hidden>
+<input id="letra-file" type="file" accept=".lrc,.txt,text/plain" hidden>
+<input id="fundo-file" type="file" accept="image/*" hidden>
 <input id="tema-file" type="file" accept=".json,application/json" hidden>
 
 <script src="js/tags.js"></script>

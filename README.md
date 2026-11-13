@@ -12,9 +12,15 @@ Funciona no navegador do celular e do PC e pode ser instalado como app (PWA).
 - **Fila:** tocar a seguir, adicionar ao fim, tirar, limpar e reordenar arrastando. Ordem aleatória e repetir (fila ou uma música).
 - **Playlists:** criar, renomear, apagar, adicionar músicas e reordenar arrastando.
 - **Temas:** dois temas grátis (Orologia Claro e Orologia Escuro), ajuste rápido de cor e cantos, e um editor para criar temas próprios com verificação de contraste. Temas podem ser exportados e importados em JSON.
+- **Você:** perfil local (nome e foto), tempo de escuta, reproduções, últimos 7 dias, mais ouvidas e o Recap do ano. Sem conta e sem nada online.
+- **Favoritas e playlists automáticas:** Favoritas, Adicionadas recentemente, Tocadas recentemente e Mais tocadas.
+- **Equalizador** de 5 bandas com predefinições, **temporizador de sono** e fade ao pausar e tocar.
+- **Letras:** lidas das tags da música ou de um arquivo .lrc com o mesmo nome, sincronizadas no estilo karaokê. Dá para colar e editar.
+- **Organização:** aba de Pastas, editor de informações (sem mexer no arquivo original) e músicas ocultas.
+- **Imagem de fundo** escolhida por você, com desfoque.
 - **Volta de onde parou:** ao reabrir, a fila e a posição da música continuam iguais.
 - **Controles do sistema:** tela de bloqueio, fones Bluetooth e teclas de mídia.
-- **Atalhos no PC:** espaço toca e pausa, ← e → voltam ou avançam 5 segundos, N e P trocam de música.
+- **Atalhos no PC:** espaço toca e pausa, ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita.
 
 ## Usar
 

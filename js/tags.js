@@ -42,6 +42,21 @@
       else if ((id === "TPE2" || id === "TP2") && !m.a) m.a = txt(d);
       else if (id === "TALB" || id === "TAL") m.al = txt(d);
       else if (id === "TRCK" || id === "TRK") m.n = num(txt(d));
+      else if ((id === "TXXX" || id === "TXX") && !m.letra) {
+        const e = d[0], dupla = e === 1 || e === 2; let q = 1;
+        if (dupla) { while (q + 1 < d.length && (d[q] || d[q + 1])) q += 2; q += 2; } else { while (q < d.length && d[q]) q++; q++; }
+        const desc = txt(d.subarray(0, q)).toUpperCase();
+        if (/^(LYRICS|USLT|UNSYNCEDLYRICS|UNSYNCED LYRICS)$/.test(desc)) { const v = new Uint8Array(d.length - q + 1); v[0] = e; v.set(d.subarray(q), 1); m.letra = txt(v); }
+      }
+      else if ((id === "USLT" || id === "ULT") && !m.letra && d.length > 4) {
+        // codificação (1 byte), idioma (3 bytes), descrição terminada em zero, letra
+        const e = d[0], dupla = e === 1 || e === 2; let q = 4;
+        if (dupla) { while (q + 1 < d.length && (d[q] || d[q + 1])) q += 2; q += 2; } else { while (q < d.length && d[q]) q++; q++; }
+        const corpo = d.subarray(q), u = new Uint8Array(corpo.length + 1); u[0] = e; u.set(corpo, 1);
+        const t = e === 1 || e === 2 ? dec(corpo[0] === 0xFE && corpo[1] === 0xFF ? corpo.subarray(2) : corpo[0] === 0xFF && corpo[1] === 0xFE ? corpo.subarray(2) : corpo, e === 2 || (corpo[0] === 0xFE && corpo[1] === 0xFF) ? "utf-16be" : "utf-16le")
+          : dec(corpo, e === 3 ? "utf-8" : "latin1");
+        m.letra = t.replace(/\0+$/, "").trim();
+      }
       else if ((id === "APIC" || id === "PIC") && !m.capa) {
         const e = d[0]; let q, mime;
         if (ver === 2) { mime = "image/" + dec(d.subarray(1, 4), "latin1").toLowerCase().replace("jpg", "jpeg"); q = 4; }
@@ -79,6 +94,7 @@
       else if (key === "ALBUMARTIST" && !m.a) m.a = v;
       else if (key === "ALBUM") m.al = v;
       else if (key === "TRACKNUMBER") m.n = num(v);
+      else if ((key === "LYRICS" || key === "UNSYNCEDLYRICS") && !m.letra) m.letra = v;
       else if (key === "METADATA_BLOCK_PICTURE" && !m.capa) {
         try {
           const bin = atob(v), u = new Uint8Array(bin.length);
@@ -160,6 +176,7 @@
           else if (item === "aART" && !m.a) m.a = dec(v, "utf-8").trim();
           else if (item === "\xA9alb") m.al = dec(v, "utf-8").trim();
           else if (item === "trkn" && v.length >= 4) m.n = be(v, 2, 2);
+          else if (item === "\xA9lyr" && !m.letra) m.letra = dec(v, "utf-8").trim();
           else if (item === "covr" && !m.capa) m.capa = new Blob([v.slice()], { type: tipo === 14 ? "image/png" : "image/jpeg" });
           return false;
         });
