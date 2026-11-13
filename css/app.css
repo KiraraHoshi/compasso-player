@@ -103,7 +103,15 @@ select.mini-sel{background:transparent;border:1px solid var(--line);border-radiu
 .meta h1{font-size:24px}
 .seek{width:100%}
 .seek input{width:100%;accent-color:var(--accent);height:24px}
-.times{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.times{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.times>span:first-child,.times>span:last-child{min-width:44px}.times>span:last-child{text-align:right}
+.pulos{display:flex;align-items:center;gap:6px}.pulos .ic.sm{width:34px;height:34px;color:var(--muted)}
+.vel{min-width:44px;height:28px;padding:0 8px;border-radius:99px;border:1px solid var(--line);background:none;color:var(--muted);font:inherit;font-weight:700;font-size:12px;cursor:pointer}
+.vel.act{color:var(--accent);border-color:var(--accent)}
+.chip.hq{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent);font-weight:700;letter-spacing:.03em}
+.toast.acao{pointer-events:auto;display:flex;align-items:center;gap:12px;padding:6px 6px 6px 16px}
+.toast button{background:var(--bg);color:var(--text);border:0;border-radius:99px;padding:6px 12px;font:inherit;font-weight:700;cursor:pointer}
+.previa{max-height:40vh;overflow:auto;white-space:pre-wrap;background:var(--card2,rgba(127,127,127,.08));border-radius:calc(var(--r) * .6);padding:12px 14px;font-size:14px;line-height:1.5}
 .ctl{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:340px}
 .ic.big{width:68px;height:68px;background:var(--accent);color:var(--on-accent)}
 .ic.big:hover{background:var(--accent)}
@@ -262,7 +270,7 @@ textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
 .app[data-era="70"] .selo{filter:sepia(.4) saturate(1.15)}
 .app[data-era="80"] .selo{filter:saturate(1.35) contrast(1.05)}
 .app[data-palco="1"]{max-width:none}
-.app[data-palco="1"] :is(nav,.mini,.np-bar,.seek,#b-shuf,#b-rep,#b-fav,#np-ctx){display:none}
+.app[data-palco="1"] :is(nav,.mini,.np-bar,.seek,.pulos,#b-shuf,#b-rep,#b-fav,#np-ctx){display:none}
 .app[data-palco="1"] .hora{display:block}
 .app[data-palco="1"] .dial{width:min(78vw,52vh)}
 .app[data-palco="1"] .ctl{justify-content:center;gap:28px}

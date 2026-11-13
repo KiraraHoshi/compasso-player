@@ -10,6 +10,21 @@ let LANG = (function () {
 })();
 document.documentElement.lang = LANG === "en" ? "en" : "pt-BR";
 const EN = {
+ "Velocidade {0}×. Toque para mudar": "Speed {0}×. Tap to change",
+ "Continuando de {0}": "Resuming from {0}",
+ "Do início": "From the start",
+ "Sem perda de qualidade": "Lossless quality",
+ "Mostrar o coração das favoritas nas listas": "Show the favorite heart in lists",
+ "Letra encontrada": "Lyrics found",
+ "Sincronizada: acompanha a música linha por linha.": "Synced: follows the song line by line.",
+ "Sem tempo marcado: aparece inteira para rolar.": "No timing: shows in full for scrolling.",
+ "Aplicar": "Apply",
+ "Descartar": "Discard",
+ "Velocidade {0}×. As músicas de exemplo tocam sempre em 1×": "Speed {0}×. The example songs always play at 1×",
+ "Velocidade {0}×": "Speed {0}×",
+ "Voltar 10 segundos": "Back 10 seconds",
+ "Avançar 10 segundos": "Forward 10 seconds",
+ "Idioma: {0}": "Language: {0}",
  "Arraste para posicionar e use o controle para aproximar.": "Drag to position and use the slider to zoom in.",
  "Recorte da foto. Use as setas para mover e + ou − para aproximar.": "Photo crop. Use the arrow keys to move and + or − to zoom.",
  "Zoom": "Zoom",
@@ -543,13 +558,26 @@ function T(s, ...a) {
 }
 const LOCALE = () => (LANG === "en" ? "en-US" : "pt-BR");
 const decimal = (v) => (LANG === "en" ? String(v) : String(v).replace(".", ","));
-/* Textos fixos do index.html: traduz texto e atributos dos elementos que já vêm na página */
+/* Textos fixos do index.html: traduz texto e atributos dos elementos que já vêm na página.
+   Guarda o original em português para poder trocar de idioma sem recarregar. */
+const ORIG_TXT = new WeakMap(), ORIG_AT = new WeakMap();
+const EN_REV = (() => { const r = {}; for (const k in EN) if (r[EN[k]] === undefined) r[EN[k]] = k; return r; })();
+function chavePt(v) { return EN[v] !== undefined ? v : EN_REV[v]; }
 function traduzirPagina(raiz) {
-  if (LANG === "pt") return;
   const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
-  for (let n = w.nextNode(); n; n = w.nextNode()) { const k = n.nodeValue.trim(); if (k && EN[k] !== undefined) n.nodeValue = n.nodeValue.replace(k, EN[k]); }
+  for (let n = w.nextNode(); n; n = w.nextNode()) {
+    let k = ORIG_TXT.get(n); const atual = n.nodeValue.trim(); if (!atual) continue;
+    if (k === undefined || (k !== atual && T(k) !== atual)) { k = chavePt(atual); if (k === undefined) continue; ORIG_TXT.set(n, k); }
+    const novo = T(k); if (novo !== atual) n.nodeValue = n.nodeValue.replace(atual, novo);
+  }
   raiz.querySelectorAll("[aria-label],[placeholder],[title]").forEach((el) => {
-    for (const at of ["aria-label", "placeholder", "title"]) { const v = el.getAttribute(at); if (v && EN[v] !== undefined) el.setAttribute(at, EN[v]); }
+    let o = ORIG_AT.get(el); if (!o) { o = {}; ORIG_AT.set(el, o); }
+    for (const at of ["aria-label", "placeholder", "title"]) {
+      const v = el.getAttribute(at); if (!v) continue;
+      if (o[at] === undefined || (v !== o[at] && v !== T(o[at]))) { const k = chavePt(v); if (k === undefined) continue; o[at] = k; }
+      el.setAttribute(at, T(o[at]));
+    }
   });
-  const d = document.querySelector('meta[name="description"]'); if (d) d.content = "Offline music player with customizable themes. Your music stays only on your device.";
+  const d = document.querySelector('meta[name="description"]');
+  if (d) { if (!d.dataset.pt) d.dataset.pt = d.content; d.content = LANG === "en" ? "Offline music player with customizable themes. Your music stays only on your device." : d.dataset.pt; }
 }
