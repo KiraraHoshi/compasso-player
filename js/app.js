@@ -107,7 +107,7 @@ function lum(h) {
 const contraste = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 const escuro = (t) => lum(t.fundo) < 0.2;
 
-let corViz = "#6A4BD8";
+let corViz = "#6A4BD8", tinta = "#6A4BD8";
 /* Cor dos visuais: a do tema ou, com a opção ligada, uma cor tirada da capa (ajustada para dar contraste) */
 function paraRgb(s) {
   s = String(s || "").trim(); let m;
@@ -126,17 +126,43 @@ function hslRgb(h, s, l) {
   return [f(0), f(8), f(4)];
 }
 const hex = (rgb) => "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("");
-function corDaCapa(x, t) {
-  if (!x || !x.c) return null;
-  const cs = x.c.map(paraRgb).filter(Boolean).map(rgbHsl).sort((a, b) => b[1] - a[1]);
-  const c = cs[0]; if (!c || c[1] < 0.12) return null; // capa em preto e branco: fica a cor do tema
-  const e = escuro(t), l = e ? Math.min(0.76, Math.max(0.6, c[2])) : Math.min(0.48, Math.max(0.34, c[2]));
-  return hex(hslRgb(c[0], Math.max(0.5, c[1]), l));
+const ajustarL = (hsl, t, s0 = 0.5) => { const e = escuro(t), l = e ? Math.min(0.78, Math.max(0.6, hsl[2])) : Math.min(0.48, Math.max(0.32, hsl[2])); return hex(hslRgb(hsl[0], Math.max(s0, hsl[1]), l)); };
+const NEUTRO = (t) => (escuro(t) ? ["#E4E4EA", "#8E8E9A"] : ["#2C2C33", "#74747E"]); // capa em preto e branco: prata ou grafite
+/* As duas cores que mais aparecem na capa (contando só as que têm cor de verdade). Fica guardado por música. */
+async function paletaDaCapa(x, t) {
+  if (x._paleta) return x._paleta;
+  let res = null;
+  if (x.capaBlob) try {
+    const bm = await createImageBitmap(x.capaBlob), cv = document.createElement("canvas"); cv.width = cv.height = 32;
+    const g = cv.getContext("2d"); g.drawImage(bm, 0, 0, 32, 32);
+    const d = g.getImageData(0, 0, 32, 32).data, baldes = Array.from({ length: 12 }, () => ({ p: 0, r: 0, g: 0, b: 0, n: 0 }));
+    for (let i = 0; i < d.length; i += 4) {
+      const hsl = rgbHsl([d[i], d[i + 1], d[i + 2]]); if (hsl[1] < 0.22 || hsl[2] < 0.12 || hsl[2] > 0.92) continue;
+      const bk = baldes[Math.floor(hsl[0] * 12) % 12]; bk.p += hsl[1]; bk.r += d[i]; bk.g += d[i + 1]; bk.b += d[i + 2]; bk.n++;
+    }
+    const top = baldes.filter((q) => q.n).sort((a, b) => b.p - a.p);
+    if (!top.length || top[0].p < 1024 * 0.035) res = { neutro: true };
+    else {
+      const med = (q) => rgbHsl([q.r / q.n, q.g / q.n, q.b / q.n].map(Math.round));
+      const h1 = med(top[0]), h2 = top[1] && top[1].p > top[0].p * 0.25 ? med(top[1]) : [(h1[0] + 0.07) % 1, h1[1], h1[2] + (escuro(t) ? 0.12 : -0.1)];
+      res = { h1, h2 };
+    }
+  } catch (e) { res = null; }
+  if (!res) { // sem capa: usa as cores geradas pelo nome
+    const cs = (x.c || []).map(paraRgb).filter(Boolean).map(rgbHsl);
+    res = cs.length ? { h1: cs[0], h2: cs[1] || cs[0] } : { neutro: true };
+  }
+  x._paleta = res; return res;
 }
-function atualizarCorViz(t) {
+let corViz2 = null;
+async function atualizarCorViz(t) {
   t = t || temaAtual();
   let x = null; try { x = cfg.corCapa ? cur() : null; } catch (e) { /* ainda carregando */ }
-  corViz = (x && corDaCapa(x, t)) || t.destaque;
+  corViz = t.destaque; corViz2 = null;
+  if (x) {
+    const p = await paletaDaCapa(x, t); if (cur() !== x || !cfg.corCapa) return;
+    if (p.neutro) [corViz, corViz2] = NEUTRO(t); else { corViz = ajustarL(p.h1, t); corViz2 = ajustarL(p.h2, t, 0.4); }
+  }
   document.documentElement.style.setProperty("--viz", corViz);
 }
 function aplicar(t) {
@@ -2095,7 +2121,7 @@ async function acertarCapas() {
     if (!x.capaBlob) continue;
     const nova = await cortarCapa(x.capaBlob); if (!nova) continue;
     if (x.cover) URL.revokeObjectURL(x.cover);
-    x.capaBlob = nova; x.cover = URL.createObjectURL(nova);
+    x.capaBlob = nova; x.cover = URL.createObjectURL(nova); x._paleta = null;
     x.c = (await coresDaCapa(nova)) || x.c; salvarFaixa(x); n++;
     await new Promise((ok) => setTimeout(ok, 30));
   }
@@ -2277,7 +2303,9 @@ function desenharViz() {
   const cv = $("viz"), w = cv.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1); if (!w) return;
   if (cv.width !== Math.round(w * dpr)) cv.width = cv.height = Math.round(w * dpr);
   const c = cv.getContext("2d"), W = cv.width, vivo = playing && an && !calmo;
-  c.clearRect(0, 0, W, W); c.fillStyle = c.strokeStyle = corViz;
+  c.clearRect(0, 0, W, W);
+  if (corViz2) { tinta = c.createLinearGradient(0, 0, W, W); tinta.addColorStop(0.15, corViz); tinta.addColorStop(0.85, corViz2); } else tinta = corViz;
+  c.fillStyle = c.strokeStyle = tinta;
   if (aura) { auraLimpa = false; return desenharAura(c, W, vivo); }
   if (v === "espectro") return desenharEspectro(c, W, vivo);
   if (v === "neon") return desenharNeon(c, W, vivo);
@@ -2305,7 +2333,7 @@ const espNiv = new Float32Array(110), poeira = Array.from({ length: 42 }, () => 
 // poeira: sai do anel e se afasta devagar; nas batidas corre um pouco mais
 function desenharPoeira(c, W, R, k, graves, Wc = W) {
   const cx = Wc / 2, vel = 0.0016 * (1 + batida * 4 * k + graves);
-  c.fillStyle = corViz;
+  c.fillStyle = tinta;
   for (const q of poeira) {
     q.d += vel * q.v; if (q.d > 1) { q.d = 0; q.a = Math.random() * Math.PI * 2; }
     const r = R + q.d * (Wc * 0.48 - R), al = Math.sin(q.d * Math.PI) * 0.55;
@@ -2353,8 +2381,8 @@ function desenharNeon(c, W, vivo) {
     for (let j = pts.length - 1; j >= 0; j--) c.lineTo(pts[j][0], cy + pts[j][1] * esc);
     c.closePath();
   };
-  c.fillStyle = corViz;
-  c.strokeStyle = corViz; c.lineJoin = "round";
+  c.fillStyle = tinta;
+  c.strokeStyle = tinta; c.lineJoin = "round";
   c.globalAlpha = 0.1; forma(1.5); c.fill();
   c.globalAlpha = 0.22; forma(1.18); c.fill();
   c.globalAlpha = 0.5; forma(1); c.fill();
@@ -2401,7 +2429,7 @@ function desenharAura(c, Wc, vivo) {
   auraGiro += 0.0012 + batida * 0.004 * k; // gira bem devagar, um pouco mais nas batidas
   const R = W * 0.34 * escDisco + W * 0.01, A = W * 0.13 * (0.45 + k * 0.75);
   desenharPoeira(c, W, R, k, graves, Wc);
-  c.lineJoin = "round"; c.fillStyle = c.strokeStyle = corViz;
+  c.lineJoin = "round"; c.fillStyle = c.strokeStyle = tinta;
   // ecos atrás: maiores, mais transparentes e atrasados
   const Rc = W * 0.34 * escDisco - 1; // borda da capa
   curvaAura(c, auraEco2, R, A * 1.25, cx, -auraGiro * 0.6, Rc); c.globalAlpha = 0.08; c.fill("evenodd");
@@ -2478,7 +2506,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.9.2";
+const VERSAO = "1.9.3";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
