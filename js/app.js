@@ -591,6 +591,9 @@ function paint() {
   const fav = ehFav(x.id), bf = $("b-fav");
   bf.innerHTML = ico(fav ? "heartOn" : "heart"); bf.classList.toggle("act", fav); bf.setAttribute("aria-pressed", fav);
   bf.setAttribute("aria-label", fav ? "Tirar das favoritas" : "Adicionar às favoritas");
+  const mf = $("mini-fav");
+  mf.innerHTML = ico(fav ? "heartOn" : "heart", 22); mf.classList.toggle("act", fav); mf.setAttribute("aria-pressed", fav);
+  mf.setAttribute("aria-label", fav ? "Tirar das favoritas" : "Adicionar às favoritas");
   $("b-eq").innerHTML = ico("sliders", 18); $("b-eq").classList.toggle("act", !!cfg.eq.on);
   paintSono(); atualizarTela();
   document.title = playing ? `${x.t} · Compasso` : "Compasso Player";
@@ -639,7 +642,7 @@ function linhaFaixa(x, o = {}) {
   return `<div class="track${atual ? " cur" : ""}" data-row="${x.id}">` +
     (o.grip ? `<button class="grip" data-grip aria-label="Mover ${esc(x.t)}. Use as setas para cima e para baixo">${ico("grip", 20)}</button>` : "") +
     `<button class="tp" data-play="${x.id}">${o.num !== undefined ? `<span class="idx">${o.num || "·"}</span>` : capa(x)}` +
-    `<span class="grow"><span class="t clip">${atual ? eqIcone() : ""}${esc(x.t)}</span><span class="sub clip">${esc(o.sub ? o.sub(x) : linha2(x))}</span></span></button>` +
+    `<span class="grow"><span class="t clip">${atual ? eqIcone() : ""}${ehFav(x.id) ? `<span class="fav-mini" aria-label="Favorita">${ico("heartOn", 13)}</span>` : ""}${esc(x.t)}</span><span class="sub clip">${esc(o.sub ? o.sub(x) : linha2(x))}</span></span></button>` +
     (x.demo ? '<span class="chip">exemplo</span>' : "") +
     `<span class="dur">${x.d ? fmt(x.d) : ""}</span>` +
     `<button class="ic sm" data-more="${x.id}" aria-label="Opções de ${esc(x.t)}">${ico("more", 20)}</button></div>`;
@@ -1262,7 +1265,7 @@ function alternarFav(id) {
   if (!id) return;
   if (favs.has(id)) { favs.delete(id); toast("Tirada das favoritas"); } else { favs.add(id); toast("Adicionada às favoritas"); }
   guardado.set("compasso.fav", [...favs]);
-  paint(); renderPl(); if ($("app").dataset.view === "voce") renderVoce();
+  paint(); renderBib(); renderPl(); if ($("app").dataset.view === "voce") renderVoce();
 }
 let stats = guardado.get("compasso.stats", null);
 if (!stats || typeof stats !== "object" || !stats.fx) stats = { fx: {}, dias: {}, desde: 0 };
@@ -1650,6 +1653,7 @@ $("b-shuf").addEventListener("click", alternarAleatorio);
 $("b-rep").addEventListener("click", alternarRepetir);
 $("mini-open").addEventListener("click", () => ir("tocando"));
 $("b-fav").addEventListener("click", () => cur() && alternarFav(cur().id));
+$("mini-fav").addEventListener("click", () => cur() && alternarFav(cur().id));
 $("b-timer").addEventListener("click", abrirSono);
 $("b-eq").addEventListener("click", abrirEQ);
 $("b-shuf").innerHTML = ico("shuf"); $("b-prev").innerHTML = ico("prev", 28); $("b-next").innerHTML = ico("next", 28); $("mini-next").innerHTML = ico("next", 22);
