@@ -69,8 +69,16 @@ const I = {
 };
 /* App Android (Capacitor): esconde o que só faz sentido no navegador e liga os controles de mídia nativos */
 const NATIVO = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-const PLUG = (NATIVO && window.Capacitor.Plugins) || {};
+// os plugins nativos podem estar em Capacitor.Plugins ou precisar ser registrados por nome (depende da versão)
+const pegarPlugin = (n) => { if (!NATIVO) return null; try { const P = window.Capacitor.Plugins; if (P && P[n]) return P[n]; if (window.Capacitor.registerPlugin) return window.Capacitor.registerPlugin(n); } catch (e) { /* sem o plugin */ } return null; };
+const PLUG = { MediaSession: pegarPlugin("MediaSession"), SystemBars: pegarPlugin("SystemBars") };
 if (NATIVO) document.documentElement.classList.add("nativo");
+// Chamadas para o lado nativo nunca podem derrubar o app: algumas devolvem promessa, outras um código, outras falham na hora
+function nat(f) { try { const r = f(); if (r && typeof r.catch === "function") r.catch(() => {}); return r; } catch (e) { return null; } }
+// No app de teste, um erro aparece na tela em vez de deixar tudo em branco
+if (NATIVO) addEventListener("error", (e) => {
+  try { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;bottom:90px;z-index:99;background:#B3261E;color:#fff;padding:10px 12px;border-radius:12px;font:12px/1.4 monospace"; d.textContent = "Erro: " + (e.message || e) + " (" + (e.filename || "").split("/").pop() + ":" + (e.lineno || "") + ")"; document.body.append(d); setTimeout(() => d.remove(), 12000); } catch (x) { /* sem tela ainda */ }
+});
 const ico = (n, s = 24) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
 const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>';
 
@@ -183,7 +191,7 @@ function aplicar(t) {
   set("--display", f.d); set("--body", f.b); set("color-scheme", e ? "dark" : "light");
   aplicarEfeitos();
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t.fundo;
-  if (PLUG.SystemBars) PLUG.SystemBars.setStyle({ style: e ? "DARK" : "LIGHT" }).catch(() => {}); // ícones claros no tema escuro e vice-versa
+  if (PLUG.SystemBars) nat(() => PLUG.SystemBars.setStyle({ style: e ? "DARK" : "LIGHT" })); // ícones claros no tema escuro e vice-versa
 }
 function aplicarEfeitos() {
   const r = document.documentElement.style;
@@ -679,17 +687,17 @@ async function capaParaNotificacao(x) {
 let msEstado = "";
 function estadoNativo() {
   if (!MS) return; const e = playing ? "playing" : cur() ? "paused" : "none";
-  if (e !== msEstado) { msEstado = e; MS.setPlaybackState({ playbackState: e }).catch(() => {}); }
+  if (e !== msEstado) { msEstado = e; nat(() => MS.setPlaybackState({ playbackState: e })); }
 }
 if (MS) {
-  const h = (a, f) => MS.setActionHandler({ action: a }, f).catch(() => {});
+  const h = (a, f) => nat(() => MS.setActionHandler({ action: a }, f));
   h("play", () => tocar()); h("pause", () => pausar()); h("previoustrack", () => anterior()); h("nexttrack", () => proxima());
   h("seekto", (d) => d && d.seekTime !== undefined && buscarSeg(d.seekTime));
   h("seekbackward", () => buscarSeg(posAtual() - 10)); h("seekforward", () => buscarSeg(posAtual() + 10));
   h("stop", () => pausar());
 }
 function metaSessao(x) {
-  if (MS) capaParaNotificacao(x).then((art) => MS.setMetadata({ title: x.t, artist: x.a, album: x.al || "", artwork: art ? [{ src: art, sizes: "384x384", type: "image/jpeg" }] : [] }).catch(() => {}));
+  if (MS) capaParaNotificacao(x).then((art) => nat(() => MS.setMetadata({ title: x.t, artist: x.a, album: x.al || "", artwork: art ? [{ src: art, sizes: "384x384", type: "image/jpeg" }] : [] })));
   if (!sessao || typeof MediaMetadata === "undefined") return;
   try {
     sessao.metadata = new MediaMetadata({
@@ -806,7 +814,7 @@ function quadro() {
       if (seg !== ultimoSeg) {
         ultimoSeg = seg; $("cur").textContent = fmt(p);
         $("mini").style.setProperty("--prog", (fr * 100).toFixed(1) + "%");
-        if (MS && x.d > 0) MS.setPositionState({ duration: x.d, position: Math.min(p, x.d), playbackRate: x.demo ? 1 : cfg.vel || 1 }).catch(() => {});
+        if (MS && x.d > 0) nat(() => MS.setPositionState({ duration: x.d, position: Math.min(p, x.d), playbackRate: x.demo ? 1 : cfg.vel || 1 }));
         if (sessao && sessao.setPositionState && x.d > 0) try { sessao.setPositionState({ duration: x.d, position: Math.min(p, x.d), playbackRate: x.demo ? 1 : cfg.vel || 1 }); } catch (e) { /* ignora */ }
         if (playing && Date.now() - ultimaSessao > 5000) salvarSessao();
         const ag = document.getElementById("agulha"); if (ag) ag.setAttribute("transform", `translate(${(30 + fr * 140).toFixed(1)} 0)`);
@@ -2667,7 +2675,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.15.0";
+const VERSAO = "1.15.1";
 let instalar = null;
 const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
