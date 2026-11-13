@@ -372,6 +372,8 @@ const EN = {
  "Os dois botões de cima abrem o GitHub no navegador. O app em si não se conecta a nada.": "The two buttons above open GitHub in your browser. The app itself doesn't connect to anything.",
  "Os dois botões de cima e o da política de privacidade abrem o navegador. O app em si não se conecta a nada.": "The two buttons above and the privacy policy one open your browser. The app itself doesn't connect to anything.",
  "Política de privacidade": "Privacy policy",
+ "5 bandas": "5 bands",
+ "10 bandas": "10 bands",
  "Orolon Player {0}. Sem anúncios, sem conta e sem coleta de dados: tudo o que você guarda fica neste aparelho.": "Orolon Player {0}. No ads, no account and no data collection: everything you keep stays on this device.",
  "Outro tempo…": "Other time…",
  "Ouvindo no Orolon desde {0}": "Listening on Orolon since {0}",
