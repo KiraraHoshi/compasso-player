@@ -59,6 +59,7 @@ const I = {
   lyrics: tr("M5 6h14M5 10.5h14M5 15h9M5 19.5h6") + '<circle cx="18" cy="17.5" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/>',
   eyeoff: tr("M4 4l16 16M10.6 6.2A9.7 9.7 0 0112 6c5 0 8.5 4.3 9.5 6-.5.9-1.6 2.4-3.1 3.7M6.6 8C4.7 9.3 3.2 11 2.5 12c1 1.7 4.5 6 9.5 6 1.6 0 3-.4 4.3-1.1M9.9 9.9a3 3 0 004.2 4.2"),
   image: '<rect x="3.5" y="5" width="17" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M3.5 16l5-5 4 4 3-3 5 5") + '<circle cx="15.5" cy="9.5" r="1.6" fill="currentColor"/>',
+  expand: tr("M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"),
   note: tr("M9 17V6l10-2v11") + '<circle cx="6.8" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16.8" cy="15" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/>',
 };
 const ico = (n, s = 24) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
@@ -66,7 +67,7 @@ const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i>
 
 /* ===================== Ajustes e temas ===================== */
 const cfg = Object.assign(
-  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar" },
+  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false },
   guardado.get("compasso.cfg", {})
 );
 const salvarCfg = () => guardado.set("compasso.cfg", cfg);
@@ -101,7 +102,9 @@ function lum(h) {
 const contraste = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 const escuro = (t) => lum(t.fundo) < 0.2;
 
+let corViz = "#6A4BD8";
 function aplicar(t) {
+  corViz = t.destaque;
   const r = document.documentElement.style, e = escuro(t), f = FONTES[t.fonte] || FONTES.padrao;
   const set = (k, v) => r.setProperty(k, v);
   set("--bg", t.fundo); set("--card", t.card); set("--text", t.texto); set("--muted", t.suave);
@@ -354,26 +357,34 @@ function tirarDaFila(i) {
 
 /* ---- Áudio ---- */
 let ctx, an, mestre, el, bins, relogio, filtros, entrada, ganhoEl, pausaPend, passo = 0, proxT = 0, pos = 0, posBase = 0, inicioT = 0, erros = 0;
+let els = [], ganhos = [], elAtivo = 0, trocando = null, eraIn, eraNos = [], ruido = null, comp = null, ondas;
+function usarEl(i) { elAtivo = i; el = els[i]; ganhoEl = ganhos[i]; }
+function aplicarVel() { els.forEach((a) => { a.defaultPlaybackRate = a.playbackRate = cfg.vel || 1; }); }
+function cancelarTroca() { if (trocando) { clearTimeout(trocando.t); trocando.sai.pause(); trocando = null; } }
 function prepararAudio() {
   if (ctx) return;
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   an = ctx.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.75; an.connect(ctx.destination);
-  bins = new Uint8Array(an.frequencyBinCount);
-  entrada = ctx.createGain();
+  bins = new Uint8Array(an.frequencyBinCount); ondas = new Uint8Array(an.fftSize);
+  entrada = ctx.createGain(); eraIn = ctx.createGain();
   mestre = ctx.createGain(); mestre.gain.value = 0.5; mestre.connect(entrada);
-  el = new Audio(); el.preload = "auto";
-  ganhoEl = ctx.createGain(); ctx.createMediaElementSource(el).connect(ganhoEl); ganhoEl.connect(entrada);
-  montarFiltros();
-  el.onended = fimDaFaixa;
-  el.onplaying = () => { erros = 0; };
-  el.onloadedmetadata = () => { const x = cur(); if (x && !x.demo && el.dataset.id === x.id && isFinite(el.duration)) { x.d = el.duration; paint(); } };
-  el.onerror = () => {
-    const x = cur(); if (!x || x.demo || el.dataset.id !== x.id || !playing) return;
-    erros++;
-    toast(`Não deu para tocar "${x.t}"`);
-    if (erros < queue.length) setTimeout(() => { qi = (qi + 1) % queue.length; carregar(true); }, 700);
-    else { erros = 0; playing = false; paint(); }
-  };
+  for (let i = 0; i < 2; i++) { // dois tocadores: um toca, o outro já deixa a próxima música pronta
+    const a = new Audio(), g = ctx.createGain();
+    a.preload = "auto"; g.gain.value = i ? 0 : 1;
+    ctx.createMediaElementSource(a).connect(g); g.connect(entrada);
+    a.onended = () => { if (a === el) fimDaFaixa(); };
+    a.onplaying = () => { if (a === el) erros = 0; };
+    a.onloadedmetadata = () => { const x = cur(); if (a === el && x && !x.demo && a.dataset.id === x.id && isFinite(a.duration)) { x.d = a.duration; paint(); } };
+    a.onerror = () => {
+      const x = cur(); if (a !== el || !x || x.demo || a.dataset.id !== x.id || !playing) return;
+      erros++;
+      toast(`Não deu para tocar "${x.t}"`);
+      if (erros < queue.length) setTimeout(() => { qi = (qi + 1) % queue.length; carregar(true); }, 700);
+      else { erros = 0; playing = false; paint(); }
+    };
+    els.push(a); ganhos.push(g);
+  }
+  usarEl(0); aplicarVel(); montarFiltros();
 }
 function nota(f, t, dur, tipo, vol) {
   const o = ctx.createOscillator(), g = ctx.createGain();
@@ -403,6 +414,7 @@ function tocar() {
   } else {
     pararSintese();
     if (el.dataset.id !== x.id) { el.src = x.url; el.dataset.id = x.id; if (pos) el.currentTime = pos; }
+    aplicarVel();
     const g = ganhoEl.gain, t0 = ctx.currentTime;
     g.cancelScheduledValues(t0);
     if (cfg.fade && !playing) { g.setValueAtTime(0, t0); g.linearRampToValueAtTime(1, t0 + 0.45); } else g.setValueAtTime(1, t0);
@@ -415,11 +427,11 @@ function pausar() {
   if (ctx) {
     if (x && x.demo) { pos = posAtual(); pararSintese(); }
     else if (el) {
-      pos = el.currentTime;
+      pos = el.currentTime; cancelarTroca();
       if (cfg.fade && playing && ganhoEl) {
         const g = ganhoEl.gain, t0 = ctx.currentTime;
         g.cancelScheduledValues(t0); g.setValueAtTime(g.value, t0); g.linearRampToValueAtTime(0, t0 + 0.3);
-        clearTimeout(pausaPend); pausaPend = setTimeout(() => el.pause(), 320);
+        const e0 = el; clearTimeout(pausaPend); pausaPend = setTimeout(() => e0.pause(), 320);
       } else el.pause();
     }
   }
@@ -431,13 +443,47 @@ function posAtual() {
   if (!x.demo) return el && el.dataset.id === x.id ? el.currentTime : pos;
   return playing && ctx ? posBase + (ctx.currentTime - inicioT) : pos;
 }
+function aoTrocar(x) { luz(x.c); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
 function carregar(auto) {
   const x = cur();
   if (!x) { playing = false; paint(); return; }
   pos = 0; novaEscuta(); clearTimeout(pausaPend);
-  if (ctx) { pararSintese(); el.pause(); if (!x.demo) { el.src = x.url; el.dataset.id = x.id; } else el.dataset.id = ""; }
-  luz(x.c); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra();
+  if (ctx) {
+    pararSintese(); cancelarTroca(); els.forEach((a) => a.pause());
+    if (!x.demo) {
+      const o = 1 - elAtivo;
+      if (els[o].dataset.id === x.id && els[o].readyState >= 1) { usarEl(o); try { el.currentTime = 0; } catch (e) { /* ainda carregando */ } }
+      else { el.src = x.url; el.dataset.id = x.id; }
+      const go = ganhos[1 - elAtivo].gain; go.cancelScheduledValues(ctx.currentTime); go.setValueAtTime(0, ctx.currentTime);
+    } else el.dataset.id = "";
+  }
+  aoTrocar(x);
   if (auto) tocar(); else { playing = false; paint(); }
+}
+/* Troca sem pausa e crossfade: a próxima música é carregada no segundo tocador antes de a atual acabar */
+function proximoIdx() {
+  if (repeat === "one") return -1;
+  if (qi < queue.length - 1) return qi + 1;
+  return repeat === "all" && queue.length > 1 ? 0 : -1;
+}
+function vigiarTroca(x, p) {
+  if (!playing || !x || x.demo || !ctx || trocando || sono.aoFim) return;
+  const ni = proximoIdx(); if (ni < 0) return;
+  const nx = porId.get(queue[ni]); if (!nx || nx.demo) return;
+  const resta = (x.d || 0) - p, o = els[1 - elAtivo];
+  if (resta < 20 && o.dataset.id !== nx.id) { o.src = nx.url; o.dataset.id = nx.id; o.load(); }
+  const xf = +cfg.xfade || 0;
+  if (xf > 0 && x.d > xf * 3 && resta <= xf && resta > 0.25 && o.dataset.id === nx.id && o.readyState >= 2) iniciarTroca(ni, Math.min(xf, resta));
+}
+function iniciarTroca(ni, dur) {
+  const sai = el, gSai = ganhoEl.gain, t0 = ctx.currentTime;
+  usarEl(1 - elAtivo); aplicarVel();
+  try { el.currentTime = 0; } catch (e) { /* ignora */ }
+  ganhoEl.gain.cancelScheduledValues(t0); ganhoEl.gain.setValueAtTime(0, t0); ganhoEl.gain.linearRampToValueAtTime(1, t0 + dur);
+  gSai.cancelScheduledValues(t0); gSai.setValueAtTime(gSai.value, t0); gSai.linearRampToValueAtTime(0, t0 + dur);
+  el.play().catch(() => {});
+  trocando = { sai, t: setTimeout(() => { sai.pause(); trocando = null; }, dur * 1000 + 150) };
+  qi = ni; pos = 0; novaEscuta(); aoTrocar(cur());
 }
 function fimDaFaixa() {
   if (sono.aoFim) { sono.aoFim = false; if (qi < queue.length - 1) qi++; carregar(false); paintSono(); toast("Temporizador: música pausada"); return; }
@@ -524,13 +570,14 @@ function quadro() {
     else {
       const fr = x.d ? Math.min(1, p / x.d) : 0;
       if (!arrastandoSeek) $("seek").value = Math.round(fr * 1000);
-      seguirLetra(p);
+      seguirLetra(p); vigiarTroca(x, p);
       const seg = Math.floor(p);
       if (seg !== ultimoSeg) {
         ultimoSeg = seg; $("cur").textContent = fmt(p);
         $("mini").style.setProperty("--prog", (fr * 100).toFixed(1) + "%");
-        if (sessao && sessao.setPositionState && x.d > 0) try { sessao.setPositionState({ duration: x.d, position: Math.min(p, x.d), playbackRate: 1 }); } catch (e) { /* ignora */ }
+        if (sessao && sessao.setPositionState && x.d > 0) try { sessao.setPositionState({ duration: x.d, position: Math.min(p, x.d), playbackRate: x.demo ? 1 : cfg.vel || 1 }); } catch (e) { /* ignora */ }
         if (playing && Date.now() - ultimaSessao > 5000) salvarSessao();
+        const ag = document.getElementById("agulha"); if (ag) ag.setAttribute("transform", `translate(${(30 + fr * 140).toFixed(1)} 0)`);
       }
       const n = Math.round(fr * 60);
       if (n !== acesas) { linhas.forEach((l, i) => l.classList.toggle("on", i < n)); acesas = n; }
@@ -558,12 +605,14 @@ function quadro() {
   pulso += (alvo - pulso) * 0.1;
   const r = document.documentElement.style;
   r.setProperty("--beat", batida.toFixed(3)); r.setProperty("--pulse", pulso.toFixed(3));
+  desenharViz();
   requestAnimationFrame(quadro);
 }
 
 /* ===================== Tela: Tocando agora e mini player ===================== */
 function paint() {
   const x = cur();
+  $("app").dataset.playing = playing ? "1" : ""; ajustarRuido();
   $("b-play").innerHTML = ico(playing ? "pause" : "play", 30); $("b-play").setAttribute("aria-label", playing ? "Pausar" : "Tocar");
   $("mini-play").innerHTML = ico(playing ? "pause" : "play"); $("mini-play").setAttribute("aria-label", playing ? "Pausar" : "Tocar");
   $("b-shuf").classList.toggle("act", shuffle); $("b-shuf").setAttribute("aria-pressed", shuffle);
@@ -575,12 +624,12 @@ function paint() {
   $("mini").hidden = !x;
   if (!x) {
     $("np-t").textContent = "Nada tocando"; $("np-a").textContent = "Importe músicas na Biblioteca";
-    $("disc").style.background = "var(--card)"; $("disc").textContent = ""; $("b-fila").innerHTML = ico("queue", 18) + "Fila vazia";
+    $("selo").style.background = "var(--card)"; $("selo").textContent = ""; $("b-fila").innerHTML = ico("queue", 18) + "Fila vazia";
     return;
   }
   $("np-ctx").textContent = "Tocando · " + contexto;
   $("np-t").textContent = x.t; $("np-a").textContent = linha2(x) + (x.demo ? " · exemplo" : "");
-  $("disc").style.background = fundoDe(x); $("disc").textContent = x.cover ? "" : (x.t[0] || "?").toUpperCase();
+  $("selo").style.background = fundoDe(x); $("selo").textContent = x.cover ? "" : (x.t[0] || "?").toUpperCase();
   $("mini-th").innerHTML = capa(x); $("mini-t").textContent = x.t; $("mini-a").textContent = x.a;
   $("tot").textContent = fmt(x.d);
   const depois = queue.length - qi - 1;
@@ -1028,7 +1077,15 @@ function renderTemas() {
       ${temFundo() ? `<div class="opt sub-opt"><label for="r-blur">Desfoque</label><input type="range" id="r-blur" data-rgx="fundoBlur" min="0" max="24" step="1" value="${cfg.fundoBlur}"></div>
       <div class="opt sub-opt"><label for="r-veu">Cor do tema por cima</label><input type="range" id="r-veu" data-rgx="fundoVeu" min="0.15" max="0.9" step="0.05" value="${cfg.fundoVeu}"></div>` : ""}
       <p class="note">A imagem fica só neste aparelho e não entra no JSON do tema.</p></div>
+    <div class="card stack"><h2>Tocando agora</h2>
+      <p class="t">Visual do mostrador</p><div class="chips" role="group" aria-label="Visual do mostrador">${Object.entries(VISUAIS).map(([k, n]) => `<button data-vis="${k}" aria-pressed="${cfg.visual === k}" class="${cfg.visual === k ? "on" : ""}">${n}</button>`).join("")}</div>
+      <p class="t">Época do som</p><div class="chips" role="group" aria-label="Época do som">${Object.entries(ERAS).map(([k, [n]]) => `<button data-epoca="${k}" aria-pressed="${String(cfg.era) === k}" class="${String(cfg.era) === k ? "on" : ""}">${n}</button>`).join("")}</div>
+      <p class="note">${ERA_DESC[cfg.era] || ERA_DESC.off} Cada época também troca o visual, e você pode escolher outro depois.</p>
+      ${cfg.era !== "off" && cfg.era !== "90" ? tg("eraRuido", "Chiado e estalos") : ""}</div>
     <div class="card stack"><h2>Reprodução</h2>
+      <div class="opt"><label for="s-xfade">Crossfade entre músicas</label><select id="s-xfade" class="mini-sel" data-sel="xfade">${[[0, "Desligado"], [2, "2 segundos"], [4, "4 segundos"], [6, "6 segundos"], [8, "8 segundos"]].map(([v, n]) => `<option value="${v}"${+cfg.xfade === v ? " selected" : ""}>${n}</option>`).join("")}</select></div>
+      <div class="opt"><label for="s-vel">Velocidade</label><select id="s-vel" class="mini-sel" data-sel="vel">${[0.75, 1, 1.25, 1.5, 2].map((v) => `<option value="${v}"${+cfg.vel === v ? " selected" : ""}>${String(v).replace(".", ",")}×</option>`).join("")}</select></div>
+      ${tg("nivelar", "Nivelar o volume entre as músicas")}
       ${tg("fade", "Suavizar o volume ao pausar e tocar")}
       ${tg("tela", "Manter a tela ligada em Tocando agora")}
       <div class="opt"><label for="s-anterior">Botão Anterior</label><select id="s-anterior" class="mini-sel" data-sel="anterior"><option value="reiniciar"${cfg.anterior !== "sempre" ? " selected" : ""}>Recomeça a música</option><option value="sempre"${cfg.anterior === "sempre" ? " selected" : ""}>Volta para a anterior</option></select></div>
@@ -1106,8 +1163,13 @@ $("tm").addEventListener("click", (e) => {
     const k = g.dataset.tg; cfg[k] = !cfg[k]; salvarCfg(); aplicarEfeitos();
     if (k === "exemplos") { cfg.exemplosMexeu = true; salvarCfg(); mudouExemplos(); }
     if (k === "tela") atualizarTela();
+    if (k === "nivelar" && ctx) montarFiltros();
+    if (k === "eraRuido") ajustarRuido();
     renderTemas(); return;
   }
+  const vi = t.closest("[data-vis]"); if (vi) { cfg.visual = vi.dataset.vis; salvarCfg(); aplicarVisual(); return renderTemas(); }
+  const ep = t.closest("[data-epoca]");
+  if (ep) { cfg.era = ep.dataset.epoca; cfg.visual = ERAS[cfg.era][1]; salvarCfg(); aplicarVisual(); if (ctx) montarEra(); return renderTemas(); }
   if (t.closest("[data-abrireq]")) return abrirEQ();
   if (t.closest("[data-bkp]")) return salvarBackup();
   if (t.closest("[data-rst]")) return $("backup-file").click();
@@ -1149,7 +1211,11 @@ $("tm").addEventListener("input", (e) => {
   else if (t.dataset.rg) { cfg[t.dataset.rg] = +t.value; salvarCfg(); aplicarEfeitos(); }
   else if (t.dataset.rgx) { cfg[t.dataset.rgx] = +t.value; salvarCfg(); aplicarFundo(); }
 });
-$("tm").addEventListener("change", (e) => { const k = e.target.dataset.sel; if (k) { cfg[k] = e.target.value; salvarCfg(); } });
+$("tm").addEventListener("change", (e) => {
+  const k = e.target.dataset.sel; if (!k) return;
+  cfg[k] = k === "xfade" || k === "vel" ? +e.target.value : e.target.value; salvarCfg();
+  if (k === "vel") aplicarVel();
+});
 $("backup-file").addEventListener("change", async (e) => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   try {
@@ -1251,6 +1317,7 @@ const eqGanhos = () => (cfg.eq.modo === 10 ? cfg.eq.g10 : cfg.eq.g);
 function montarFiltros() {
   if (!ctx) return;
   if (filtros) { entrada.disconnect(); filtros.forEach((f) => f.disconnect()); }
+  if (comp) { comp.forEach((n) => n.disconnect()); comp = null; }
   const F = eqBandas();
   filtros = F.map((f, i) => {
     const b = ctx.createBiquadFilter();
@@ -1258,8 +1325,14 @@ function montarFiltros() {
     b.frequency.value = f; b.Q.value = F.length === 10 ? 1.4 : 1.1;
     return b;
   });
-  filtros.reduce((a, b) => (a.connect(b), b), entrada).connect(an);
-  aplicarEQ();
+  let fim = filtros.reduce((a, b) => (a.connect(b), b), entrada);
+  if (cfg.nivelar) { // compressor suave: aproxima o volume das músicas baixas e altas
+    const c = ctx.createDynamicsCompressor(), m = ctx.createGain();
+    c.threshold.value = -24; c.knee.value = 24; c.ratio.value = 3; c.attack.value = 0.01; c.release.value = 0.3; m.gain.value = 1.5;
+    fim.connect(c); c.connect(m); comp = [c, m]; fim = m;
+  }
+  fim.connect(eraIn);
+  montarEra(); aplicarEQ();
 }
 function aplicarEQ() {
   if (!filtros) return;
@@ -1385,7 +1458,7 @@ function paintSono() {
 /* ===================== Tela ligada ===================== */
 let trava = null, pedindoTrava = false;
 async function atualizarTela() {
-  const quer = cfg.tela && playing && $("app").dataset.view === "tocando" && document.visibilityState === "visible";
+  const quer = $("app").dataset.view === "tocando" && document.visibilityState === "visible" && (emPalco() || (cfg.tela && playing));
   try {
     if (quer && !trava && !pedindoTrava && navigator.wakeLock) {
       pedindoTrava = true; trava = await navigator.wakeLock.request("screen"); pedindoTrava = false;
@@ -1399,7 +1472,8 @@ setInterval(() => {
   const agora = Date.now(), x = cur();
   if (playing && x && ultimoTick) registrarEscuta(x, Math.min(65, (agora - ultimoTick) / 1000));
   ultimoTick = playing ? agora : 0;
-  verificarSono(); paintSono();
+  verificarSono(); paintSono(); atualizarHora();
+  if (playing && x) vigiarTroca(x, posAtual());
   if (statsSujo && agora - statsSalvo > 10000) salvarStats();
 }, 1000);
 addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && statsSujo) salvarStats(); atualizarTela(); });
@@ -1627,11 +1701,11 @@ function restaurarBackup(o) {
   for (const t of o.temas || []) { try { const v = validarTema(t); if (!meusTemas.some((m) => m.nome === v.nome)) { v.id = uid("t"); meusTemas.push(v); } } catch (err) { /* tema inválido: pula */ } }
   salvarTemas();
   const aj = o.ajustes || {};
-  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu"]) if (k in aj) cfg[k] = aj[k];
+  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
   if (aj.ajustes) cfg.ajustes = aj.ajustes;
-  salvarCfg(); aplicarTema(); aplicarFundo(); if (ctx) montarFiltros();
+  salvarCfg(); aplicarTema(); aplicarFundo(); aplicarVisual(); aplicarVel(); if (ctx) montarFiltros();
   mudouExemplos(); renderBib(); renderPl(); renderTemas(); paint();
   return { achadas, total, nPl };
 }
@@ -1793,6 +1867,114 @@ function escolherFundo() {
   inp.click();
 }
 
+
+/* ===================== Épocas (som) e visuais do mostrador ===================== */
+const ERAS = { off: ["Desligado", "relogio"], 60: ["Anos 60", "radio"], 70: ["Anos 70", "vinil"], 80: ["Anos 80", "cassete"], 90: ["Anos 90", "barras"] };
+const ERA_DESC = { off: "Som original, sem efeito.", 60: "Rádio valvulado: mono, abafado e com chiado.", 70: "Vinil: graves quentes, estalos de agulha e leve oscilação.", 80: "Fita cassete: chiado de fita e velocidade oscilando de leve.", 90: "CD player: som limpo com graves e brilho reforçados." };
+const VISUAIS = { relogio: "Relógio", vinil: "Vinil", cassete: "Cassete", radio: "Rádio", barras: "Barras", onda: "Onda" };
+function curvaSat(k) { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = (i * 2) / n - 1; c[i] = Math.tanh(k * x) / Math.tanh(k); } return c; }
+function bufRuido(tipo) {
+  const sr = ctx.sampleRate, n = sr * 4, b = ctx.createBuffer(1, n, sr), d = b.getChannelData(0);
+  if (tipo === "estalos") {
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.03;
+    for (let k = 0; k < 26; k++) { const p = Math.floor(Math.random() * (n - 40)), amp = 0.25 + Math.random() * 0.75, len = 3 + Math.floor(Math.random() * 16); for (let j = 0; j < len; j++) d[p + j] += (Math.random() * 2 - 1) * amp * (1 - j / len); }
+  } else for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  return b;
+}
+function montarEra() {
+  if (!ctx) return;
+  eraIn.disconnect();
+  eraNos.forEach((n) => { try { if (n.stop) n.stop(); } catch (e) { /* já parado */ } n.disconnect(); });
+  eraNos = []; ruido = null;
+  const era = String(cfg.era || "off"), N = (n) => (eraNos.push(n), n);
+  const bq = (tipo, f, g, q) => { const b = N(ctx.createBiquadFilter()); b.type = tipo; b.frequency.value = f; if (g !== undefined) b.gain.value = g; if (q) b.Q.value = q; return b; };
+  const sat = (k) => { const w = N(ctx.createWaveShaper()); w.curve = curvaSat(k); w.oversample = "2x"; return w; };
+  const wow = (...lfos) => { // oscilação de velocidade: um atraso curto que varia devagar
+    const d = N(ctx.createDelay(0.1)); d.delayTime.value = 0.012;
+    for (let i = 0; i < lfos.length; i += 2) { const o = N(ctx.createOscillator()), g = N(ctx.createGain()); o.frequency.value = lfos[i]; g.gain.value = lfos[i + 1]; o.connect(g); g.connect(d.delayTime); o.start(); }
+    return d;
+  };
+  let cadeia = [], chiado = null;
+  if (era === "60") {
+    const mono = N(ctx.createGain()); mono.channelCount = 1; mono.channelCountMode = "explicit";
+    cadeia = [mono, bq("highpass", 170), bq("peaking", 1800, 4, 0.8), bq("lowpass", 4300), sat(2.2)]; chiado = ["chiado", 0.011, ["bandpass", 2600, 0.5]];
+  } else if (era === "70") { cadeia = [bq("lowshelf", 140, 3.5), bq("peaking", 3000, -1.5, 0.7), bq("lowpass", 12500), wow(0.55, 0.0009)]; chiado = ["estalos", 0.2]; }
+  else if (era === "80") { cadeia = [bq("highpass", 45), bq("lowshelf", 110, 2), bq("lowpass", 9000), sat(1.4), wow(0.9, 0.0013, 6.3, 0.00016)]; chiado = ["chiado", 0.012, ["highpass", 3200]]; }
+  else if (era === "90") cadeia = [bq("lowshelf", 85, 3), bq("highshelf", 9500, 2)];
+  cadeia.reduce((a, b) => (a.connect(b), b), eraIn).connect(an);
+  if (chiado) {
+    const src = N(ctx.createBufferSource()), g = N(ctx.createGain());
+    src.buffer = bufRuido(chiado[0]); src.loop = true; g.gain.value = 0;
+    (chiado[2] ? src.connect(bq(chiado[2][0], chiado[2][1], undefined, chiado[2][2])) : src).connect(g); g.connect(an);
+    src.start(); ruido = { g, nivel: chiado[1] };
+  }
+  ajustarRuido();
+}
+function ajustarRuido() { if (ruido && ctx) ruido.g.gain.setTargetAtTime(playing && cfg.eraRuido ? ruido.nivel : 0, ctx.currentTime, 0.12); }
+function aplicarVisual() {
+  const a = $("app");
+  a.dataset.visual = VISUAIS[cfg.visual] ? cfg.visual : "relogio";
+  a.dataset.era = cfg.era && cfg.era !== "off" ? cfg.era : "";
+  pintarCena();
+}
+function pintarCena() {
+  const C = $("cena"), x = cur(), v = cfg.visual; if (!C) return;
+  const t = esc(x ? (x.t.length > 24 ? x.t.slice(0, 23) + "…" : x.t) : "Compasso"), a = esc(x ? (x.a.length > 30 ? x.a.slice(0, 29) + "…" : x.a) : "");
+  const rolo = (cx) => `<g class="rolo"><circle cx="${cx}" cy="96" r="12" fill="none" stroke="var(--text)" stroke-width="3"/><path d="M${cx} 86v20M${cx - 8.7} 91l17.4 10M${cx - 8.7} 101l17.4-10" stroke="var(--text)" stroke-width="2.4" stroke-linecap="round" fill="none"/></g>`;
+  if (v === "cassete") C.innerHTML = `<svg viewBox="0 0 200 200"><rect x="8" y="40" width="184" height="122" rx="11" fill="var(--card)" stroke="var(--muted)" stroke-width="1.5"/>
+    <rect x="19" y="50" width="162" height="70" rx="6" fill="var(--accent)"/><text x="100" y="65" text-anchor="middle" font-size="9.500" font-weight="700" fill="var(--on-accent)" font-family="var(--body)">${t}</text><text x="100" y="75.500" text-anchor="middle" font-size="6.500" fill="var(--on-accent)" opacity=".85" font-family="var(--body)">${a}</text>
+    <rect x="46" y="80" width="108" height="32" rx="16" fill="var(--bg)"/>${rolo(66)}${rolo(134)}<rect x="88" y="88" width="24" height="16" rx="2" fill="var(--card)" opacity=".6"/>
+    <path d="M38 162l9-28h106l9 28" fill="none" stroke="var(--muted)" stroke-width="1.500"/><circle cx="64" cy="149" r="3.200" fill="var(--muted)"/><circle cx="136" cy="149" r="3.200" fill="var(--muted)"/><circle cx="18" cy="151" r="2" fill="var(--muted)"/><circle cx="182" cy="151" r="2" fill="var(--muted)"/></svg>`;
+  else if (v === "radio") {
+    let esc_ = ""; for (let i = 0; i <= 28; i++) esc_ += `<rect x="${30 + i * 5 - 0.4}" y="${i % 4 ? 70 : 66}" width=".8" height="${i % 4 ? 6 : 10}" fill="var(--text)" opacity=".7"/>`;
+    let furos = ""; for (let r = 0; r < 4; r++) for (let c = 0; c < 15; c++) furos += `<circle cx="${37 + c * 9}" cy="${112 + r * 9}" r="2.300" fill="var(--text)" opacity=".28"/>`;
+    C.innerHTML = `<svg viewBox="0 0 200 200"><rect x="10" y="36" width="180" height="128" rx="16" fill="var(--card)" stroke="var(--muted)" stroke-width="1.500"/>
+      <rect x="22" y="48" width="156" height="48" rx="7" fill="var(--bg)"/><rect class="brilho" x="22" y="48" width="156" height="48" rx="7" fill="var(--accent2)"/>
+      <text x="30" y="60" font-size="6" fill="var(--text)" opacity=".8" font-family="var(--body)">AM · FM · ${t}</text>${esc_}
+      <rect id="agulha" x="-1.200" y="62" width="2.400" height="30" rx="1" fill="var(--accent)" transform="translate(30 0)"/>${furos}
+      <circle cx="176" cy="152" r="0" /></svg>`;
+  } else C.innerHTML = "";
+}
+let nivelViz = new Float32Array(28);
+function desenharViz() {
+  const v = cfg.visual; if ((v !== "barras" && v !== "onda") || $("app").dataset.view !== "tocando") return;
+  const cv = $("viz"), w = cv.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1); if (!w) return;
+  if (cv.width !== Math.round(w * dpr)) cv.width = cv.height = Math.round(w * dpr);
+  const c = cv.getContext("2d"), W = cv.width, vivo = playing && an && !calmo;
+  c.clearRect(0, 0, W, W); c.fillStyle = c.strokeStyle = corViz;
+  if (v === "barras") {
+    if (vivo) an.getByteFrequencyData(bins);
+    const n = 28, vao = W * 0.012, bw = (W - vao * (n - 1)) / n;
+    for (let i = 0; i < n; i++) {
+      const p = i / (n - 1), alvo = vivo ? bins[1 + Math.round(70 * p * p)] / 255 : 0;
+      nivelViz[i] += (alvo - nivelViz[i]) * 0.25;
+      const h = Math.max(bw, nivelViz[i] * W * 0.8);
+      c.globalAlpha = 0.45 + nivelViz[i] * 0.55; c.beginPath();
+      if (c.roundRect) c.roundRect(i * (bw + vao), (W - h) / 2, bw, h, bw / 2); else c.rect(i * (bw + vao), (W - h) / 2, bw, h);
+      c.fill();
+    }
+    c.globalAlpha = 1;
+  } else {
+    if (vivo) an.getByteTimeDomainData(ondas);
+    c.lineWidth = W * 0.014; c.lineJoin = c.lineCap = "round"; c.beginPath();
+    for (let i = 0; i <= 96; i++) { const val = vivo ? (ondas[Math.floor((i * (ondas.length - 1)) / 96)] - 128) / 128 : 0, y = W / 2 + val * W * 0.42; if (i) c.lineTo((i / 96) * W, y); else c.moveTo(0, y); }
+    c.stroke();
+  }
+}
+/* Tela cheia: o mostrador vira um relógio que toca */
+const emPalco = () => $("app").dataset.palco === "1";
+async function alternarPalco(forcar) {
+  const on = forcar !== undefined ? forcar : !emPalco();
+  $("app").dataset.palco = on ? "1" : "";
+  $("b-palco").innerHTML = ico(on ? "x" : "expand", 20); $("b-palco").setAttribute("aria-label", on ? "Sair da tela cheia" : "Tela cheia");
+  try { if (on && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); else if (!on && document.fullscreenElement) await document.exitFullscreen(); } catch (e) { /* sem tela cheia aqui: fica o modo ampliado */ }
+  atualizarHora(); atualizarTela();
+}
+function atualizarHora() { if (emPalco()) $("hora").textContent = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); }
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && emPalco()) alternarPalco(false); });
+$("b-palco").addEventListener("click", () => alternarPalco());
+$("b-palco").innerHTML = ico("expand", 20);
+
 /* ===================== Navegação ===================== */
 const TELAS = [["biblioteca", "Biblioteca", "lib"], ["tocando", "Tocando", "now"], ["playlists", "Playlists", "pls"], ["voce", "Você", "user"], ["temas", "Ajustes", "thm"]];
 $("nav").innerHTML = TELAS.map((v) => `<button data-v="${v[0]}">${ico(v[2])}<span>${v[1]}</span></button>`).join("");
@@ -1804,6 +1986,7 @@ function ir(v) {
   $("main").scrollTop = 0;
   if (v === "voce") renderVoce();
   if (v === "playlists") renderPl();
+  if (v !== "tocando" && emPalco()) alternarPalco(false);
   if (v === "temas" && !editando) renderTemas();
   atualizarTela();
   if (location.hash.slice(1) !== v) try { history.replaceState(null, "", "#" + v); } catch (e) { /* ignora */ }
@@ -1839,6 +2022,7 @@ $("b-shuf").innerHTML = ico("shuf"); $("b-prev").innerHTML = ico("prev", 28); $(
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && folha) return fecharFolha();
+  if (e.key === "Escape" && emPalco()) return alternarPalco(false);
   const alvo = e.target, tag = alvo.tagName;
   if (folha || e.ctrlKey || e.metaKey || e.altKey || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || alvo.isContentEditable) return;
   if (e.key === " " && tag !== "BUTTON") { e.preventDefault(); alternar(); }
@@ -1862,7 +2046,7 @@ addEventListener("drop", async (e) => {
 });
 
 /* ===================== Início ===================== */
-aplicarTema(); aplicarFundo(); renderLetra();
+aplicarTema(); aplicarFundo(); aplicarVisual(); renderLetra();
 ir(location.hash.slice(1) || "biblioteca");
 renderBib(); renderTemas(); paint();
 requestAnimationFrame(quadro);
