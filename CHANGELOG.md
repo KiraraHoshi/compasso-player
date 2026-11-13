@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.15.1
+- App Android: corrigida a tela branca ao abrir. Uma chamada do plugin de controles de mídia derrubava o app inteiro. Agora toda chamada nativa é protegida, e no APK de teste um erro aparece na tela em vez de deixar tudo em branco.
+
 ## 1.15.0
 - App Android:
   - Controles na notificação e na tela de bloqueio, com capa, tocar/pausar, anterior, próxima e a barra de posição. O som segue tocando com o app fechado.
