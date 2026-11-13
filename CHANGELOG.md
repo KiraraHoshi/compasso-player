@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.6.0
+- Controle de volume próprio no Tocando agora, com mudo e atalhos (↑, ↓ e M no PC).
+- App mais leve: as animações deixaram de recalcular a página inteira a cada quadro. Num processador 4 vezes mais lento, o app foi de cerca de 25 para 60 quadros por segundo, e a rolagem ficou lisa.
+- Modo leve em Ajustes › Efeitos, e o app sugere ligar quando percebe que está lento.
+- Tradução para inglês. O idioma segue o do aparelho e pode ser trocado em Ajustes.
+
 ## 1.5.0
 - Tela de boas-vindas na primeira abertura, com os três passos para começar.
 - Busca geral: músicas, álbuns, artistas e playlists de uma vez.
