@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.15.4
+- APK de teste: agora sempre assinado com a mesma chave, então cada versão nova instala por cima da anterior, sem desinstalar e sem perder nada.
+
 ## 1.15.3
 - Tocando agora no celular em pé: tudo cabe na tela, sem rolar. O mostrador se ajusta ao espaço que sobra, e o volume e os botões de fila, temporizador, equalizador e letra ficam sempre visíveis.
 - Os avisos com botão (como o de música importada) ficam numa faixa larga, em vez de uma bola estreita de várias linhas.
