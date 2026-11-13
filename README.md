@@ -6,6 +6,16 @@ Funciona no navegador do celular e do PC e pode ser instalado como app (PWA).
 
 **[Abrir o app](https://kirarahoshi.github.io/compasso-player/)**
 
+| Biblioteca | Tocando agora | Vinil (anos 70) |
+|---|---|---|
+| ![Biblioteca](docs/1-biblioteca.png) | ![Tocando agora](docs/2-tocando.png) | ![Visual de vinil](docs/3-vinil.png) |
+
+| Cassete (anos 80) | Você | Ajustes |
+|---|---|---|
+| ![Visual de cassete](docs/4-cassete.png) | ![Aba Você](docs/5-voce.png) | ![Ajustes](docs/6-ajustes.png) |
+
+*[Read in English](README.en.md)* · [Histórico de versões](CHANGELOG.md) · [Planos](ROADMAP.md)
+
 ## O que ele faz
 
 - **Biblioteca:** importa arquivos ou pastas inteiras (no PC, também dá para arrastar para a janela). Lê título, artista, álbum, número da faixa e capa de MP3, FLAC, M4A, OGG e Opus. Abas de músicas, álbuns e artistas, com busca e ordenação.
@@ -22,6 +32,11 @@ Funciona no navegador do celular e do PC e pode ser instalado como app (PWA).
 - **Imagem de fundo** escolhida por você, com desfoque.
 - **Backup:** playlists, favoritas, estatísticas, letras, perfil, temas e ajustes num arquivo, para levar a outro aparelho.
 - **Recap em imagem:** o resumo do ano vira uma imagem para compartilhar.
+- **Épocas do som:** anos 60 (rádio valvulado), 70 (vinil com estalos), 80 (cassete) e 90 (CD), cada uma com seu visual.
+- **Visuais do mostrador:** relógio, vinil, cassete, rádio, barras e onda. Em tela cheia, vira um relógio que toca.
+- **Troca sem pausa e crossfade**, velocidade de reprodução e opção de nivelar o volume.
+- **Busca geral e seleção múltipla** na Biblioteca.
+- **Galeria de temas** dentro do app e na pasta [`temas/`](temas/).
 - **Volta de onde parou:** ao reabrir, a fila e a posição da música continuam iguais.
 - **Controles do sistema:** tela de bloqueio, fones Bluetooth e teclas de mídia.
 - **Atalhos no PC:** espaço toca e pausa, ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita.
@@ -87,6 +102,8 @@ js/app.js           biblioteca, fila, reprodução, playlists e temas
 sw.js               modo offline
 manifest.json       dados para instalar como app
 icons/              ícones do app
+temas/              galeria de temas em JSON
+docs/               capturas de tela
 ```
 
 ## Licença

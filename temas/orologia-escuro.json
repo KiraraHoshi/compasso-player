@@ -1,0 +1,13 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Orologia Escuro",
+  "fundo": "#14111F",
+  "card": "#1E1A2E",
+  "texto": "#EFEAF7",
+  "suave": "#9A93B0",
+  "destaque": "#A98BFF",
+  "secundaria": "#D2A067",
+  "raio": 16,
+  "fonte": "padrao"
+}

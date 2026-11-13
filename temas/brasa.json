@@ -1,0 +1,13 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Brasa",
+  "fundo": "#17100C",
+  "card": "#241812",
+  "texto": "#F7EBDD",
+  "suave": "#B59E8A",
+  "destaque": "#FF8A3D",
+  "secundaria": "#F2D7A6",
+  "raio": 12,
+  "fonte": "padrao"
+}

@@ -1,0 +1,13 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Entardecer",
+  "fundo": "#0E1119",
+  "card": "#1A1F2B",
+  "texto": "#F4EEE6",
+  "suave": "#A9A39A",
+  "destaque": "#EDA36D",
+  "secundaria": "#F7D9A5",
+  "raio": 16,
+  "fonte": "padrao"
+}

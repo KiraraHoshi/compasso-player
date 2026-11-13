@@ -699,7 +699,7 @@ const vazio = (txt, extra = "") => `<div class="empty"><p>${txt}</p>${extra}</di
 function renderBib() {
   const v = vis(), q = $("q").value.trim().toLowerCase(), imp = importadas().length;
   if (!importando) $("count").textContent = v.length ? `${plural(v.length, "música", "músicas")} · ${fmt(duracaoTotal(v))}` + (imp && !db ? " · este navegador não guarda a biblioteca" : "") : "Nenhuma música ainda";
-  $("q").hidden = $("seg").hidden = !!aberto;
+  $("q").hidden = !!aberto; $("seg").hidden = !!aberto || !!q;
   document.querySelectorAll("#seg button").forEach((b) => { b.classList.toggle("on", b.dataset.tab === aba); b.setAttribute("aria-pressed", b.dataset.tab === aba); });
   const L = $("lib");
   const casa = (s) => !q || s.toLowerCase().includes(q);
@@ -737,6 +737,16 @@ function renderBib() {
       ${botoesTocar()}<div class="list">${pa.fx.map((x) => linhaFaixa(x)).join("")}</div>`;
     return;
   }
+  if (q) { // busca geral: músicas, álbuns, artistas e playlists de uma vez
+    const fm = ordenar(v).filter((x) => casa(x.t + " " + x.a + " " + (x.al || ""))), fa = albuns().filter((a) => casa(a.n + " " + a.a)), fr = artistas().filter((a) => casa(a.n)), fp = pls.filter((p) => casa(p.nome));
+    listaBib = { ids: fm.map((x) => x.id), ctx: "busca" }; sel = null;
+    if (!fm.length && !fa.length && !fr.length && !fp.length) { L.innerHTML = vazio("Nada encontrado para essa busca."); return; }
+    L.innerHTML = (fm.length ? `<p class="sec-t">Músicas · ${fm.length}</p><div class="list">${fm.slice(0, 40).map((x) => linhaFaixa(x)).join("")}</div>${fm.length > 40 ? `<p class="note">Mostrando as 40 primeiras. Digite mais para afinar a busca.</p>` : ""}` : "") +
+      (fa.length ? `<p class="sec-t">Álbuns · ${fa.length}</p><div class="albs poucos">${fa.slice(0, 6).map((a) => `<button class="alb" data-al="${esc(a.n)}">${capaGrupo(a)}<span class="t clip">${esc(a.n)}</span><span class="sub clip">${esc(a.a)}</span></button>`).join("")}</div>` : "") +
+      (fr.length ? `<p class="sec-t">Artistas · ${fr.length}</p><div class="list">${fr.slice(0, 6).map((a) => `<div class="track"><button class="tp" data-ar="${esc(a.n)}">${capaGrupo(a, "thumb round")}<span class="grow"><span class="t clip">${esc(a.n)}</span><span class="sub clip">${plural(a.fx.length, "música", "músicas")}</span></span></button></div>`).join("")}</div>` : "") +
+      (fp.length ? `<p class="sec-t">Playlists · ${fp.length}</p><div class="list">${fp.slice(0, 6).map((p) => `<div class="track"><button class="tp" data-irpl="${p.id}">${mosaico(p)}<span class="grow"><span class="t clip">${esc(p.nome)}</span><span class="sub clip">${plural(idsDe(p).length, "música", "músicas")}</span></span></button></div>`).join("")}</div>` : "");
+    return;
+  }
   if (aba === "pastas") {
     const f = pastas().filter((g) => casa(g.k + " " + g.n));
     L.innerHTML = f.length ? `<div class="list">${f.map((g) => `<div class="track"><button class="tp" data-pasta="${esc(g.k)}"><span class="thumb folder">${ico("folder", 22)}</span><span class="grow"><span class="t clip">${esc(g.n)}</span><span class="sub clip">${g.k && g.k !== g.n ? esc(g.k) + " · " : ""}${plural(g.fx.length, "música", "músicas")}</span></span></button></div>`).join("")}</div><p class="note">As pastas aparecem quando você importa uma pasta inteira ou arrasta pastas para a janela.</p>`
@@ -747,9 +757,9 @@ function renderBib() {
     const f = ordenar(v).filter((x) => casa(x.t + " " + x.a + " " + (x.al || "")));
     listaBib = { ids: f.map((x) => x.id), ctx: q ? "busca" : "Biblioteca" };
     const nEx = v.filter((x) => x.demo).length;
-    L.innerHTML = (nEx && !q ? `<div class="card row aviso-ex"><span class="grow note">As ${nEx} músicas marcadas como exemplo servem só para testar o app.</span><button class="btn ghost sm" data-esconder-ex>Esconder</button></div>` : "") + `<div class="row"><div class="grow">${f.length ? botoesTocar() : ""}</div>
+    L.innerHTML = (nEx && !q ? `<div class="card row aviso-ex"><span class="grow note">As ${nEx} músicas marcadas como exemplo servem só para testar o app.</span><button class="btn ghost sm" data-esconder-ex>Esconder</button></div>` : "") + `<div class="row"><div class="grow">${f.length && !sel ? botoesTocar(`<button class="btn ghost sm" data-selecionar>Selecionar</button>`) : ""}</div>
       <select id="ord" class="mini-sel" aria-label="Ordem das músicas">${Object.entries(ORDENS).map(([k, n]) => `<option value="${k}"${k === cfg.ord ? " selected" : ""}>${n}</option>`).join("")}</select></div>
-      ${f.length ? `<div class="list">${f.map((x) => linhaFaixa(x)).join("")}</div>` : vazio("Nada encontrado para essa busca.")}`;
+      ${f.length ? `<div class="list">${f.map((x) => (sel ? linhaSel(x) : linhaFaixa(x))).join("")}</div>` : vazio("Nada encontrado para essa busca.")}${sel ? barraSel(f.length) : ""}`;
   } else if (aba === "albuns") {
     const f = albuns().filter((a) => casa(a.n + " " + a.a));
     L.innerHTML = f.length ? `<div class="albs">${f.map((a) => `<button class="alb" data-al="${esc(a.n)}">${capaGrupo(a)}<span class="t clip">${esc(a.n)}</span><span class="sub clip">${esc(a.a)} · ${plural(a.fx.length, "música", "músicas")}</span></button>`).join("")}</div>` : vazio("Nenhum álbum encontrado.");
@@ -767,11 +777,15 @@ function pastas() {
 }
 function abrirNaBib(tipo, nome) { aberto = { tipo, nome }; ir("biblioteca"); renderBib(); $("main").scrollTop = 0; }
 $("q").addEventListener("input", renderBib);
-$("seg").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) { aba = b.dataset.tab; renderBib(); } });
+$("seg").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) { aba = b.dataset.tab; sel = null; renderBib(); } });
 $("lib").addEventListener("change", (e) => { if (e.target.id === "ord") { cfg.ord = e.target.value; salvarCfg(); renderBib(); } });
 $("lib").addEventListener("click", (e) => {
   const t = e.target;
   if (t.closest("[data-importar]")) return menuImportar();
+  if (t.closest("[data-selecionar]")) { sel = new Set(); return renderBib(); }
+  const sa = t.closest("[data-selacao]"); if (sa && sel) return acaoSel(sa.dataset.selacao);
+  const si = t.closest("[data-sel-id]"); if (si && sel) { const id = si.dataset.selId; if (sel.has(id)) sel.delete(id); else sel.add(id); return renderBib(); }
+  const ip = t.closest("[data-irpl]"); if (ip) { plAberta = ip.dataset.irpl; return ir("playlists"); }
   if (t.closest("[data-esconder-ex]")) { cfg.exemplos = false; cfg.exemplosMexeu = true; salvarCfg(); mudouExemplos(); return toast("Exemplos escondidos. Para ver de novo: Ajustes › Biblioteca"); }
   if (t.closest("[data-voltar]")) { aberto = null; renderBib(); return; }
   const al = t.closest("[data-al]"); if (al) return abrirNaBib("album", al.dataset.al);
@@ -1067,6 +1081,8 @@ function renderTemas() {
   $("tm").innerHTML = `<div><h1>Ajustes</h1><p class="sub">Temas, efeitos e reprodução. Tudo fica salvo neste aparelho.</p></div>
     <p class="sec-t">Temas</p>
     <div class="themes">${todosTemas().map(cardTema).join("")}<button class="th add" data-criar>${ico("plus")}Criar tema</button></div>
+    <p class="sec-t">Galeria</p>
+    <div class="galeria">${GALERIA.map((g, i) => { const tem = meusTemas.some((m) => m.nome === g.nome); return `<div class="gal"><span class="gal-c" style="background:${g.fundo}"><i style="background:${g.card}"></i><i style="background:${g.destaque}"></i><i style="background:${g.secundaria}"></i></span><span class="t clip grow">${esc(g.nome)}</span><button class="btn ghost sm" data-galeria="${i}"${tem ? " disabled" : ""}>${tem ? "Adicionado" : "Adicionar"}</button></div>`; }).join("")}</div>
     <div class="card stack"><h2>Ajuste rápido</h2><p class="note">Vale para o tema em uso: ${esc(t.nome)}.</p>
       <div class="sw" role="group" aria-label="Cor de destaque">${cores.map(([n, c]) => `<button data-cor="${c}" title="${n}" aria-label="${n}" aria-pressed="${c.toUpperCase() === t.destaque.toUpperCase()}" class="${c.toUpperCase() === t.destaque.toUpperCase() ? "sel" : ""}" style="background:${c}"></button>`).join("")}</div>
       <div class="opt"><label for="r-raio">Cantos arredondados</label><input id="r-raio" type="range" min="0" max="28" step="2" value="${t.raio}"></div></div>
@@ -1099,7 +1115,11 @@ function renderTemas() {
       ${faixas.some((x) => x.oculta) ? `<div class="opt"><span>${plural(faixas.filter((x) => x.oculta).length, "música oculta", "músicas ocultas")}</span><button class="btn ghost sm" data-verocultas>Ver</button></div>` : ""}
       <p class="note" id="espaco">Calculando o espaço usado…</p>
       ${importadas().length ? '<div class="btns"><button class="btn danger sm" data-limparbib>Apagar todas as músicas importadas</button></div>' : ""}
-      <p class="note">Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita.</p></div>`;
+      <p class="note">Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita.</p></div>
+    <div class="card stack"><h2>Sobre</h2><p class="note">Compasso Player ${VERSAO}. Código aberto, sem anúncios e sem conta. Se o app te ajuda, apoiar o projeto mantém ele assim.</p>
+      <div class="btns"><a class="btn sm" href="https://github.com/sponsors/KiraraHoshi" target="_blank" rel="noopener">${ico("heartOn", 18)}Apoiar o projeto</a><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player" target="_blank" rel="noopener">Código no GitHub</a></div>
+      <div class="btns">${instalado() ? "" : `<button class="btn ghost sm" data-instalar>Instalar como app</button>`}<button class="btn ghost sm" data-boasvindas>Ver as boas-vindas</button></div>
+      <p class="note">Os dois botões de cima abrem o GitHub no navegador. O app em si não se conecta a nada.</p></div>`;
   espaco();
 }
 async function espaco() {
@@ -1167,6 +1187,10 @@ $("tm").addEventListener("click", (e) => {
     if (k === "eraRuido") ajustarRuido();
     renderTemas(); return;
   }
+  const ga = t.closest("[data-galeria]");
+  if (ga) { const n = validarTema(GALERIA[+ga.dataset.galeria]); n.id = uid("t"); meusTemas.push(n); salvarTemas(); cfg.tema = n.id; aplicarTema(); renderTemas(); return toast(`Tema "${n.nome}" adicionado`); }
+  if (t.closest("[data-instalar]")) return pedirInstalacao();
+  if (t.closest("[data-boasvindas]")) return boasVindas();
   const vi = t.closest("[data-vis]"); if (vi) { cfg.visual = vi.dataset.vis; salvarCfg(); aplicarVisual(); return renderTemas(); }
   const ep = t.closest("[data-epoca]");
   if (ep) { cfg.era = ep.dataset.epoca; cfg.visual = ERAS[cfg.era][1]; salvarCfg(); aplicarVisual(); if (ctx) montarEra(); return renderTemas(); }
@@ -1975,6 +1999,82 @@ document.addEventListener("fullscreenchange", () => { if (!document.fullscreenEl
 $("b-palco").addEventListener("click", () => alternarPalco());
 $("b-palco").innerHTML = ico("expand", 20);
 
+
+/* ===================== Seleção múltipla ===================== */
+let sel = null;
+function linhaSel(x) {
+  const on = sel.has(x.id);
+  return `<div class="track"><button class="tp" data-sel-id="${x.id}" role="checkbox" aria-checked="${on}"><span class="cx${on ? " on" : ""}">${on ? ico("check", 16) : ""}</span>${capa(x)}<span class="grow"><span class="t clip">${esc(x.t)}</span><span class="sub clip">${esc(linha2(x))}</span></span></button><span class="dur">${x.d ? fmt(x.d) : ""}</span></div>`;
+}
+function barraSel(total) {
+  const n = sel.size;
+  return `<div class="selbar"><div class="row"><span class="t grow">${plural(n, "selecionada", "selecionadas")}</span><button class="btn ghost sm" data-selacao="todas">${n === total ? "Nenhuma" : "Todas"}</button><button class="btn ghost sm" data-selacao="cancelar">Cancelar</button></div>
+    <div class="btns"><button class="btn sm" data-selacao="playlist"${n ? "" : " disabled"}>${ico("pls", 18)}Playlist</button><button class="btn ghost sm" data-selacao="fila"${n ? "" : " disabled"}>${ico("addq", 18)}Fila</button><button class="btn ghost sm" data-selacao="ocultar"${n ? "" : " disabled"}>${ico("eyeoff", 18)}Ocultar</button><button class="btn danger sm" data-selacao="remover"${n ? "" : " disabled"}>${ico("trash", 18)}Remover</button></div></div>`;
+}
+function acaoSel(a) {
+  const ids = [...sel].filter((id) => porId.has(id));
+  if (a === "cancelar") { sel = null; return renderBib(); }
+  if (a === "todas") { sel = sel.size === listaBib.ids.length ? new Set() : new Set(listaBib.ids); return renderBib(); }
+  if (!ids.length) return;
+  if (a === "fila") {
+    for (const id of ids) { if (queue[qi] === id) continue; const i = queue.indexOf(id); if (i >= 0) { queue.splice(i, 1); if (i < qi) qi--; } queue.push(id); }
+    if (!cur()) { qi = 0; carregar(false); }
+    sel = null; renderBib(); renderFilaAberta(); paint(); salvarSessao();
+    return toast(plural(ids.length, "música foi", "músicas foram") + " para o fim da fila");
+  }
+  if (a === "playlist") {
+    const html = () => `<div class="menu"><button data-nova>${ico("plus")}Nova playlist</button>${pls.map((p) => `<button data-pl="${p.id}">${mosaico(p)}<span class="grow"><span class="t clip">${esc(p.nome)}</span><span class="sub">${plural(idsDe(p).length, "música", "músicas")}</span></span></button>`).join("")}</div>`;
+    const fim = (p) => { let n = 0; for (const id of ids) if (!p.ids.includes(id)) { p.ids.push(id); n++; } salvarPl(p); sel = null; fecharFolha(); renderBib(); renderPl(); toast(`${plural(n, "música adicionada", "músicas adicionadas")} a "${p.nome}"`); };
+    return abrirFolha({
+      titulo: `Adicionar ${plural(ids.length, "música", "músicas")}`, html: html(),
+      clique(e) {
+        if (e.target.closest("[data-nova]")) return perguntar("Nova playlist", "Nome da playlist", "", "Criar e adicionar", (n) => fim(novaPlaylist(n)));
+        const b = e.target.closest("[data-pl]"), p = b && pls.find((y) => y.id === b.dataset.pl); if (p) fim(p);
+      },
+    });
+  }
+  const reais = ids.filter((id) => !porId.get(id).demo);
+  if (!reais.length) return toast("As músicas de exemplo não podem ser ocultadas nem removidas aqui");
+  if (a === "ocultar") { reais.forEach((id) => ocultar(id, true)); sel = null; renderBib(); return toast(plural(reais.length, "música oculta", "músicas ocultas") + ". Para mostrar de novo: Ajustes › Biblioteca"); }
+  if (a === "remover") confirmar("Remover da biblioteca?", `${plural(reais.length, "música sai", "músicas saem")} do Compasso e das playlists. Os arquivos originais continuam no seu aparelho.`, "Remover", () => { reais.forEach(removerFaixa); sel = null; renderBib(); toast(plural(reais.length, "música removida", "músicas removidas")); });
+}
+
+/* ===================== Boas-vindas, instalação e sobre ===================== */
+const VERSAO = "1.5.0";
+let instalar = null;
+const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
+addEventListener("appinstalled", () => { instalar = null; toast("Compasso instalado"); });
+async function pedirInstalacao() {
+  if (!instalar) return toast("No menu do navegador, toque em Instalar app ou Adicionar à tela inicial");
+  instalar.prompt(); try { await instalar.userChoice; } catch (e) { /* fechado */ }
+  instalar = null;
+}
+function boasVindas() {
+  guardado.set("compasso.boasvindas", true);
+  const html = () => `<p class="note" style="padding:0 6px">Um player de música que funciona sem internet, sem conta e sem anúncios. Três passos e está pronto.</p>
+    <div class="card stack"><div class="row"><span class="passo">1</span><h2 class="grow">Traga suas músicas</h2></div><p class="note">Elas ficam guardadas só neste aparelho. Servem MP3, FLAC, M4A, OGG e Opus.</p>
+      <div class="btns"><button class="btn sm" data-bv="arquivos">${ico("note", 18)}Escolher arquivos</button><button class="btn ghost sm" data-bv="pasta">${ico("folder", 18)}Escolher pasta</button></div></div>
+    <div class="card stack"><div class="row"><span class="passo">2</span><h2 class="grow">Escolha o visual</h2></div>
+      <div class="btns">${["claro", "escuro"].map((k) => `<button class="btn ${cfg.tema === k ? "" : "ghost"} sm" data-bv-tema="${k}" aria-pressed="${cfg.tema === k}">${BASE[k].nome}</button>`).join("")}</div><p class="note">Em Ajustes você cria seus temas, muda o mostrador e liga o som de época (vinil, cassete, rádio).</p></div>
+    ${instalado() ? "" : `<div class="card stack"><div class="row"><span class="passo">3</span><h2 class="grow">Instale como app</h2></div>${instalar ? `<div class="btns"><button class="btn sm" data-bv="instalar">Instalar o Compasso</button></div>` : '<p class="note">No menu do navegador, toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>. Ele abre em tela cheia e funciona offline.</p>'}</div>`}
+    <button class="btn" data-bv="fechar">Começar</button>`;
+  abrirFolha({
+    titulo: "Bem-vindo ao Compasso", html: html(),
+    clique(e) {
+      const t = e.target.closest("[data-bv-tema]"); if (t) { cfg.tema = t.dataset.bvTema; aplicarTema(); $("sheet-b").innerHTML = html(); return; }
+      const b = e.target.closest("[data-bv]"); if (!b) return;
+      const a = b.dataset.bv;
+      if (a === "instalar") return pedirInstalacao();
+      fecharFolha();
+      if (a === "arquivos") $("files").click(); else if (a === "pasta") $("folder").click();
+    },
+  });
+}
+
+/* ===================== Galeria de temas ===================== */
+const GALERIA = [{"nome": "Entardecer", "fundo": "#0E1119", "card": "#1A1F2B", "texto": "#F4EEE6", "suave": "#A9A39A", "destaque": "#EDA36D", "secundaria": "#F7D9A5", "raio": 16, "fonte": "padrao"}, {"nome": "Brasa", "fundo": "#17100C", "card": "#241812", "texto": "#F7EBDD", "suave": "#B59E8A", "destaque": "#FF8A3D", "secundaria": "#F2D7A6", "raio": 12, "fonte": "padrao"}, {"nome": "Maré", "fundo": "#0A1418", "card": "#12222A", "texto": "#E6F4F6", "suave": "#8FB0B8", "destaque": "#4FD1E0", "secundaria": "#F06A86", "raio": 20, "fonte": "padrao"}, {"nome": "Meia-noite", "fundo": "#000000", "card": "#101014", "texto": "#F2F2F5", "suave": "#9A9AA8", "destaque": "#7C9BFF", "secundaria": "#E3C98A", "raio": 14, "fonte": "sistema"}, {"nome": "Folha", "fundo": "#F1F4EA", "card": "#FFFFFF", "texto": "#1C2414", "suave": "#5F6B52", "destaque": "#3F7A14", "secundaria": "#B5560F", "raio": 18, "fonte": "padrao"}, {"nome": "Papel", "fundo": "#F3F1EC", "card": "#FFFEFB", "texto": "#22201C", "suave": "#6B665C", "destaque": "#2F5FA8", "secundaria": "#9A4B2F", "raio": 6, "fonte": "serifada"}];
+
 /* ===================== Navegação ===================== */
 const TELAS = [["biblioteca", "Biblioteca", "lib"], ["tocando", "Tocando", "now"], ["playlists", "Playlists", "pls"], ["voce", "Você", "user"], ["temas", "Ajustes", "thm"]];
 $("nav").innerHTML = TELAS.map((v) => `<button data-v="${v[0]}">${ico(v[2])}<span>${v[1]}</span></button>`).join("");
@@ -2064,6 +2164,7 @@ requestAnimationFrame(quadro);
   guardado.set("compasso.semente", true);
   restaurarSessao();
   renderBib(); renderPl(); renderTemas(); paint();
+  if (!guardado.get("compasso.boasvindas", false) && !importadas().length) boasVindas();
 })();
 
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {

@@ -1,0 +1,13 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Folha",
+  "fundo": "#F1F4EA",
+  "card": "#FFFFFF",
+  "texto": "#1C2414",
+  "suave": "#5F6B52",
+  "destaque": "#3F7A14",
+  "secundaria": "#B5560F",
+  "raio": 18,
+  "fonte": "padrao"
+}

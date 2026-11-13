@@ -21,6 +21,15 @@ Toda a lista da versão web está pronta. Os próximos passos são a versão And
 - ✅ **Backup e restauração** de playlists, favoritas, estatísticas, letras, perfil, temas e ajustes (1.3.0).
 - ✅ **Equalizador de 10 bandas** e 15 predefinições (1.3.0).
 
+- ✅ **Épocas do som e visuais do mostrador** (1.4.0). Por enquanto grátis, em teste.
+- ✅ **Troca sem pausa, crossfade, velocidade e nivelar volume** (1.4.0).
+- ✅ **Tela cheia** com relógio (1.4.0).
+- ✅ **Boas-vindas, busca geral, seleção múltipla, galeria de temas e cartão Sobre** (1.5.0).
+
+## Próximo na versão web
+
+- Tradução do app para inglês.
+
 ## Versão Android
 
 - Encontrar as músicas do aparelho sozinho, sem importar.

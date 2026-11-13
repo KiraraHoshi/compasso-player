@@ -1,0 +1,13 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Maré",
+  "fundo": "#0A1418",
+  "card": "#12222A",
+  "texto": "#E6F4F6",
+  "suave": "#8FB0B8",
+  "destaque": "#4FD1E0",
+  "secundaria": "#F06A86",
+  "raio": 20,
+  "fonte": "padrao"
+}
