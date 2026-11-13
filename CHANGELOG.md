@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.8.2
+- Aura virou um visual próprio: uma forma macia envolve a capa, com poeira flutuando e uma onda discreta nas batidas, sem os tracinhos do relógio. O Relógio voltou a ficar limpo, sem o anel encostando nos tracinhos.
+
 ## 1.8.1
 - O app agora se chama Orolon Player, da família Orologia. O endereço continua o mesmo, e as músicas, playlists e ajustes ficam onde estavam.
 

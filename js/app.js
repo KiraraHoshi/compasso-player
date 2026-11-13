@@ -1208,7 +1208,7 @@ function renderTemas() {
       <div class="opt"><span id="l-leve">${T("Modo leve")}</span><button class="tg" data-alternar-leve role="switch" aria-checked="${!!cfg.leve}" aria-labelledby="l-leve"></button></div>
       <p class="note">${T("Desliga as animações que mais pesam. Bom para celulares mais simples ou se a rolagem estiver travando.")}</p>
       ${tg("amb", T("Luz de fundo com as cores da capa"))}${faixaAjuste("ambF", T("Intensidade da luz"), cfg.amb)}
-      ${tg("reage", T("Reagir à batida da música"))}${faixaAjuste("batF", T("Força da batida"), cfg.reage)}${cfg.reage ? `<div class="sub-opt">${tg("aura", T("Aura em volta da capa"))}</div>` : ""}
+      ${tg("reage", T("Reagir à batida da música"))}${faixaAjuste("batF", T("Força da batida"), cfg.reage)}
       <div class="opt"><span>${T("Imagem de fundo")}</span><div class="btns"><button class="btn ghost sm" data-fundo>${ico("image", 18)}${temFundo() ? T("Trocar") : T("Escolher")}</button>${temFundo() ? `<button class="btn ghost sm" data-semfundo>${T("Tirar")}</button>` : ""}</div></div>
       ${temFundo() ? `<div class="opt sub-opt"><label for="r-blur">${T("Desfoque")}</label><input type="range" id="r-blur" data-rgx="fundoBlur" min="0" max="24" step="1" value="${cfg.fundoBlur}"></div>
       <div class="opt sub-opt"><label for="r-veu">${T("Cor do tema por cima")}</label><input type="range" id="r-veu" data-rgx="fundoVeu" min="0.15" max="0.9" step="0.05" value="${cfg.fundoVeu}"></div>` : ""}
@@ -2120,7 +2120,7 @@ function escolherFundo() {
 /* ===================== Épocas (som) e visuais do mostrador ===================== */
 const ERAS = { off: [T("Desligado"), "relogio"], 60: [T("Anos 60"), "radio"], 70: [T("Anos 70"), "vinil"], 80: [T("Anos 80"), "cassete"], 90: [T("Anos 90"), "barras"] };
 const ERA_DESC = { off: T("Som original, sem efeito."), 60: T("Rádio valvulado: mono, abafado e com chiado."), 70: T("Vinil: graves quentes, estalos de agulha e leve oscilação."), 80: T("Fita cassete: chiado de fita e velocidade oscilando de leve."), 90: T("CD player: som limpo com graves e brilho reforçados.") };
-const VISUAIS = { relogio: T("Relógio"), vinil: T("Vinil"), espectro: T("Espectro"), neon: T("Neon"), cassete: T("Cassete"), radio: T("Rádio"), barras: T("Barras"), onda: T("Onda") };
+const VISUAIS = { relogio: T("Relógio"), vinil: T("Vinil"), aura: T("Aura"), espectro: T("Espectro"), neon: T("Neon"), cassete: T("Cassete"), radio: T("Rádio"), barras: T("Barras"), onda: T("Onda") };
 function curvaSat(k) { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = (i * 2) / n - 1; c[i] = Math.tanh(k * x) / Math.tanh(k); } return c; }
 function bufRuido(tipo) {
   const sr = ctx.sampleRate, n = sr * 4, b = ctx.createBuffer(1, n, sr), d = b.getChannelData(0);
@@ -2187,7 +2187,7 @@ function pintarCena() {
 let nivelViz = new Float32Array(28);
 let auraNiv = new Float32Array(36), ondinhas = [], ultOndinha = 0, auraLimpa = true;
 /* Aura: um anel suave em volta da capa (Relógio e Vinil) que respira com a música, sem exagero */
-const temAura = (v) => (v === "relogio" || v === "vinil") && cfg.reage && cfg.aura !== false && !cfg.leve && APP.dataset.letra !== "1";
+const temAura = (v) => v === "aura" && APP.dataset.letra !== "1";
 function desenharViz() {
   const v = cfg.visual, aura = temAura(v);
   if ((v !== "barras" && v !== "onda" && v !== "espectro" && v !== "neon" && !aura) || $("app").dataset.view !== "tocando") {
@@ -2222,6 +2222,16 @@ function desenharViz() {
 }
 /* Espectro: anel fino com picos para fora e poeira que acelera nas batidas */
 const espNiv = new Float32Array(110), poeira = Array.from({ length: 42 }, () => ({ a: Math.random() * Math.PI * 2, d: Math.random(), v: 0.6 + Math.random(), t: 0.5 + Math.random() * 1.5 }));
+// poeira: sai do anel e se afasta devagar; nas batidas corre um pouco mais
+function desenharPoeira(c, W, R, k, graves) {
+  const cx = W / 2, vel = 0.0016 * (1 + batida * 4 * k + graves);
+  c.fillStyle = corViz;
+  for (const q of poeira) {
+    q.d += vel * q.v; if (q.d > 1) { q.d = 0; q.a = Math.random() * Math.PI * 2; }
+    const r = R + q.d * (W * 0.5 - R), al = Math.sin(q.d * Math.PI) * 0.55;
+    c.globalAlpha = al; c.beginPath(); c.arc(cx + Math.cos(q.a) * r, cx + Math.sin(q.a) * r, W * 0.0035 * q.t, 0, Math.PI * 2); c.fill();
+  }
+}
 function desenharEspectro(c, W, vivo) {
   const n = espNiv.length, k = cfg.reage ? cfg.batF : 0.3, cx = W / 2;
   if (vivo) an.getByteFrequencyData(bins);
@@ -2231,14 +2241,7 @@ function desenharEspectro(c, W, vivo) {
   }
   const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0;
   const R = W * 0.34 * (1 + pulso * 0.02 * k + batida * k * 0.055) + W * 0.01, A = W * 0.1 * (0.45 + k * 0.75), N = n * 2;
-  // poeira: sai do anel e se afasta devagar; nas batidas corre um pouco mais
-  const vel = 0.0016 * (1 + batida * 4 * k + graves);
-  c.fillStyle = corViz;
-  for (const q of poeira) {
-    q.d += vel * q.v; if (q.d > 1) { q.d = 0; q.a = Math.random() * Math.PI * 2; }
-    const r = R + q.d * (W * 0.5 - R), al = Math.sin(q.d * Math.PI) * 0.55;
-    c.globalAlpha = al; c.beginPath(); c.arc(cx + Math.cos(q.a) * r, cx + Math.sin(q.a) * r, W * 0.0035 * q.t, 0, Math.PI * 2); c.fill();
-  }
+  desenharPoeira(c, W, R, k, graves);
   // picos: uma linha quebrada (não suavizada), espelhada entre a esquerda e a direita
   c.beginPath();
   for (let j = 0; j <= N; j++) {
@@ -2279,32 +2282,36 @@ function desenharNeon(c, W, vivo) {
   c.globalAlpha = 0.9; c.fillStyle = "#fff"; c.fillRect(0, cy - W * 0.0018, W, W * 0.0036);
   c.globalAlpha = 1;
 }
+/* Aura: uma forma macia que envolve a capa e respira com a música (sem os tracinhos do relógio) */
 function desenharAura(c, W, vivo) {
-  const n = auraNiv.length, k = cfg.batF, cx = W / 2;
+  const n = auraNiv.length, k = cfg.reage ? cfg.batF : 0.3, cx = W / 2;
   if (vivo) an.getByteFrequencyData(bins);
   for (let i = 0; i < n; i++) {
     const p = i / (n - 1), alvo = vivo ? bins[2 + Math.round(64 * p * p)] / 255 : 0;
     auraNiv[i] += (alvo - auraNiv[i]) * (alvo > auraNiv[i] ? 0.22 : 0.08); // sobe rápido, desce devagar
   }
+  const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0;
   // o raio acompanha o leve "pulo" da capa no CSS
-  const R = W * 0.34 * (1 + pulso * 0.02 * k + batida * k * 0.055) + W * 0.012, A = W * 0.05 * (0.4 + k * 0.8), N = n * 2, pts = [];
+  const R = W * 0.34 * (1 + pulso * 0.02 * k + batida * k * 0.055) + W * 0.012, A = W * 0.12 * (0.45 + k * 0.75), N = n * 2, pts = [];
+  desenharPoeira(c, W, R, k, graves);
   for (let j = 0; j < N; j++) {
-    const nv = auraNiv[j < n ? j : N - 1 - j], r = R + Math.pow(nv, 1.6) * A, ang = (j / N) * Math.PI * 2 - Math.PI / 2;
+    const nv = auraNiv[j < n ? j : N - 1 - j], r = R + Math.pow(nv, 2) * A, ang = (j / N) * Math.PI * 2 - Math.PI / 2;
     pts.push([cx + Math.cos(ang) * r, cx + Math.sin(ang) * r]);
   }
-  c.lineJoin = "round"; c.beginPath();
+  c.lineJoin = "round"; c.fillStyle = c.strokeStyle = corViz; c.beginPath();
   for (let j = 0; j <= N; j++) { // curva suave pelos pontos médios
     const a = pts[j % N], b = pts[(j + 1) % N], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
     if (j === 0) c.moveTo(mx, my); else c.quadraticCurveTo(a[0], a[1], mx, my);
   }
-  c.globalAlpha = 0.16; c.lineWidth = W * 0.03; c.stroke();
-  c.globalAlpha = 0.75; c.lineWidth = W * 0.006; c.stroke();
+  c.globalAlpha = 0.16 + batida * 0.08 * k; c.fill();
+  c.globalAlpha = 0.18; c.lineWidth = W * 0.025; c.stroke();
+  c.globalAlpha = 0.8; c.lineWidth = W * 0.005; c.stroke();
   // uma onda sai da capa em cada batida forte
   if (vivo && ultimaBatida !== ultOndinha && performance.now() - ultimaBatida < 60) { ultOndinha = ultimaBatida; if (ondinhas.length < 3) ondinhas.push(0); }
   c.lineWidth = W * 0.005;
   for (let i = ondinhas.length - 1; i >= 0; i--) {
     const t = (ondinhas[i] += 0.022); if (t >= 1) { ondinhas.splice(i, 1); continue; }
-    c.globalAlpha = 0.35 * (1 - t) * k; c.beginPath(); c.arc(cx, cx, R + t * W * 0.1, 0, Math.PI * 2); c.stroke();
+    c.globalAlpha = 0.3 * (1 - t) * k; c.beginPath(); c.arc(cx, cx, R + t * W * 0.14, 0, Math.PI * 2); c.stroke();
   }
   c.globalAlpha = 1;
 }
@@ -2363,7 +2370,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.8.1";
+const VERSAO = "1.8.2";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
