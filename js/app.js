@@ -50,6 +50,12 @@ const I = {
   trash: tr("M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"),
   edit: tr("M5 19h4L19 9l-4-4L5 15zM13 7l4 4"),
   folder: tr("M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"),
+  heart: tr("M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0112 7.2a4.3 4.3 0 017.5 2.6C19.5 15.4 12 20 12 20z"),
+  heartOn: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0112 7.2a4.3 4.3 0 017.5 2.6C19.5 15.4 12 20 12 20z" fill="currentColor"/>',
+  timer: '<circle cx="12" cy="13.5" r="7.2" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M12 9.8v3.9l2.5 1.6M9.5 3.5h5"),
+  sliders: tr("M5 7h14M5 12h14M5 17h14") + '<circle cx="9" cy="7" r="2.1" fill="currentColor"/><circle cx="15.5" cy="12" r="2.1" fill="currentColor"/><circle cx="8" cy="17" r="2.1" fill="currentColor"/>',
+  user: '<circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M4.5 20c1.2-3.8 4.2-5.6 7.5-5.6s6.3 1.8 7.5 5.6"),
+  stats: tr("M5 20V11M12 20V5M19 20v-7"),
   note: tr("M9 17V6l10-2v11") + '<circle cx="6.8" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16.8" cy="15" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/>',
 };
 const ico = (n, s = 24) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
@@ -57,7 +63,7 @@ const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i>
 
 /* ===================== Ajustes e temas ===================== */
 const cfg = Object.assign(
-  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes" },
+  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar" },
   guardado.get("compasso.cfg", {})
 );
 const salvarCfg = () => guardado.set("compasso.cfg", cfg);
@@ -320,15 +326,19 @@ function tirarDaFila(i) {
 }
 
 /* ---- Áudio ---- */
-let ctx, an, mestre, el, bins, relogio, passo = 0, proxT = 0, pos = 0, posBase = 0, inicioT = 0, erros = 0;
+let ctx, an, mestre, el, bins, relogio, filtros, entrada, ganhoEl, pausaPend, passo = 0, proxT = 0, pos = 0, posBase = 0, inicioT = 0, erros = 0;
 function prepararAudio() {
   if (ctx) return;
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   an = ctx.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.75; an.connect(ctx.destination);
   bins = new Uint8Array(an.frequencyBinCount);
-  mestre = ctx.createGain(); mestre.gain.value = 0.5; mestre.connect(an);
+  entrada = ctx.createGain();
+  filtros = EQ_F.map((f, i) => { const b = ctx.createBiquadFilter(); b.type = i === 0 ? "lowshelf" : i === 4 ? "highshelf" : "peaking"; b.frequency.value = f; b.Q.value = 1.1; return b; });
+  filtros.reduce((a, b) => (a.connect(b), b), entrada).connect(an);
+  mestre = ctx.createGain(); mestre.gain.value = 0.5; mestre.connect(entrada);
   el = new Audio(); el.preload = "auto";
-  ctx.createMediaElementSource(el).connect(an);
+  ganhoEl = ctx.createGain(); ctx.createMediaElementSource(el).connect(ganhoEl); ganhoEl.connect(entrada);
+  aplicarEQ();
   el.onended = fimDaFaixa;
   el.onplaying = () => { erros = 0; };
   el.onloadedmetadata = () => { const x = cur(); if (x && !x.demo && el.dataset.id === x.id && isFinite(el.duration)) { x.d = el.duration; paint(); } };
@@ -359,6 +369,7 @@ function pararSintese() { clearInterval(relogio); relogio = null; if (mestre) me
 function tocar() {
   const x = cur(); if (!x) return;
   prepararAudio(); ctx.resume().catch(() => {});
+  clearTimeout(pausaPend);
   if (x.demo) {
     el.pause(); clearInterval(relogio);
     const sd = 30 / x.bpm; passo = Math.floor(pos / sd); proxT = ctx.currentTime + 0.05; posBase = pos; inicioT = ctx.currentTime;
@@ -367,13 +378,26 @@ function tocar() {
   } else {
     pararSintese();
     if (el.dataset.id !== x.id) { el.src = x.url; el.dataset.id = x.id; if (pos) el.currentTime = pos; }
+    const g = ganhoEl.gain, t0 = ctx.currentTime;
+    g.cancelScheduledValues(t0);
+    if (cfg.fade && !playing) { g.setValueAtTime(0, t0); g.linearRampToValueAtTime(1, t0 + 0.45); } else g.setValueAtTime(1, t0);
     el.play().catch(() => { playing = false; paint(); });
   }
   playing = true; paint();
 }
 function pausar() {
   const x = cur();
-  if (ctx) { if (x && x.demo) { pos = posAtual(); pararSintese(); } else if (el) { pos = el.currentTime; el.pause(); } }
+  if (ctx) {
+    if (x && x.demo) { pos = posAtual(); pararSintese(); }
+    else if (el) {
+      pos = el.currentTime;
+      if (cfg.fade && playing && ganhoEl) {
+        const g = ganhoEl.gain, t0 = ctx.currentTime;
+        g.cancelScheduledValues(t0); g.setValueAtTime(g.value, t0); g.linearRampToValueAtTime(0, t0 + 0.3);
+        clearTimeout(pausaPend); pausaPend = setTimeout(() => el.pause(), 320);
+      } else el.pause();
+    }
+  }
   playing = false; paint(); salvarSessao();
 }
 const alternar = () => (playing ? pausar() : tocar());
@@ -385,13 +409,14 @@ function posAtual() {
 function carregar(auto) {
   const x = cur();
   if (!x) { playing = false; paint(); return; }
-  pos = 0;
+  pos = 0; novaEscuta(); clearTimeout(pausaPend);
   if (ctx) { pararSintese(); el.pause(); if (!x.demo) { el.src = x.url; el.dataset.id = x.id; } else el.dataset.id = ""; }
   luz(x.c); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao();
   if (auto) tocar(); else { playing = false; paint(); }
 }
 function fimDaFaixa() {
-  if (repeat === "one") { pos = 0; if (el) el.currentTime = 0; return tocar(); }
+  if (sono.aoFim) { sono.aoFim = false; if (qi < queue.length - 1) qi++; carregar(false); paintSono(); toast("Temporizador: música pausada"); return; }
+  if (repeat === "one") { pos = 0; novaEscuta(); if (el) el.currentTime = 0; return tocar(); }
   if (qi < queue.length - 1) { qi++; return carregar(true); }
   if (repeat === "all") { qi = 0; return carregar(true); }
   qi = 0; carregar(false);
@@ -399,7 +424,7 @@ function fimDaFaixa() {
 function proxima() { if (!queue.length) return; qi = (qi + 1) % queue.length; carregar(playing); }
 function anterior() {
   if (!queue.length) return;
-  if (posAtual() > 3) return buscarSeg(0);
+  if (cfg.anterior !== "sempre" && posAtual() > 3) return buscarSeg(0);
   qi = (qi - 1 + queue.length) % queue.length; carregar(playing);
 }
 function buscarSeg(s) {
@@ -533,8 +558,13 @@ function paint() {
   $("mini-th").innerHTML = capa(x); $("mini-t").textContent = x.t; $("mini-a").textContent = x.a;
   $("tot").textContent = fmt(x.d);
   const depois = queue.length - qi - 1;
-  $("b-fila").innerHTML = ico("queue", 18) + (depois ? `Fila · ${depois} a seguir` : "Fila · última música");
+  $("b-fila").innerHTML = ico("queue", 18) + (depois ? `Fila · ${depois}` : "Fila · última");
   $("b-npmais").innerHTML = ico("more", 18);
+  const fav = ehFav(x.id), bf = $("b-fav");
+  bf.innerHTML = ico(fav ? "heartOn" : "heart"); bf.classList.toggle("act", fav); bf.setAttribute("aria-pressed", fav);
+  bf.setAttribute("aria-label", fav ? "Tirar das favoritas" : "Adicionar às favoritas");
+  $("b-eq").innerHTML = ico("sliders", 18) + "EQ"; $("b-eq").classList.toggle("act", !!cfg.eq.on);
+  paintSono(); atualizarTela();
   document.title = playing ? `${x.t} · Compasso` : "Compasso Player";
 }
 function marcarAtual() {
@@ -711,7 +741,7 @@ function confirmar(titulo, texto, botao, cb) {
 /* ---- Menu de uma música ---- */
 function menuFaixa(id, deLista) {
   const x = porId.get(id); if (!x) return;
-  const itens = [["seguir", "Tocar a seguir", "seguir"], ["addq", "Adicionar ao fim da fila", "fila"], ["pls", "Adicionar a uma playlist", "addpl"]];
+  const itens = [[ehFav(id) ? "heartOn" : "heart", ehFav(id) ? "Tirar das favoritas" : "Adicionar às favoritas", "fav"], ["seguir", "Tocar a seguir", "seguir"], ["addq", "Adicionar ao fim da fila", "fila"], ["pls", "Adicionar a uma playlist", "addpl"]];
   if (x.al) itens.push(["album", "Ver álbum", "album"]);
   itens.push(["artist", "Ver artista", "artista"]);
   if (deLista) itens.push(["x", "Tirar desta playlist", "tirarpl"]);
@@ -722,7 +752,8 @@ function menuFaixa(id, deLista) {
     clique(e) {
       const b = e.target.closest("[data-a]"); if (!b) return;
       const a = b.dataset.a;
-      if (a === "seguir") { fecharFolha(); tocarASeguir(id); }
+      if (a === "fav") { fecharFolha(); alternarFav(id); }
+      else if (a === "seguir") { fecharFolha(); tocarASeguir(id); }
       else if (a === "fila") { fecharFolha(); adicionarFila(id); }
       else if (a === "addpl") menuAddPlaylist(id);
       else if (a === "album") { fecharFolha(); abrirNaBib("album", nomeAlbum(x)); }
@@ -813,7 +844,8 @@ function ativarArraste(lista, aoSoltar) {
 let pls = [], plAberta = null;
 function salvarPl(p) { p.mod = Date.now(); if (db) dbPut("playlists", p); else guardado.set("compasso.pls", pls); }
 function apagarPl(p) { pls = pls.filter((y) => y !== p); if (db) dbDel("playlists", p.id); else guardado.set("compasso.pls", pls); }
-const idsDe = (p) => p.ids.filter((id) => visivel(porId.get(id)));
+const idsDe = (p) => (p.auto ? p.ids() : p.ids.filter((id) => visivel(porId.get(id))));
+const plPorId = (id) => (id ? AUTO.find((a) => a.id === id) || pls.find((p) => p.id === id) : null);
 function novaPlaylist(nome, ids = []) {
   const p = { id: uid("p"), nome: nome.slice(0, 60), ids, criada: Date.now() };
   pls.push(p); salvarPl(p); renderPl();
@@ -823,39 +855,42 @@ function mosaico(p, cls = "thumb") {
   const fx = idsDe(p).map((id) => porId.get(id));
   if (fx.length >= 4) return `<span class="${cls} mosaic">${fx.slice(0, 4).map((x) => `<span style="background:${fundoDe(x)}"></span>`).join("")}</span>`;
   if (fx.length) return capa({ ...fx[0], t: p.nome }, cls);
+  if (p.auto) return `<span class="${cls} auto-ic">${ico(p.ic, cls === "thumb" ? 22 : 44)}</span>`;
   return `<span class="${cls}" style="background:${grad(coresDoNome(p.nome))}">${inicial(p.nome)}</span>`;
 }
 function renderPl() {
   const L = $("pl");
-  const p = plAberta && pls.find((y) => y.id === plAberta);
+  const p = plPorId(plAberta);
   if (!p) {
     plAberta = null;
     const lista = pls.slice().sort((a, b) => (b.mod || 0) - (a.mod || 0));
-    L.innerHTML = `<div class="row"><div class="grow"><h1>Playlists</h1><p class="sub">${pls.length ? plural(pls.length, "playlist", "playlists") : "Nenhuma playlist ainda"}</p></div><button class="btn" data-nova>${ico("plus", 18)}Nova</button></div>` +
+    L.innerHTML = `<div><h1>Playlists</h1><p class="sub">${plural(pls.length, "playlist sua", "playlists suas")} e 4 automáticas</p></div>
+      <div class="autos">${AUTO.map((a) => { const n = idsDe(a).length; return `<button class="auto" data-abrir="${a.id}"><span class="auto-ic">${ico(a.ic, 20)}</span><span class="t">${a.nome}</span><span class="sub">${plural(n, "música", "músicas")}</span></button>`; }).join("")}</div>
+      <div class="row"><p class="sec-t grow">Suas playlists</p><button class="btn sm" data-nova>${ico("plus", 18)}Nova</button></div>` +
       (lista.length ? lista.map((y) => { const fx = idsDe(y).map((id) => porId.get(id)); return `<div class="card row"><button class="tp" data-abrir="${y.id}">${mosaico(y)}<span class="grow"><span class="t clip">${esc(y.nome)}</span><span class="sub clip">${plural(fx.length, "música", "músicas")} · ${fmt(duracaoTotal(fx))}</span></span></button><button class="ic act" data-tocarpl="${y.id}" aria-label="Tocar ${esc(y.nome)}">${ico("play")}</button></div>`; }).join("")
         : vazio("Crie uma playlist e adicione músicas pelo botão ⋯ de cada uma.", `<button class="btn" data-nova>${ico("plus", 18)}Criar playlist</button>`));
     return;
   }
   const fx = idsDe(p).map((id) => porId.get(id));
+  const extra = p.auto ? "" : `<button class="btn ghost sm" data-addmus>${ico("plus", 18)}Músicas</button><button class="ic sm" data-plmais aria-label="Mais opções da playlist">${ico("more", 20)}</button>`;
   L.innerHTML = `<button class="back" data-voltar>${ico("back", 18)}Playlists</button>
-    <div class="hero">${mosaico(p, "cover")}<div class="grow stack"><div><h1>${esc(p.nome)}</h1><p class="sub">${plural(fx.length, "música", "músicas")} · ${fmt(duracaoTotal(fx))}</p></div></div></div>
-    ${fx.length ? botoesTocar(`<button class="btn ghost sm" data-addmus>${ico("plus", 18)}Músicas</button><button class="ic sm" data-plmais aria-label="Mais opções da playlist">${ico("more", 20)}</button>`)
-      : `<div class="btns"><button class="btn sm" data-addmus>${ico("plus", 18)}Adicionar músicas</button><button class="ic sm" data-plmais aria-label="Mais opções da playlist">${ico("more", 20)}</button></div>`}
-    ${fx.length ? `<div class="list" id="pl-lista">${fx.map((x) => linhaFaixa(x, { grip: true })).join("")}</div><p class="note">Arraste pela alça para mudar a ordem.</p>` : vazio("Playlist vazia. Adicione músicas da sua biblioteca.")}`;
-  ativarArraste($("pl-lista"), (ids) => { const fora = p.ids.filter((id) => !ids.includes(id)); p.ids = ids.concat(fora); salvarPl(p); });
+    <div class="hero">${mosaico(p, "cover")}<div class="grow stack"><div><h1>${esc(p.nome)}</h1><p class="sub">${plural(fx.length, "música", "músicas")} · ${fmt(duracaoTotal(fx))}${p.auto ? " · automática" : ""}</p></div></div></div>
+    ${fx.length ? botoesTocar(extra) : p.auto ? "" : `<div class="btns"><button class="btn sm" data-addmus>${ico("plus", 18)}Adicionar músicas</button><button class="ic sm" data-plmais aria-label="Mais opções da playlist">${ico("more", 20)}</button></div>`}
+    ${fx.length ? `<div class="list" id="pl-lista">${fx.map((x) => linhaFaixa(x, { grip: !p.auto })).join("")}</div>${p.auto ? "" : '<p class="note">Arraste pela alça para mudar a ordem.</p>'}` : vazio(p.auto ? p.vazio : "Playlist vazia. Adicione músicas da sua biblioteca.")}`;
+  if (!p.auto) ativarArraste($("pl-lista"), (ids) => { const fora = p.ids.filter((id) => !ids.includes(id)); p.ids = ids.concat(fora); salvarPl(p); });
 }
 $("pl").addEventListener("click", (e) => {
-  const t = e.target, p = plAberta && pls.find((y) => y.id === plAberta);
+  const t = e.target, p = plPorId(plAberta);
   if (t.closest("[data-nova]")) return perguntar("Nova playlist", "Nome da playlist", "", "Criar", (n) => { const np = novaPlaylist(n); plAberta = np.id; renderPl(); });
   const ab = t.closest("[data-abrir]"); if (ab) { plAberta = ab.dataset.abrir; renderPl(); $("main").scrollTop = 0; return; }
-  const tp = t.closest("[data-tocarpl]"); if (tp) { const y = pls.find((z) => z.id === tp.dataset.tocarpl); if (y && idsDe(y).length) { tocarLista(idsDe(y), 0, "playlist " + y.nome); ir("tocando"); } else toast("Essa playlist está vazia"); return; }
+  const tp = t.closest("[data-tocarpl]"); if (tp) { const y = plPorId(tp.dataset.tocarpl); if (y && idsDe(y).length) { tocarLista(idsDe(y), 0, "playlist " + y.nome); ir("tocando"); } else toast("Essa playlist está vazia"); return; }
   if (t.closest("[data-voltar]")) { plAberta = null; renderPl(); return; }
   if (!p) return;
   if (t.closest("[data-tudo]")) return tocarLista(idsDe(p), 0, "playlist " + p.nome);
   if (t.closest("[data-aleatorio]")) return tocarAleatorio(idsDe(p), "playlist " + p.nome);
   if (t.closest("[data-addmus]")) return escolherMusicas(p);
   if (t.closest("[data-plmais]")) return menuPlaylist(p);
-  const m = t.closest("[data-more]"); if (m) return menuFaixa(m.dataset.more, p.id);
+  const m = t.closest("[data-more]"); if (m) return menuFaixa(m.dataset.more, p.auto ? null : p.id);
   const pl = t.closest("[data-play]"); if (pl) { const ids = idsDe(p); tocarLista(ids, ids.indexOf(pl.dataset.play), "playlist " + p.nome); }
 });
 function menuPlaylist(p) {
@@ -923,7 +958,8 @@ const faixaAjuste = (chave, rotulo, ligado) => `<div class="opt sub-opt"${ligado
 function renderTemas() {
   if (editando) return renderEditor();
   const t = temaAtual(), cores = DESTAQUES[escuro(t) ? "escuro" : "claro"];
-  $("tm").innerHTML = `<div><h1>Temas</h1><p class="sub">Toque num tema para usar. Os temas que você cria ficam salvos neste aparelho.</p></div>
+  $("tm").innerHTML = `<div><h1>Ajustes</h1><p class="sub">Temas, efeitos e reprodução. Tudo fica salvo neste aparelho.</p></div>
+    <p class="sec-t">Temas</p>
     <div class="themes">${todosTemas().map(cardTema).join("")}<button class="th add" data-criar>${ico("plus")}Criar tema</button></div>
     <div class="card stack"><h2>Ajuste rápido</h2><p class="note">Vale para o tema em uso: ${esc(t.nome)}.</p>
       <div class="sw" role="group" aria-label="Cor de destaque">${cores.map(([n, c]) => `<button data-cor="${c}" title="${n}" aria-label="${n}" aria-pressed="${c.toUpperCase() === t.destaque.toUpperCase()}" class="${c.toUpperCase() === t.destaque.toUpperCase() ? "sel" : ""}" style="background:${c}"></button>`).join("")}</div>
@@ -931,6 +967,12 @@ function renderTemas() {
     <div class="card stack"><h2>Efeitos</h2>
       ${tg("amb", "Luz de fundo com as cores da capa")}${faixaAjuste("ambF", "Intensidade da luz", cfg.amb)}
       ${tg("reage", "Reagir à batida da música")}${faixaAjuste("batF", "Força da batida", cfg.reage)}</div>
+    <div class="card stack"><h2>Reprodução</h2>
+      ${tg("fade", "Suavizar o volume ao pausar e tocar")}
+      ${tg("tela", "Manter a tela ligada em Tocando agora")}
+      <div class="opt"><label for="s-anterior">Botão Anterior</label><select id="s-anterior" class="mini-sel" data-sel="anterior"><option value="reiniciar"${cfg.anterior !== "sempre" ? " selected" : ""}>Recomeça a música</option><option value="sempre"${cfg.anterior === "sempre" ? " selected" : ""}>Volta para a anterior</option></select></div>
+      <p class="note">Com "Recomeça a música", o Anterior volta para o começo se já passaram 3 segundos, e só então para a música anterior.</p>
+      <div class="btns"><button class="btn ghost sm" data-abrireq>${ico("sliders", 18)}Equalizador</button><button class="btn ghost sm" data-abrirsono>${ico("timer", 18)}Temporizador</button></div></div>
     <div class="card stack"><h2>Compartilhar tema</h2><p class="note">Um tema é um arquivo JSON pequeno. Exporte o tema em uso ou importe um de outra pessoa.</p>
       <div class="btns"><button class="btn ghost sm" data-exp="copiar">Copiar JSON</button><button class="btn ghost sm" data-exp="baixar">Baixar .json</button><button class="btn ghost sm" data-imp="arquivo">Abrir .json</button><button class="btn ghost sm" data-imp="colar">Colar JSON</button></div></div>
     <div class="card stack"><h2>Biblioteca</h2>${tg("exemplos", "Mostrar as músicas de exemplo")}
@@ -999,8 +1041,11 @@ $("tm").addEventListener("click", (e) => {
   if (g) {
     const k = g.dataset.tg; cfg[k] = !cfg[k]; salvarCfg(); aplicarEfeitos();
     if (k === "exemplos") mudouExemplos();
+    if (k === "tela") atualizarTela();
     renderTemas(); return;
   }
+  if (t.closest("[data-abrireq]")) return abrirEQ();
+  if (t.closest("[data-abrirsono]")) return abrirSono();
   const ex = t.closest("[data-exp]");
   if (ex) {
     const at = temaAtual(), json = temaJSON(at);
@@ -1034,6 +1079,7 @@ $("tm").addEventListener("input", (e) => {
   if (t.id === "r-raio") ajustarAtual({ raio: +t.value });
   else if (t.dataset.rg) { cfg[t.dataset.rg] = +t.value; salvarCfg(); aplicarEfeitos(); }
 });
+$("tm").addEventListener("change", (e) => { const k = e.target.dataset.sel; if (k) { cfg[k] = e.target.value; salvarCfg(); } });
 $("tema-file").addEventListener("change", async (e) => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   if (f.size > 100000) return toast("Esse arquivo é grande demais para ser um tema");
@@ -1099,8 +1145,258 @@ function cliqueEditor(e) {
   }
 }
 
+
+/* ===================== Equalizador ===================== */
+const EQ_F = [60, 230, 910, 3600, 14000], EQ_ROT = ["60 Hz", "230 Hz", "910 Hz", "3,6 kHz", "14 kHz"];
+const EQ_P = {
+  normal: ["Normal", [0, 0, 0, 0, 0]], graves: ["Mais graves", [6, 4, 0, 0, 0]], rock: ["Rock", [5, 3, -1, 3, 5]],
+  pop: ["Pop", [-1, 2, 4, 2, -1]], jazz: ["Jazz", [3, 2, -1, 2, 3]], classica: ["Clássica", [4, 2, -1, 2, 4]],
+  eletronica: ["Eletrônica", [5, 3, 0, 2, 4]], vocal: ["Vocal e podcast", [-2, -1, 3, 4, 1]],
+  agudos: ["Mais agudos", [0, 0, 0, 3, 6]], noite: ["Noite (suave)", [2, 1, 0, -2, -4]],
+};
+if (!cfg.eq || !Array.isArray(cfg.eq.g) || cfg.eq.g.length !== 5) cfg.eq = { on: false, g: [0, 0, 0, 0, 0], p: "normal" };
+function aplicarEQ() {
+  if (!filtros) return;
+  const g = cfg.eq.on ? cfg.eq.g : [0, 0, 0, 0, 0], t = ctx.currentTime;
+  filtros.forEach((f, i) => f.gain.setTargetAtTime(g[i], t, 0.05));
+  const pico = Math.max(0, ...g); // abaixa o volume de entrada para o reforço não distorcer
+  entrada.gain.setTargetAtTime(Math.pow(10, (-pico * 0.6) / 20), t, 0.05);
+}
+const dB = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v) + " dB";
+function htmlEQ() {
+  return `<div class="opt"><span id="l-eqon">Equalizador ligado</span><button class="tg" data-eqon role="switch" aria-checked="${cfg.eq.on}" aria-labelledby="l-eqon"></button></div>
+    <div class="chips" role="group" aria-label="Predefinições">${Object.entries(EQ_P).map(([k, [n]]) => `<button data-eqp="${k}" aria-pressed="${cfg.eq.p === k}" class="${cfg.eq.p === k ? "on" : ""}">${n}</button>`).join("")}</div>
+    ${EQ_F.map((_, i) => `<div class="eqrow"><label for="eq${i}" class="note">${EQ_ROT[i]}</label><input type="range" id="eq${i}" data-eqb="${i}" min="-12" max="12" step="1" value="${cfg.eq.g[i]}"><span class="dur" id="eqv${i}">${dB(cfg.eq.g[i])}</span></div>`).join("")}
+    <p class="note">Vale para todas as músicas. Mexer numa faixa liga o equalizador sozinho.</p>`;
+}
+function abrirEQ() {
+  abrirFolha({
+    titulo: "Equalizador", modo: "eq", html: htmlEQ(),
+    clique(e) {
+      const on = e.target.closest("[data-eqon]");
+      if (on) { cfg.eq.on = !cfg.eq.on; on.setAttribute("aria-checked", cfg.eq.on); }
+      const p = e.target.closest("[data-eqp]");
+      if (p) { cfg.eq.p = p.dataset.eqp; cfg.eq.g = EQ_P[cfg.eq.p][1].slice(); cfg.eq.on = true; $("sheet-b").innerHTML = htmlEQ(); }
+      if (on || p) { salvarCfg(); aplicarEQ(); paint(); }
+    },
+    entrada(e) {
+      const i = e.target.dataset.eqb; if (i === undefined) return;
+      cfg.eq.g[i] = +e.target.value; cfg.eq.p = "personalizado";
+      $("eqv" + i).textContent = dB(cfg.eq.g[i]);
+      if (!cfg.eq.on) { cfg.eq.on = true; const t = $("sheet-b").querySelector("[data-eqon]"); if (t) t.setAttribute("aria-checked", "true"); }
+      $("sheet-b").querySelectorAll("[data-eqp]").forEach((b) => { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); });
+      salvarCfg(); aplicarEQ(); paint();
+    },
+  });
+}
+
+/* ===================== Favoritas e estatísticas ===================== */
+let favs = new Set(guardado.get("compasso.fav", []));
+const ehFav = (id) => favs.has(id);
+function alternarFav(id) {
+  if (!id) return;
+  if (favs.has(id)) { favs.delete(id); toast("Tirada das favoritas"); } else { favs.add(id); toast("Adicionada às favoritas"); }
+  guardado.set("compasso.fav", [...favs]);
+  paint(); renderPl(); if ($("app").dataset.view === "voce") renderVoce();
+}
+let stats = guardado.get("compasso.stats", null);
+if (!stats || typeof stats !== "object" || !stats.fx) stats = { fx: {}, dias: {}, desde: 0 };
+let contado = false, ouvido = 0, ultimoTick = 0, statsSujo = false, statsSalvo = 0;
+const hojeStr = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function salvarStats() { statsSujo = false; statsSalvo = Date.now(); guardado.set("compasso.stats", stats); }
+function registrarEscuta(x, dt) {
+  if (!dt || !x) return;
+  const f = stats.fx[x.id] || (stats.fx[x.id] = { n: 0, s: 0, u: 0, y: {} }), ano = new Date().getFullYear();
+  f.s += dt; f.u = Date.now(); f.y = f.y || {}; f.y[ano] = (f.y[ano] || 0) + dt;
+  const d = hojeStr(); stats.dias[d] = (stats.dias[d] || 0) + dt;
+  if (!stats.desde) stats.desde = Date.now();
+  ouvido += dt;
+  if (!contado && ouvido >= Math.min(30, (x.d || 60) * 0.5)) { contado = true; f.n++; }
+  statsSujo = true;
+}
+function novaEscuta() { contado = false; ouvido = 0; }
+const fmtTempo = (s) => (s < 60 ? "menos de 1 min" : s < 3600 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1).replace(".", ",")} h`);
+
+/* ===================== Temporizador de sono ===================== */
+const sono = { fim: 0, aoFim: false };
+if (cfg.sonoTerminar === undefined) cfg.sonoTerminar = true;
+function verificarSono() {
+  if (!sono.fim || Date.now() < sono.fim) return;
+  sono.fim = 0;
+  if (cfg.sonoTerminar && playing) { sono.aoFim = true; return; }
+  if (playing) pausar();
+  toast("Temporizador: música pausada");
+}
+function textoSono() {
+  if (sono.aoFim) return "Ao fim da música";
+  if (sono.fim) return fmt((sono.fim - Date.now()) / 1000);
+  return "Timer";
+}
+function htmlSono() {
+  const ops = [[0, "Desligado"], [15, "15 minutos"], [30, "30 minutos"], [45, "45 minutos"], [60, "1 hora"], [-1, "Ao fim desta música"], [-2, "Outro tempo…"]];
+  const ativo = sono.aoFim ? -1 : sono.fim ? 1 : 0;
+  return `<p class="note" style="padding:0 8px" id="sono-st">${sono.fim ? `Pausa em ${fmt((sono.fim - Date.now()) / 1000)}.` : sono.aoFim ? "Pausa quando esta música acabar." : "Escolha quando a música deve pausar."}</p>
+    <div class="menu">${ops.map(([m, n]) => `<button data-sono="${m}"${(m === 0 && !ativo) || (m === -1 && ativo === -1) ? ' aria-pressed="true"' : ""}>${ico(m === 0 ? "x" : "timer")}${n}</button>`).join("")}</div>
+    ${tg("sonoTerminar", "Deixar a música terminar antes de pausar")}`;
+}
+function abrirSono() {
+  abrirFolha({
+    titulo: "Temporizador", modo: "timer", html: htmlSono(),
+    clique(e) {
+      const t = e.target.closest("[data-tg]");
+      if (t) { cfg.sonoTerminar = !cfg.sonoTerminar; salvarCfg(); t.setAttribute("aria-checked", cfg.sonoTerminar); return; }
+      const b = e.target.closest("[data-sono]"); if (!b) return;
+      const m = +b.dataset.sono;
+      if (m === -2) return perguntar("Temporizador", "Pausar daqui a quantos minutos?", "20", "Ligar", (v) => {
+        const n = Math.round(parseFloat(String(v).replace(",", ".")));
+        if (!(n > 0 && n <= 600)) return toast("Use um número de 1 a 600");
+        sono.fim = Date.now() + n * 60000; sono.aoFim = false; paintSono(); toast(`Pausa em ${n} min`);
+      });
+      sono.fim = m > 0 ? Date.now() + m * 60000 : 0; sono.aoFim = m === -1;
+      fecharFolha(); paintSono();
+      toast(m > 0 ? `Pausa em ${m} min` : m === -1 ? "Pausa ao fim desta música" : "Temporizador desligado");
+    },
+  });
+}
+function paintSono() {
+  const b = $("b-timer"); if (!b) return;
+  b.innerHTML = ico("timer", 18) + textoSono();
+  b.classList.toggle("act", !!(sono.fim || sono.aoFim));
+  if (folha && folha.modo === "timer") { const s = $("sono-st"); if (s && sono.fim) s.textContent = `Pausa em ${fmt((sono.fim - Date.now()) / 1000)}.`; }
+}
+
+/* ===================== Tela ligada ===================== */
+let trava = null, pedindoTrava = false;
+async function atualizarTela() {
+  const quer = cfg.tela && playing && $("app").dataset.view === "tocando" && document.visibilityState === "visible";
+  try {
+    if (quer && !trava && !pedindoTrava && navigator.wakeLock) {
+      pedindoTrava = true; trava = await navigator.wakeLock.request("screen"); pedindoTrava = false;
+      trava.addEventListener("release", () => { trava = null; });
+    } else if (!quer && trava) { const t = trava; trava = null; await t.release(); }
+  } catch (e) { pedindoTrava = false; trava = null; }
+}
+
+/* Relógio de 1 segundo: estatísticas, temporizador e tela ligada (continua mesmo com a aba em segundo plano) */
+setInterval(() => {
+  const agora = Date.now(), x = cur();
+  if (playing && x && ultimoTick) registrarEscuta(x, Math.min(65, (agora - ultimoTick) / 1000));
+  ultimoTick = playing ? agora : 0;
+  verificarSono(); paintSono();
+  if (statsSujo && agora - statsSalvo > 10000) salvarStats();
+}, 1000);
+addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && statsSujo) salvarStats(); atualizarTela(); });
+addEventListener("pagehide", () => { if (statsSujo) salvarStats(); });
+
+/* ===================== Tela: Você (perfil e estatísticas) ===================== */
+let perfil = Object.assign({ nome: "", foto: "" }, guardado.get("compasso.perfil", {}));
+function avatar(cls = "avatar") {
+  const nome = perfil.nome || "Você";
+  return perfil.foto ? `<span class="${cls}" style="background-image:url('${perfil.foto}')" role="img" aria-label="Foto de ${esc(nome)}"></span>`
+    : `<span class="${cls}" style="background:${grad(coresDoNome(nome))}" aria-hidden="true">${inicial(nome)}</span>`;
+}
+function rankFaixas(chave, ano) {
+  return Object.entries(stats.fx).map(([id, f]) => [porId.get(id), f]).filter(([x]) => visivel(x))
+    .map(([x, f]) => ({ x, n: f.n || 0, s: ano ? (f.y && f.y[ano]) || 0 : f.s || 0, u: f.u || 0 }))
+    .filter((r) => r[chave] > 0).sort((a, b) => b[chave] - a[chave]);
+}
+function rankArtistas(ano) {
+  const m = new Map();
+  for (const r of rankFaixas("s", ano)) m.set(r.x.a, (m.get(r.x.a) || 0) + r.s);
+  return [...m].map(([n, s]) => ({ n, s, capa: vis().find((x) => x.a === n && x.cover) || vis().find((x) => x.a === n) })).sort((a, b) => b.s - a.s);
+}
+let topVoce = [];
+function renderVoce() {
+  const V = $("vc"), total = Object.values(stats.fx).reduce((s, f) => s + (f.s || 0), 0);
+  const plays = Object.values(stats.fx).reduce((s, f) => s + (f.n || 0), 0), diasOuvindo = Object.values(stats.dias).filter((s) => s >= 30).length;
+  const dias = [...Array(7)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); return { d, s: stats.dias[hojeStr(d)] || 0 }; });
+  const maxDia = Math.max(60, ...dias.map((d) => d.s));
+  const top = rankFaixas("s").slice(0, 5), arts = rankArtistas().slice(0, 5);
+  topVoce = top.map((r) => r.x.id);
+  const desde = stats.desde ? new Date(stats.desde).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" }) : "";
+  V.innerHTML = `<div class="perfil">${avatar()}<div class="grow"><h1 class="clip">${esc(perfil.nome || "Você")}</h1><p class="sub">${desde ? "Ouvindo no Compasso desde " + desde : "Suas estatísticas aparecem aqui conforme você ouve."}</p></div>
+      <button class="btn ghost sm" data-editarperfil>${ico("edit", 18)}Editar</button></div>
+    <div class="tiles"><div class="tile"><b>${fmtTempo(total)}</b><span class="sub">de escuta</span></div><div class="tile"><b>${plays}</b><span class="sub">${plays === 1 ? "reprodução" : "reproduções"}</span></div><div class="tile"><b>${diasOuvindo}</b><span class="sub">${diasOuvindo === 1 ? "dia ouvindo" : "dias ouvindo"}</span></div></div>
+    <div class="card stack"><div class="row"><h2 class="grow">Últimos 7 dias</h2><span class="sub">${fmtTempo(dias.reduce((s, d) => s + d.s, 0))}</span></div>
+      <div class="bars" role="img" aria-label="Minutos ouvidos por dia nos últimos 7 dias">${dias.map((d, i) => `<div class="${i === 6 ? "hoje" : ""}"><em>${d.s >= 60 ? Math.round(d.s / 60) : ""}</em><i style="height:${Math.max(3, (d.s / maxDia) * 100).toFixed(1)}%"></i><span>${i === 6 ? "hoje" : d.d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}</span></div>`).join("")}</div></div>
+    <button class="recap-btn" data-recap><span class="grow"><span class="t">Seu ${new Date().getFullYear()} em música</span><span class="sub">Seu resumo do ano, guardado só neste aparelho</span></span>${ico("next", 20)}</button>
+    <div class="stack"><p class="sec-t">Mais ouvidas</p>${top.length ? `<div class="list">${top.map((r, i) => linhaFaixa(r.x, { num: i + 1, sub: (x) => `${x.a} · ${plural(r.n, "vez", "vezes")} · ${fmtTempo(r.s)}` })).join("")}</div>` : vazio("Ouça algumas músicas e as suas preferidas aparecem aqui.")}</div>
+    ${arts.length ? `<div class="stack"><p class="sec-t">Artistas mais ouvidos</p><div class="list">${arts.map((a) => `<div class="track"><button class="tp" data-art="${esc(a.n)}">${a.capa ? `<span class="thumb round" style="background:${fundoDe(a.capa)}">${a.capa.cover ? "" : inicial(a.n)}</span>` : ""}<span class="grow"><span class="t clip">${esc(a.n)}</span><span class="sub">${fmtTempo(a.s)}</span></span></button></div>`).join("")}</div></div>` : ""}
+    <p class="note">As estatísticas ficam só neste aparelho. Uma música conta como reproduzida depois de 30 segundos (ou metade, se for curta).</p>
+    ${total ? '<div class="btns"><button class="btn danger sm" data-zerar>Apagar estatísticas</button></div>' : ""}`;
+}
+$("vc").addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.closest("[data-editarperfil]")) return editarPerfil();
+  if (t.closest("[data-recap]")) return abrirRecap();
+  if (t.closest("[data-zerar]")) return confirmar("Apagar estatísticas?", "O tempo de escuta, as reproduções e o Recap voltam a zero. Suas músicas, playlists e favoritas continuam.", "Apagar", () => { stats = { fx: {}, dias: {}, desde: 0 }; salvarStats(); renderVoce(); renderPl(); toast("Estatísticas apagadas"); });
+  const a = t.closest("[data-art]"); if (a) return abrirNaBib("artista", a.dataset.art);
+  const m = t.closest("[data-more]"); if (m) return menuFaixa(m.dataset.more);
+  const p = t.closest("[data-play]"); if (p) tocarLista(topVoce, topVoce.indexOf(p.dataset.play), "suas mais ouvidas");
+});
+function editarPerfil() {
+  let foto = perfil.foto;
+  const html = () => `<form class="stack"><div class="row">${foto ? `<span class="avatar" style="background-image:url('${foto}')"></span>` : avatar()}<div class="btns grow"><button class="btn ghost sm" type="button" data-foto>Escolher foto</button>${foto ? '<button class="btn ghost sm" type="button" data-semfoto>Tirar foto</button>' : ""}</div></div>
+    <label class="t" for="pf-nome">Seu nome ou apelido</label><input class="field" id="pf-nome" name="v" value="${esc(perfil.nome)}" maxlength="30" autocomplete="off" placeholder="Por exemplo: Jo">
+    <button class="btn" type="submit">Salvar perfil</button><p class="note">Seu perfil fica só neste aparelho. Não existe conta nem nada online.</p></form>`;
+  const redesenhar = () => { const n = $("pf-nome") ? $("pf-nome").value : perfil.nome; $("sheet-b").innerHTML = html(); $("pf-nome").value = n; };
+  abrirFolha({
+    titulo: "Seu perfil", html: html(),
+    clique(e) {
+      if (e.target.closest("[data-semfoto]")) { foto = ""; redesenhar(); }
+      if (e.target.closest("[data-foto]")) {
+        const inp = $("perfil-file");
+        inp.onchange = async () => {
+          const f = inp.files[0]; inp.value = ""; if (!f) return;
+          try {
+            const bm = await createImageBitmap(f), lado = Math.min(bm.width, bm.height), cv = document.createElement("canvas");
+            cv.width = cv.height = 256;
+            cv.getContext("2d").drawImage(bm, (bm.width - lado) / 2, (bm.height - lado) / 2, lado, lado, 0, 0, 256, 256);
+            foto = cv.toDataURL("image/jpeg", 0.85); redesenhar();
+          } catch (err) { toast("Não deu para abrir essa imagem"); }
+        };
+        inp.click();
+      }
+    },
+    enviar(d) {
+      perfil = { nome: String(d.get("v") || "").trim().slice(0, 30), foto };
+      try { localStorage.setItem("compasso.perfil", JSON.stringify(perfil)); } catch (err) { toast("Não deu para guardar a foto neste navegador"); }
+      fecharFolha(); renderVoce(); toast("Perfil salvo");
+    },
+  });
+}
+function abrirRecap() {
+  const ano = new Date().getFullYear(), pre = ano + "-";
+  const diasAno = Object.entries(stats.dias).filter(([d]) => d.startsWith(pre));
+  const totalAno = diasAno.reduce((s, [, v]) => s + v, 0);
+  const meses = {}; diasAno.forEach(([d, v]) => { const m = +d.slice(5, 7); meses[m] = (meses[m] || 0) + v; });
+  const mesTop = Object.entries(meses).sort((a, b) => b[1] - a[1])[0];
+  const diaTop = diasAno.slice().sort((a, b) => b[1] - a[1])[0];
+  const fx = rankFaixas("s", ano), art = rankArtistas(ano);
+  const nomeMes = (m) => new Date(ano, m - 1, 1).toLocaleDateString("pt-BR", { month: "long" });
+  const bloco = (rot, val, extra = "") => `<div class="recap"><span class="sub">${rot}</span><b>${val}</b>${extra ? `<span>${extra}</span>` : ""}</div>`;
+  abrirFolha({
+    titulo: `Seu ${ano} em música`,
+    html: totalAno < 60 ? vazio("Ainda não tem música suficiente para o Recap deste ano. Ouça mais um pouco e volte aqui.") :
+      `<div class="stack">${bloco("Você ouviu", fmtTempo(totalAno), `em ${plural(diasAno.length, "dia", "dias")}`)}
+      ${fx[0] ? bloco("Música do ano", esc(fx[0].x.t), `${esc(fx[0].x.a)} · ${fmtTempo(fx[0].s)}`) : ""}
+      ${art[0] ? bloco("Artista do ano", esc(art[0].n), fmtTempo(art[0].s)) : ""}
+      ${mesTop ? bloco("Mês que você mais ouviu", nomeMes(+mesTop[0]), fmtTempo(mesTop[1])) : ""}
+      ${diaTop ? bloco("Dia mais musical", new Date(diaTop[0] + "T12:00").toLocaleDateString("pt-BR", { day: "numeric", month: "long" }), fmtTempo(diaTop[1])) : ""}
+      ${fx.length > 1 ? `<p class="sec-t">Top 5 do ano</p><div class="list">${fx.slice(0, 5).map((r, i) => `<div class="track"><span class="idx">${i + 1}</span>${capa(r.x)}<span class="grow"><span class="t clip">${esc(r.x.t)}</span><span class="sub clip">${esc(r.x.a)} · ${fmtTempo(r.s)}</span></span></div>`).join("")}</div>` : ""}</div>`,
+  });
+}
+
+/* ===================== Playlists automáticas ===================== */
+const AUTO = [
+  { id: "auto:fav", nome: "Favoritas", ic: "heartOn", vazio: "Toque no coração na tela Tocando agora para guardar suas favoritas aqui.", ids: () => [...favs].filter((id) => visivel(porId.get(id))) },
+  { id: "auto:novas", nome: "Adicionadas recentemente", ic: "plus", vazio: "As músicas que você importar aparecem aqui.", ids: () => importadas().filter(visivel).sort((a, b) => (b.em || 0) - (a.em || 0)).slice(0, 50).map((x) => x.id) },
+  { id: "auto:recentes", nome: "Tocadas recentemente", ic: "now", vazio: "Ouça algumas músicas e elas aparecem aqui.", ids: () => rankFaixas("u").slice(0, 50).map((r) => r.x.id) },
+  { id: "auto:mais", nome: "Mais tocadas", ic: "stats", vazio: "Ouça algumas músicas e as mais tocadas aparecem aqui.", ids: () => rankFaixas("n").slice(0, 50).map((r) => r.x.id) },
+].map((a) => ({ ...a, auto: true }));
+
 /* ===================== Navegação ===================== */
-const TELAS = [["biblioteca", "Biblioteca", "lib"], ["tocando", "Tocando", "now"], ["playlists", "Playlists", "pls"], ["temas", "Temas", "thm"]];
+const TELAS = [["biblioteca", "Biblioteca", "lib"], ["tocando", "Tocando", "now"], ["playlists", "Playlists", "pls"], ["voce", "Você", "user"], ["temas", "Ajustes", "thm"]];
 $("nav").innerHTML = TELAS.map((v) => `<button data-v="${v[0]}">${ico(v[2])}<span>${v[1]}</span></button>`).join("");
 function ir(v) {
   if (!TELAS.some((x) => x[0] === v)) v = "biblioteca";
@@ -1108,6 +1404,9 @@ function ir(v) {
   document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + v));
   document.querySelectorAll("nav button").forEach((b) => { const on = b.dataset.v === v; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   $("main").scrollTop = 0;
+  if (v === "voce") renderVoce();
+  if (v === "playlists") renderPl();
+  atualizarTela();
   if (location.hash.slice(1) !== v) try { history.replaceState(null, "", "#" + v); } catch (e) { /* ignora */ }
 }
 $("nav").addEventListener("click", (e) => {
@@ -1133,6 +1432,9 @@ $("b-prev").addEventListener("click", anterior);
 $("b-shuf").addEventListener("click", alternarAleatorio);
 $("b-rep").addEventListener("click", alternarRepetir);
 $("mini-open").addEventListener("click", () => ir("tocando"));
+$("b-fav").addEventListener("click", () => cur() && alternarFav(cur().id));
+$("b-timer").addEventListener("click", abrirSono);
+$("b-eq").addEventListener("click", abrirEQ);
 $("b-shuf").innerHTML = ico("shuf"); $("b-prev").innerHTML = ico("prev", 28); $("b-next").innerHTML = ico("next", 28); $("mini-next").innerHTML = ico("next", 22);
 
 document.addEventListener("keydown", (e) => {
@@ -1144,6 +1446,7 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "ArrowLeft") { e.preventDefault(); buscarSeg(posAtual() - 5); }
   else if (e.key === "n" || e.key === "N") proxima();
   else if (e.key === "p" || e.key === "P") anterior();
+  else if ((e.key === "f" || e.key === "F") && cur()) alternarFav(cur().id);
 });
 
 /* Arrastar arquivos e pastas para a janela (PC) */

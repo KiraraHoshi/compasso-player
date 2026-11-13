@@ -31,7 +31,7 @@
     <section class="view" id="v-tocando" aria-label="Tocando agora">
       <p class="sub clip" id="np-ctx">Tocando agora</p>
       <div class="dial"><svg viewBox="0 0 200 200" id="ticks" aria-hidden="true"></svg><div class="disc" id="disc"></div></div>
-      <div class="meta"><h1 class="clip" id="np-t"></h1><p class="sub clip" id="np-a"></p></div>
+      <div class="np-meta"><span aria-hidden="true"></span><div class="meta"><h1 class="clip" id="np-t"></h1><p class="sub clip" id="np-a"></p></div><button class="ic" id="b-fav" aria-label="Adicionar às favoritas"></button></div>
       <div class="seek">
         <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Posição da música">
         <div class="times"><span id="cur">0:00</span><span id="tot">0:00</span></div>
@@ -45,11 +45,14 @@
       </div>
       <div class="np-bar">
         <button class="pill" id="b-fila"></button>
+        <button class="pill" id="b-timer" aria-label="Temporizador de sono"></button>
+        <button class="pill" id="b-eq" aria-label="Equalizador"></button>
         <button class="pill" id="b-npmais" aria-label="Mais opções da música"></button>
       </div>
     </section>
 
     <section class="view" id="v-playlists" aria-label="Playlists"><div id="pl" class="stack"></div></section>
+    <section class="view" id="v-voce" aria-label="Você"><div id="vc" class="stack"></div></section>
     <section class="view" id="v-temas" aria-label="Temas"><div id="tm" class="stack"></div></section>
   </main>
 
@@ -71,6 +74,7 @@
 <div class="drop" id="drop" hidden>Solte as músicas para importar</div>
 <input id="files" type="file" accept="audio/*,.mp3,.flac,.m4a,.aac,.ogg,.oga,.opus,.wav,.webm" multiple hidden>
 <input id="folder" type="file" webkitdirectory multiple hidden>
+<input id="perfil-file" type="file" accept="image/*" hidden>
 <input id="tema-file" type="file" accept=".json,application/json" hidden>
 
 <script src="js/tags.js"></script>
