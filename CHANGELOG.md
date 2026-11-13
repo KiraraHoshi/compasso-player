@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.14.0
+- LED com escolha de cores (Ajustes › Tocando agora, quando o LED está escolhido):
+  - **Arte da capa** (padrão): a capa vira um mosaico nos blocos. Os apagados mostram a arte bem fraquinha, e os acesos brilham com a cor dela.
+  - **Cores da capa**: degradê entre as duas cores principais da capa.
+  - **Cores do tema**: degradê com as cores do tema do app.
+  - **Clássico**: do azul ao vermelho.
+- No LED, os agudos ganharam um pouco de força, para o lado direito não ficar sempre baixo.
+
 ## 1.13.1
 - Os tracinhos do mostrador pulsam mais no ritmo: crescem até quase o dobro, reagem mais rápido, ganham um empurrão em cada batida e agora se mexem também no Vinil.
 

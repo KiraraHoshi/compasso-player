@@ -72,7 +72,7 @@ const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i>
 
 /* ===================== Ajustes e temas ===================== */
 const cfg = Object.assign(
-  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false, corCapa: true, formaCapa: "quadrada" },
+  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false, corCapa: true, formaCapa: "quadrada", ledCor: "arte" },
   guardado.get("compasso.cfg", {})
 );
 const salvarCfg = () => guardado.set("compasso.cfg", cfg);
@@ -553,7 +553,7 @@ function posAtual() {
   if (!x.demo) return el && el.dataset.id === x.id ? el.currentTime : pos;
   return playing && ctx ? posBase + (ctx.currentTime - inicioT) : pos;
 }
-function aoTrocar(x) { luz(x.c); atualizarCorViz(); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
+function aoTrocar(x) { luz(x.c); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
 function carregar(auto) {
   const x = cur();
   if (!x) { playing = false; paint(); return; }
@@ -1315,6 +1315,7 @@ function renderTemas() {
       <p class="note">${T("A imagem fica só neste aparelho e não entra no JSON do tema.")}</p></div>
     <div class="card stack"><h2>${T("Tocando agora")}</h2>
       <p class="t">${T("Visual do mostrador")}</p><div class="chips" role="group" aria-label="${T("Visual do mostrador")}">${Object.entries(VISUAIS).map(([k, n]) => `<button data-vis="${k}" aria-pressed="${cfg.visual === k}" class="${cfg.visual === k ? "on" : ""}">${n}</button>`).join("")}</div>
+      ${cfg.visual === "led" ? `<p class="t">${T("Cores do LED")}</p><div class="chips" role="group" aria-label="${T("Cores do LED")}">${[["arte", T("Arte da capa")], ["capa", T("Cores da capa")], ["tema", T("Cores do tema")], ["classico", T("Clássico")]].map(([k, n]) => `<button data-ledcor="${k}" aria-pressed="${cfg.ledCor === k}" class="${cfg.ledCor === k ? "on" : ""}">${n}</button>`).join("")}</div>` : ""}
       <p class="t">${T("Formato da capa")}</p><div class="chips" role="group" aria-label="${T("Formato da capa")}">${[["quadrada", T("Quadrada")], ["redonda", T("Redonda")]].map(([k, n]) => `<button data-forma="${k}" aria-pressed="${cfg.formaCapa === k}" class="${cfg.formaCapa === k ? "on" : ""}">${n}</button>`).join("")}</div>
       <p class="note">${T("Vale para Relógio, Aura, Espectro e Anel. No Vinil a capa é sempre redonda.")}</p>
       ${tg("corCapa", T("Cores do visual seguem a capa da música"))}
@@ -1417,8 +1418,9 @@ $("tm").addEventListener("click", (e) => {
   if (ga) { const n = validarTema(GALERIA[+ga.dataset.galeria]); n.id = uid("t"); meusTemas.push(n); salvarTemas(); cfg.tema = n.id; aplicarTema(); renderTemas(); return toast(T('Tema "{0}" adicionado', n.nome)); }
   if (t.closest("[data-instalar]")) return pedirInstalacao();
   if (t.closest("[data-boasvindas]")) return boasVindas();
+  const lc = t.closest("[data-ledcor]"); if (lc) { cfg.ledCor = lc.dataset.ledcor; salvarCfg(); ledId = null; prepararLed(cur()); return renderTemas(); }
   const fo = t.closest("[data-forma]"); if (fo) { cfg.formaCapa = fo.dataset.forma; salvarCfg(); aplicarVisual(); return renderTemas(); }
-  const vi = t.closest("[data-vis]"); if (vi) { cfg.visual = vi.dataset.vis; salvarCfg(); aplicarVisual(); return renderTemas(); }
+  const vi = t.closest("[data-vis]"); if (vi) { cfg.visual = vi.dataset.vis; salvarCfg(); aplicarVisual(); if (cfg.visual === "led") prepararLed(cur()); return renderTemas(); }
   const ep = t.closest("[data-epoca]");
   if (ep) { cfg.era = ep.dataset.epoca; cfg.visual = ERAS[cfg.era][1]; salvarCfg(); aplicarVisual(); if (ctx) montarEra(); return renderTemas(); }
   if (t.closest("[data-abrireq]")) return abrirEQ();
@@ -2020,7 +2022,7 @@ function restaurarBackup(o) {
   for (const t of o.temas || []) { try { const v = validarTema(t); if (!meusTemas.some((m) => m.nome === v.nome)) { v.id = uid("t"); meusTemas.push(v); } } catch (err) { /* tema inválido: pula */ } }
   salvarTemas();
   const aj = o.ajustes || {};
-  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "leve", "coracoes", "corCapa", "formaCapa"]) if (k in aj) cfg[k] = aj[k];
+  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "leve", "coracoes", "corCapa", "formaCapa", "ledCor"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
   if (aj.ajustes) cfg.ajustes = aj.ajustes;
@@ -2424,20 +2426,54 @@ function desenharAnel(c, Wc, vivo) {
   c.globalAlpha = 0.6 + batida * 0.35 * k; c.lineWidth = W * (0.0035 + batida * 0.003 * k); c.beginPath(); contornoCapa(c, W, cx, gap * 0.45); c.stroke();
   c.globalAlpha = 1; c.lineCap = "butt";
 }
+/* Cores do LED: clássico (azul ao vermelho), cores da capa, cores do tema ou a própria arte da capa em mosaico */
+let ledArte = null, ledPal = null, ledId = null;
+const mistura = (a, b, t) => { const x = paraRgb(a) || [128, 128, 128], y = paraRgb(b) || x; return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(",")})`; };
+async function prepararLed(x) {
+  if (!x) return; const t = temaAtual(), chave = x.id + "|" + t.id;
+  if (ledId === chave) return; ledId = chave; ledArte = null; ledPal = null;
+  const p = await paletaDaCapa(x, t);
+  ledPal = p.neutro ? NEUTRO(t).slice().reverse() : [ajustarL(p.h2, t, 0.4), ajustarL(p.h1, t)];
+  if (x.capaBlob) try {
+    const bm = await createImageBitmap(x.capaBlob), cv = document.createElement("canvas"); cv.width = LED_N; cv.height = LED_S;
+    const g = cv.getContext("2d"), alvo = LED_N / LED_S, w = bm.width, h = bm.height;
+    let sw = w, sh = w / alvo; if (sh > h) { sh = h; sw = h * alvo; } // recorte do meio da capa no formato do painel
+    g.drawImage(bm, (w - sw) / 2, (h - sh) / 2, sw, sh, 0, 0, LED_N, LED_S);
+    const d = g.getImageData(0, 0, LED_N, LED_S).data, arte = new Array(LED_N * LED_S);
+    for (let j = 0; j < LED_S; j++) for (let i = 0; i < LED_N; i++) {
+      const k = ((LED_S - 1 - j) * LED_N + i) * 4, hsl = rgbHsl([d[k], d[k + 1], d[k + 2]]); // linha 0 é a de baixo
+      arte[j * LED_N + i] = hex(hslRgb(hsl[0], Math.min(1, hsl[1] * 1.15), Math.min(0.85, Math.max(0.22, hsl[2] * 1.12))));
+    }
+    if (cur() === x) ledArte = arte;
+  } catch (e) { /* capa ilegível: fica o degradê */ }
+}
+const corLedFileira = (j) => {
+  const p = j / (LED_S - 1), m = cfg.ledCor;
+  if (m === "tema") { const t = temaAtual(); return mistura(t.secundaria, t.destaque, p); }
+  if ((m === "capa" || m === "arte") && ledPal) return mistura(ledPal[0], ledPal[1], p);
+  return LED_COR[j];
+};
 /* LED: equalizador clássico em blocos, do azul ao vermelho, com o pico caindo devagar e reflexo embaixo */
 const LED_N = 32, LED_S = 18, ledNiv = new Float32Array(LED_N), ledPico = new Float32Array(LED_N), ledEspera = new Float32Array(LED_N);
 const LED_COR = Array.from({ length: LED_S }, (_, j) => { const p = j / (LED_S - 1); return `hsl(${Math.round(205 - 205 * Math.pow(p, 1.25))} 88% ${52 + p * 6}%)`; });
 function desenharLed(c, W, vivo) {
   if (vivo) lerBins();
   for (let i = 0; i < LED_N; i++) {
-    const p = i / (LED_N - 1), alvo = vivo ? bins[2 + Math.round(150 * Math.pow(p, 1.5))] / 255 : 0;
+    const p = i / (LED_N - 1), alvo = vivo ? Math.min(1, (bins[2 + Math.round(150 * Math.pow(p, 1.5))] / 255) * (1 + p * 0.45)) : 0; // agudos ganham um pouco, para a direita não ficar sempre baixa
     ledNiv[i] += (alvo - ledNiv[i]) * sv(alvo > ledNiv[i] ? 0.55 : 0.18);
     if (ledNiv[i] >= ledPico[i]) { ledPico[i] = ledNiv[i]; ledEspera[i] = 18; } // o pico segura um instante e depois cai
     else if ((ledEspera[i] -= fqV) <= 0) ledPico[i] = Math.max(ledNiv[i], ledPico[i] - 0.012 * fqV);
   }
   const x0 = W * 0.03, larg = W * 0.94, base = W * 0.66, alt = W * 0.56, bw = larg / LED_N, vao = bw * 0.22, sh = alt / LED_S, sg = sh * 0.24;
-  for (let j = 0; j < LED_S; j++) { // uma cor por fileira: poucas trocas de cor por quadro
-    c.fillStyle = LED_COR[j]; const lim = (j + 0.5) / LED_S;
+  const arte = cfg.ledCor === "arte" && ledArte;
+  if (arte) { // a capa vira um mosaico: os blocos apagados mostram a arte bem fraquinha, os acesos brilham com a cor dela
+    for (let j = 0; j < LED_S; j++) { const lim = (j + 0.5) / LED_S; for (let i = 0; i < LED_N; i++) {
+      c.fillStyle = arte[j * LED_N + i]; c.globalAlpha = ledNiv[i] >= lim ? 1 : 0.13;
+      c.fillRect(x0 + i * bw + vao / 2, base - (j + 1) * sh + sg / 2, bw - vao, sh - sg);
+      if (j < 7 && ledNiv[i] >= lim) { c.globalAlpha = 0.2 * (1 - j / 7); c.fillRect(x0 + i * bw + vao / 2, base + j * sh * 0.8 + sg, bw - vao, sh * 0.8 - sg); }
+    } }
+  } else for (let j = 0; j < LED_S; j++) { // uma cor por fileira: poucas trocas de cor por quadro
+    c.fillStyle = corLedFileira(j); const lim = (j + 0.5) / LED_S;
     c.globalAlpha = 1; c.beginPath();
     for (let i = 0; i < LED_N; i++) if (ledNiv[i] >= lim) c.rect(x0 + i * bw + vao / 2, base - (j + 1) * sh + sg / 2, bw - vao, sh - sg);
     c.fill();
@@ -2596,7 +2632,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.13.1";
+const VERSAO = "1.14.0";
 let instalar = null;
 const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalar = e; if ($("app").dataset.view === "temas" && !editando) renderTemas(); });
