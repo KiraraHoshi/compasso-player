@@ -10,6 +10,7 @@ let LANG = (function () {
 })();
 document.documentElement.lang = LANG === "en" ? "en" : "pt-BR";
 const EN = {
+ "Cores do visual seguem a capa da música": "Visual colors follow the album cover",
  "Espectro": "Spectrum",
  "Neon": "Neon",
  "Aura": "Aura",
