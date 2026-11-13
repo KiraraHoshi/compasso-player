@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.7.1
+- Aura: no Relógio e no Vinil, um anel suave em volta da capa respira com a música, e cada batida forte solta uma onda discreta. Segue a "Força da batida", desliga em Ajustes › Efeitos e fica de fora no modo leve.
+
 ## 1.7.0
 - Trocar o idioma não para mais a música: o app muda na hora, sem recarregar.
 - Som mais estável no celular: o áudio usa um buffer maior, o que evita engasgos.
