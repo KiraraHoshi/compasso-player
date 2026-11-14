@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.16.1
+- Corrigido o zoom de pinça, que dava zoom na tela inteira e deixava o app cortado e travando. Agora o gesto de pinça é ignorado fora do recorte de foto, onde ele continua funcionando.
+
 ## 1.16.0
 - App Android:
   - O botão voltar desfaz um passo de cada vez: fecha menus, sai da tela cheia e da letra, volta de álbuns e playlists e, por fim, volta para a Biblioteca. Na Biblioteca, ele só minimiza o app, e a música continua.

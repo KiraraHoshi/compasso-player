@@ -2679,7 +2679,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.16.0";
+const VERSAO = "1.16.1";
 const linkPrivacidade = () => "https://kirarahoshi.github.io/compasso-player/privacidade.html" + (LANG === "en" ? "#en" : "#pt");
 let instalar = null;
 const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
@@ -2820,6 +2820,11 @@ $("b-vel").addEventListener("click", () => {
 });
 $("b-eq").addEventListener("click", abrirEQ);
 $("b-shuf").innerHTML = ico("shuf"); $("b-prev").innerHTML = ico("prev", 28); $("b-next").innerHTML = ico("next", 28); $("mini-next").innerHTML = ico("next", 22);
+
+/* O app tem layout fixo (nada rola na página), então o zoom de pinça só deixaria tudo cortado e travando: bloqueado aqui, no CSS e na tela */
+for (const ev of ["gesturestart", "gesturechange", "gestureend"]) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+document.addEventListener("touchmove", (e) => { if (e.touches.length > 1 && !e.target.closest(".corte")) e.preventDefault(); }, { passive: false });
+document.addEventListener("wheel", (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
 
 /* Botão voltar do Android: desfaz um passo de cada vez, como nos outros apps; na tela inicial, só minimiza (a música continua) */
 function voltarUmPasso() {
