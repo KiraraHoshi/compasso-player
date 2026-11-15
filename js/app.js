@@ -2621,9 +2621,17 @@ const corLedFileira = (j) => {
   return LED_COR[j];
 };
 /* LED: equalizador clássico em blocos, do azul ao vermelho, com o pico caindo devagar e reflexo embaixo */
-const LED_N = 32, LED_S = 18, ledNiv = new Float32Array(LED_N), ledPico = new Float32Array(LED_N), ledEspera = new Float32Array(LED_N);
-const LED_COR = Array.from({ length: LED_S }, (_, j) => { const p = j / (LED_S - 1); return `hsl(${Math.round(205 - 205 * Math.pow(p, 1.25))} 88% ${52 + p * 6}%)`; });
+const LED_N = 32; let LED_S = 18; const ledNiv = new Float32Array(LED_N), ledPico = new Float32Array(LED_N), ledEspera = new Float32Array(LED_N);
+const corPadraoLed = () => Array.from({ length: LED_S }, (_, j) => { const p = j / (LED_S - 1); return `hsl(${Math.round(205 - 205 * Math.pow(p, 1.25))} 88% ${52 + p * 6}%)`; });
+let LED_COR = corPadraoLed();
+function fileirasLed(n) { // o LED largo do celular ganha fileiras para usar a altura livre com blocos quadrados
+  if (n === LED_S) return;
+  LED_S = n; LED_COR = corPadraoLed(); ledArte = ledGrad = null; ledId = null;
+  if (cfg.visual === "led") prepararLed(cur());
+}
 function desenharLed(c, W, vivo, H = W) {
+  { const largo = c.canvas.parentNode && c.canvas.parentNode.style.aspectRatio === "auto";
+    fileirasLed(largo ? Math.max(18, Math.min(44, Math.round((H * 0.86) / ((W * 0.94) / LED_N)))) : 18); }
   if (vivo) lerBins();
   for (let i = 0; i < LED_N; i++) {
     const p = i / (LED_N - 1), alvo = vivo ? Math.min(1, (bins[2 + Math.round(150 * Math.pow(p, 1.5))] / 255) * (1 + p * 0.45)) : 0; // agudos ganham um pouco, para a direita não ficar sempre baixa
@@ -2631,7 +2639,7 @@ function desenharLed(c, W, vivo, H = W) {
     if (ledNiv[i] >= ledPico[i]) { ledPico[i] = ledNiv[i]; ledEspera[i] = 18; } // o pico segura um instante e depois cai
     else if ((ledEspera[i] -= fqV) <= 0) ledPico[i] = Math.max(ledNiv[i], ledPico[i] - 0.012 * fqV);
   }
-  const x0 = W * 0.03, larg = W * 0.94, quad = !(c.canvas.parentNode && c.canvas.parentNode.style.aspectRatio === "auto"), base = quad ? W * 0.66 : H * 0.92, alt = quad ? W * 0.56 : Math.min(H * 0.86, W * 0.62), bw = larg / LED_N, vao = bw * 0.22, sh = alt / LED_S, sg = sh * 0.24; // largo (celular): colado embaixo, perto da barra de progresso
+  const x0 = W * 0.03, larg = W * 0.94, quad = !(c.canvas.parentNode && c.canvas.parentNode.style.aspectRatio === "auto"), base = quad ? W * 0.66 : H * 0.92, alt = quad ? W * 0.56 : H * 0.86, bw = larg / LED_N, vao = bw * 0.22, sh = alt / LED_S, sg = sh * 0.24; // largo (celular): colado embaixo, perto da barra de progresso
   const arte = (cfg.ledCor === "arte" && ledArte) || (cfg.ledCor === "capa" && ledGrad); // os dois pintam bloco a bloco
   if (arte) { // a capa vira um mosaico: cada bloco aceso mostra a cor daquele pedaço da arte (os apagados não aparecem)
     for (let j = 0; j < LED_S; j++) { const lim = (j + 0.5) / LED_S; for (let i = 0; i < LED_N; i++) {
@@ -2873,7 +2881,7 @@ function ajustarDial() {
   for (const el of vw.children) { if (el === dial || el.offsetParent === null) continue; outros += el.offsetHeight; n++; }
   let livre = H - outros - (parseFloat(getComputedStyle(vw).rowGap) || 0) * n - 4;
   if (livre < 220) { vw.style.rowGap = "8px"; livre = H - outros - 8 * n - 4; } // tela baixa: aperta os espaços antes de encolher mais o mostrador
-  if (largo) { dial.style.width = "100%"; dial.style.aspectRatio = "auto"; dial.style.height = Math.floor(Math.max(140, Math.min(livre, 460))) + "px"; dial.style.marginTop = "auto"; meta.style.marginTop = "0"; return; }
+  if (largo) { dial.style.width = "100%"; dial.style.aspectRatio = "auto"; dial.style.height = Math.floor(Math.max(140, Math.min(livre, 620))) + "px"; dial.style.marginTop = "auto"; meta.style.marginTop = "0"; return; }
   dial.style.height = dial.style.aspectRatio = "";
   const w = Math.max(140, Math.min(innerWidth * 0.8, 400, livre));
   dial.style.width = Math.floor(w) + "px";

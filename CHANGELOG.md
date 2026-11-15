@@ -9,7 +9,7 @@
 - O botão voltar refaz o caminho: volta para a tela em que você estava antes (e na mesma posição da lista), não sempre para a Biblioteca.
 - Tocando agora no estilo do YouTube Music: capa ou visual em cima, nome e botões no meio, progresso e controles embaixo, perto do polegar. Os botões ficam à esquerda.
 - O volume virou um botão no fim da fileira: um toque mostra ou esconde a barra de volume (ela fica como você deixou), e segurar cerca de 1 segundo deixa mudo ou devolve o som.
-- O visual LED ocupa a largura da tela no celular.
+- O visual LED ocupa a largura da tela no celular e usa a altura livre: ganha fileiras para as barras subirem mais com blocos quadrados, logo acima do nome da música. Com o volume recolhido, a fileira de opções desce e o LED cresce.
 - Em telas bem estreitas, a fileira de botões cabe numa linha só.
 - Ajustes › Sobre (Android): botão para ver se há versão nova no GitHub. O app continua sem usar a internet; o botão só abre a página no navegador. Instalar o APK novo por cima mantém músicas, playlists e ajustes.
 
