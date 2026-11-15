@@ -49,6 +49,7 @@ jobs:
           npm run www
           npx cap add android
           node scripts/permissoes-android.mjs
+          node scripts/musicas-android.mjs
           cp -r android-assets assets
           npx @capacitor/assets generate --android --iconBackgroundColor "#14111F" --iconBackgroundColorDark "#14111F" --splashBackgroundColor "#14111F" --splashBackgroundColorDark "#14111F"
           npx cap sync android

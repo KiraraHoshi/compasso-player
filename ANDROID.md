@@ -26,6 +26,8 @@ Na primeira publicação, deixe ativado o **Play App Signing** (o padrão): o Go
 
 `scripts/permissoes-android.mjs` acrescenta as permissões de reprodução em segundo plano (serviço de mídia, notificação e manter o aparelho acordado). Sem a de serviço de mídia, o Android 14+ fecha o app ao tocar.
 
+`scripts/musicas-android.mjs` liga o plugin `android-plugin/MusicasPlugin.java` (lê a biblioteca de mídia do Android para "Procurar músicas no aparelho") e acrescenta a permissão de ler músicas: `READ_MEDIA_AUDIO` no Android 13+ e `READ_EXTERNAL_STORAGE` até o 12. Essa permissão é aceita pela Google Play para players de música; na ficha da loja, declare que o app lê arquivos de áudio do aparelho para tocá-los, sem enviar nada.
+
 ## Política de privacidade
 
 [`privacidade.html`](https://kirarahoshi.github.io/compasso-player/privacidade.html), em português e inglês.
