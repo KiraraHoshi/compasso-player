@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.17.2
+- PC e tablet: o Tocando agora segue a mesma ordem do celular (nome, botões com o volume na ponta, barra de volume, progresso e controles), igual no app Android.
+
 ## 1.17.1
 - Capas: cada música usa a arte gravada no próprio arquivo. Antes, músicas sem álbum na mesma pasta (como MP3 baixados do YouTube) ficavam todas com a capa da primeira. As que entraram assim são corrigidas sozinhas ao abrir o app.
 - O nome da pasta (por exemplo "Download") não aparece mais como se fosse o álbum.

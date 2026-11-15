@@ -338,10 +338,10 @@ main{contain:content}
   #v-tocando .np-top{grid-column:1/-1;grid-row:1}
   #v-tocando :is(.dial,.letra){grid-column:1;grid-row:2/9;align-self:center}
   #v-tocando .np-meta{grid-column:2;grid-row:3}
-  #v-tocando .seek{grid-column:2;grid-row:4}
-  #v-tocando .ctl{grid-column:2;grid-row:5;max-width:none}
-  #v-tocando .volume{grid-column:2;grid-row:6;max-width:none}
-  #v-tocando .np-bar{grid-column:2;grid-row:7}
+  #v-tocando .seek{grid-column:2;grid-row:6}
+  #v-tocando .ctl{grid-column:2;grid-row:7;max-width:none}
+  #v-tocando .volume{grid-column:2;grid-row:5;max-width:none}
+  #v-tocando .np-bar{grid-column:2;grid-row:4}
   #v-tocando .letra{max-height:none;height:100%;min-height:0}
   .dial{width:clamp(220px,min(42vw,64vh),620px)}
 }
