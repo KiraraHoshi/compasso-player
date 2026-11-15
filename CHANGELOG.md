@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.17.1
+- Capas: cada música usa a arte gravada no próprio arquivo. Antes, músicas sem álbum na mesma pasta (como MP3 baixados do YouTube) ficavam todas com a capa da primeira. As que entraram assim são corrigidas sozinhas ao abrir o app.
+- O nome da pasta (por exemplo "Download") não aparece mais como se fosse o álbum.
+- Importar › **Escolher uma pasta**: use uma pasta específica do aparelho. O Orolon lembra a pasta e procura músicas novas nela ao abrir. O Android decide quais pastas podem ser escolhidas. Gerencie em Ajustes › Pastas escolhidas.
+
 ## 1.17.0
 - App Android: **Procurar músicas no aparelho**. O Orolon encontra sozinho as músicas que o Android já conhece (pasta Música, Downloads e outras), como os outros players. Nada é copiado: ele toca direto do arquivo e não ocupa espaço extra.
   - Ao abrir o app, entram as músicas novas e saem as que foram apagadas do aparelho.

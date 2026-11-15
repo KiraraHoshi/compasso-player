@@ -10,6 +10,16 @@ let LANG = (function () {
 })();
 document.documentElement.lang = LANG === "en" ? "en" : "pt-BR";
 const EN = {
+ "Não deu para abrir as pastas do aparelho": "Couldn't open the device folders",
+ "Pasta": "Folder",
+ "Procurando músicas em {0}…": "Looking for music in {0}…",
+ "Sem acesso a {0}. Escolha a pasta de novo em Importar.": "No access to {0}. Choose the folder again in Import.",
+ "O Orolon procura músicas novas nestas pastas sempre que abre. Tirar uma pasta não apaga os arquivos.": "Orolon looks for new music in these folders every time it opens. Removing a folder doesn't delete any files.",
+ "Nenhuma pasta escolhida.": "No folders chosen.",
+ "Escolher uma pasta": "Choose a folder",
+ "Pastas escolhidas": "Chosen folders",
+ "Pasta tirada do Orolon": "Folder removed from Orolon",
+ "“Procurar músicas no aparelho” encontra as músicas que o Android já conhece (pasta Música, Downloads e outras), sem copiar nada: o app toca direto do arquivo. “Escolher uma pasta” usa só a pasta que você indicar; o Android decide quais pastas podem ser abertas.": "“Find music on this device” picks up the songs Android already knows about (Music, Downloads and other folders) without copying anything: the app plays straight from the file. “Choose a folder” uses only the folder you pick; Android decides which folders can be opened.",
  ". Segure para deixar mudo": ". Hold to mute",
  "Sem permissão para ler as músicas. Libere em Configurações do Android › Apps › Orolon › Permissões › Músicas e áudio.": "No permission to read your music. Allow it in Android Settings › Apps › Orolon › Permissions › Music and audio.",
  "Procurando músicas no aparelho…": "Looking for music on this device…",

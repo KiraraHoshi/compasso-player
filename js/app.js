@@ -305,7 +305,7 @@ function dbTodos(nome) {
     try { const r = loja(nome).getAll(); r.onsuccess = () => ok(r.result || []); r.onerror = () => ok([]); } catch (e) { ok([]); }
   });
 }
-const salvarFaixa = (x) => dbPut("faixas", { id: x.id, t: x.t, a: x.a, al: x.al, n: x.n, d: x.d, c: x.c, arq: x.arq, uri: x.uri, mid: x.mid, alId: x.alId, tipo: x.tipo, capaBlob: x.capaBlob, sig: x.sig, em: x.em, letra: x.letra || "", pasta: x.pasta || "", oculta: !!x.oculta });
+const salvarFaixa = (x) => dbPut("faixas", { id: x.id, t: x.t, a: x.a, al: x.al, n: x.n, d: x.d, c: x.c, arq: x.arq, uri: x.uri, mid: x.mid, orig: x.orig, doc: x.doc, alId: x.alId, tipo: x.tipo, capaBlob: x.capaBlob, sig: x.sig, em: x.em, letra: x.letra || "", pasta: x.pasta || "", oculta: !!x.oculta });
 function montar(x) { x.url = x.uri ? window.Capacitor.convertFileSrc(x.uri) : URL.createObjectURL(x.arq); if (x.capaBlob) x.cover = URL.createObjectURL(x.capaBlob); }
 
 /* ---- Importar ---- */
@@ -387,6 +387,9 @@ const MUS = PLUG.Musicas;
 const OCULTAR_PASTA = /whatsapp|telegram|voice ?notes?|recordings?|grava[cç]|chamada|call ?rec|notifica|ringtone|alarm/i;
 let procurando = false;
 const desconhecido = (v) => !v || /^<unknown>$/i.test(v);
+const ultimaPasta = (p) => String(p || "").replace(/\/+$/, "").split("/").pop();
+const albumDe = (al, pasta) => (desconhecido(al) || al.trim().toLowerCase() === ultimaPasta(pasta).toLowerCase() ? "" : al.trim());
+const chaveArq = (nome, tam) => (nome || "") + "|" + (tam || 0);
 function b64Blob(b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: "image/jpeg" }); }
 async function procurarNoAparelho(manual) {
   if (!MUS || procurando || importando) return;
@@ -409,8 +412,8 @@ async function procurarNoAparelho(manual) {
   for (const m of lista) { const p = m.pasta || ""; if (!vistas.has(p)) { vistas.add(p); if (OCULTAR_PASTA.test(p)) fora.add(p); } }
   cfg.pastasVistas = [...vistas]; cfg.pastasFora = [...fora]; salvarCfg();
   const ignoradas = new Set(cfg.ignoradas || []);
-  const doAparelho = new Map(importadas().filter((x) => x.mid).map((x) => [x.mid, x]));
-  const copias = new Set(importadas().filter((x) => !x.mid).map((x) => (x.sig || "").split("|").slice(0, 2).join("|")));
+  const doAparelho = new Map(importadas().filter((x) => x.mid && x.mid[0] === "m").map((x) => [x.mid, x]));
+  const copias = new Set(importadas().filter((x) => !x.mid || x.mid[0] !== "m").map((x) => (x.sig || "").split("|").slice(0, 2).join("|")));
   const achadas = new Set(), novasFaixas = [];
   for (const m of lista) {
     const mid = "m" + m.id; achadas.add(mid);
@@ -423,7 +426,7 @@ async function procurarNoAparelho(manual) {
       sig: (m.nome || "") + "|" + m.tamanho + "|" + (m.modificado || 0) * 1000, em: Date.now(),
       t: (!desconhecido(m.titulo) ? m.titulo : (partes.length > 1 ? partes.slice(1).join(" - ") : partes[0])).trim() || T("Sem título"),
       a: !desconhecido(m.artista) ? m.artista : (partes.length > 1 ? partes[0].trim() : T("Artista desconhecido")),
-      al: desconhecido(m.album) ? "" : m.album, n: (m.faixa || 0) % 1000, d: (m.duracao || 0) / 1000, letra: "", pasta: m.pasta || "", capaBlob: null,
+      al: albumDe(m.album, m.pasta), n: (m.faixa || 0) % 1000, d: (m.duracao || 0) / 1000, letra: "", pasta: m.pasta || "", capaBlob: null,
     };
     x.c = coresDoNome(x.a + x.al + base);
     montar(x); adicionarFaixa(x); salvarFaixa(x); novasFaixas.push(x);
@@ -442,11 +445,19 @@ async function procurarNoAparelho(manual) {
       novasFaixas.length ? [T("Ver"), () => { plAberta = "auto:novas"; ir("playlists"); renderPl(); }] : undefined);
   }
   if (primeira && fora.size && novasFaixas.length) setTimeout(() => toast(T("Algumas pastas de áudios de conversa e gravações ficaram de fora. Mude em Ajustes › Pastas do aparelho.")), 4200);
-  if (novasFaixas.length) capasDoAparelho(novasFaixas);
+  let refazer = novasFaixas;
+  if (cfg.apVer !== 2) { // 1.17.0 dava a mesma capa a músicas sem álbum da mesma pasta: corrige uma vez
+    cfg.apVer = 2; salvarCfg();
+    for (const x of doAparelho.values()) if (porId.has(x.id)) { const al = albumDe(x.al, x.pasta); if (al !== x.al) { x.al = al; } x.capaBlob = null; x.cover = null; x.c = coresDoNome(x.a + x.al + x.t); salvarFaixa(x); }
+    refazer = [...doAparelho.values()].filter((x) => porId.has(x.id)).concat(novasFaixas);
+    renderBib();
+  }
+  await procurarNasPastas();
+  if (refazer.length) capasDoAparelho(refazer);
 }
 async function capasDoAparelho(lista) {
   const grupos = new Map();
-  for (const x of lista) { const k = x.al && x.alId ? x.alId : x.mid; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(x); }
+  for (const x of lista) { const k = x.al && x.alId ? x.alId : x.mid; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(x); } // só agrupa álbuns de verdade
   let n = 0;
   for (const g of grupos.values()) {
     let b64 = null;
@@ -459,6 +470,76 @@ async function capasDoAparelho(lista) {
     if (++n % 12 === 0) { renderBib(); paint(); }
   }
   renderBib(); renderPl(); paint();
+}
+/* ---- Pastas escolhidas pela pessoa ---- */
+async function escolherPastaAparelho() {
+  if (!MUS || !MUS.escolherPasta) return;
+  let r; try { r = await MUS.escolherPasta(); } catch (e) { toast(T("Não deu para abrir as pastas do aparelho")); return; }
+  if (!r || r.cancelado || !r.uri) return;
+  const ps = cfg.pastasEscolhidas || [];
+  if (!ps.some((p) => p.uri === r.uri)) { ps.push({ uri: r.uri, nome: r.nome || T("Pasta") }); cfg.pastasEscolhidas = ps; salvarCfg(); }
+  await procurarNasPastas(true, r.uri);
+}
+async function procurarNasPastas(manual, so) {
+  if (!MUS || !MUS.listarPasta) return;
+  const ps = (cfg.pastasEscolhidas || []).filter((p) => !so || p.uri === so);
+  const ignoradas = new Set(cfg.ignoradas || []);
+  let novas = [], sumiram = 0, semAcesso = [];
+  for (const p of ps) {
+    const daPasta = importadas().filter((x) => x.orig === p.uri);
+    let lista;
+    try { if (manual) $("count").textContent = T("Procurando músicas em {0}…", p.nome); lista = ((await MUS.listarPasta({ uri: p.uri, conhecidos: daPasta.map((x) => x.doc) })) || {}).musicas || []; }
+    catch (e) { semAcesso.push(p.nome); continue; }
+    const porDoc = new Map(daPasta.map((x) => [x.doc, x])), achados = new Set();
+    const outras = new Set(importadas().filter((x) => x.orig !== p.uri).map((x) => (x.sig || "").split("|").slice(0, 2).join("|")));
+    for (const m of lista) {
+      achados.add(m.doc);
+      const ja = porDoc.get(m.doc);
+      if (ja) { if (ja.uri !== m.uri) { ja.uri = m.uri; montar(ja); salvarFaixa(ja); } continue; }
+      const mid = "d" + (m.mediaId || m.doc);
+      if (ignoradas.has(mid) || outras.has(chaveArq(m.nome, m.tamanho))) continue; // removida pela pessoa ou já está na biblioteca
+      const base = (m.nome || "").replace(/\.[^.]+$/, ""), partes = base.split(" - "), pasta = (p.nome + "/" + (m.pasta || "")).replace(/\/+$/, "/");
+      const x = {
+        id: uid("f"), mid, uri: m.uri, doc: m.doc, orig: p.uri, alId: "", tipo: m.mime || "",
+        sig: chaveArq(m.nome, m.tamanho) + "|" + (m.modificado || 0) * 1000, em: Date.now(),
+        t: (!desconhecido(m.titulo) ? m.titulo : (partes.length > 1 ? partes.slice(1).join(" - ") : partes[0])).trim() || T("Sem título"),
+        a: !desconhecido(m.artista) ? m.artista : (partes.length > 1 ? partes[0].trim() : T("Artista desconhecido")),
+        al: albumDe(m.album, pasta), n: m.faixa || 0, d: (m.duracao || 0) / 1000, letra: "", pasta, capaBlob: null,
+      };
+      x.c = coresDoNome(x.a + x.al + base);
+      montar(x); adicionarFaixa(x); salvarFaixa(x); novas.push(x);
+    }
+    for (const x of daPasta) if (!achados.has(x.doc)) { removerFaixa(x.id, true); sumiram++; }
+  }
+  if (!ps.length) return;
+  renderBib(); renderPl();
+  if (novas.length && (!queue.length || queue.every((id) => (porId.get(id) || {}).demo))) filaPadrao();
+  if (novas.length && cfg.exemplos && !cfg.exemplosMexeu) { cfg.exemplos = false; cfg.exemplosMexeu = true; salvarCfg(); mudouExemplos(); }
+  if (manual || novas.length || sumiram || semAcesso.length) {
+    const msg = [];
+    if (novas.length) msg.push(plural(novas.length, "música nova encontrada", "músicas novas encontradas"));
+    if (sumiram) msg.push(plural(sumiram, "música saiu porque não está mais no aparelho", "músicas saíram porque não estão mais no aparelho"));
+    if (semAcesso.length) msg.push(T("Sem acesso a {0}. Escolha a pasta de novo em Importar.", semAcesso.join(", ")));
+    if (msg.length || manual) toast(msg.length ? msg.join(". ") : T("Nenhuma música nova"));
+  }
+  if (novas.length) capasDoAparelho(novas);
+}
+function menuPastasEscolhidas() {
+  const html = () => {
+    const ps = cfg.pastasEscolhidas || [];
+    return `<p class="note" style="padding:0 8px">${T("O Orolon procura músicas novas nestas pastas sempre que abre. Tirar uma pasta não apaga os arquivos.")}</p><div class="stack">${ps.map((p, i) => `<div class="opt"><span>${esc(p.nome)} <span class="note">· ${importadas().filter((x) => x.orig === p.uri).length}</span></span><button class="btn ghost sm" data-tirarpasta="${i}">${T("Tirar")}</button></div>`).join("") || `<p class="note">${T("Nenhuma pasta escolhida.")}</p>`}</div><div class="btns"><button class="btn sm" data-novapasta>${ico("folder", 18)}${T("Escolher uma pasta")}</button></div>`;
+  };
+  abrirFolha({
+    titulo: T("Pastas escolhidas"), html: html(),
+    clique(e) {
+      if (e.target.closest("[data-novapasta]")) { fecharFolha(); return escolherPastaAparelho(); }
+      const b = e.target.closest("[data-tirarpasta]"); if (!b) return;
+      const ps = cfg.pastasEscolhidas || [], p = ps[+b.dataset.tirarpasta]; if (!p) return;
+      importadas().filter((x) => x.orig === p.uri).forEach((x) => removerFaixa(x.id, true));
+      cfg.pastasEscolhidas = ps.filter((q) => q !== p); salvarCfg(); nat(() => MUS.soltarPasta({ uri: p.uri }));
+      $("sheet-b").innerHTML = html(); renderTemas(); toast(T("Pasta tirada do Orolon"));
+    },
+  });
 }
 function menuPastasAparelho() {
   const cont = new Map();
@@ -1168,10 +1249,10 @@ $("b-import").addEventListener("click", menuImportar);
 function menuImportar() {
   abrirFolha({
     titulo: T("Importar músicas"),
-    html: `<div class="menu">${MUS ? `<button data-i="aparelho">${ico("folder")}${T("Procurar músicas no aparelho")}</button>` : ""}<button data-i="arquivos">${ico("note")}${MUS ? T("Escolher arquivos (cópia dentro do app)") : T("Escolher arquivos")}</button>${NATIVO ? "" : `<button data-i="pasta">${ico("folder")}${T("Escolher uma pasta inteira")}</button>`}</div>
-      ${MUS ? `<p class="note" style="padding:0 8px">${T("“Procurar músicas no aparelho” encontra as músicas que o Android já conhece (pasta Música, Downloads e outras), sem copiar nada: o app toca direto do arquivo.")}</p>` : ""}
+    html: `<div class="menu">${MUS ? `<button data-i="aparelho">${ico("folder")}${T("Procurar músicas no aparelho")}</button>` : ""}${MUS ? `<button data-i="pastaap">${ico("folder")}${T("Escolher uma pasta")}</button>` : ""}<button data-i="arquivos">${ico("note")}${MUS ? T("Escolher arquivos (cópia dentro do app)") : T("Escolher arquivos")}</button>${NATIVO ? "" : `<button data-i="pasta">${ico("folder")}${T("Escolher uma pasta inteira")}</button>`}</div>
+      ${MUS ? `<p class="note" style="padding:0 8px">${T("“Procurar músicas no aparelho” encontra as músicas que o Android já conhece (pasta Música, Downloads e outras), sem copiar nada: o app toca direto do arquivo. “Escolher uma pasta” usa só a pasta que você indicar; o Android decide quais pastas podem ser abertas.")}</p>` : ""}
       <p class="note" style="padding:0 8px">${NATIVO ? T("As músicas ficam guardadas só neste aparelho. Letras em .lrc com o mesmo nome da música entram junto.") : T("As músicas ficam guardadas só neste navegador. Letras em .lrc com o mesmo nome da música entram junto. No PC, você também pode arrastar arquivos e pastas para a janela.")}</p>`,
-    clique(e) { const b = e.target.closest("[data-i]"); if (!b) return; fecharFolha(); if (b.dataset.i === "aparelho") return procurarNoAparelho(true); $(b.dataset.i === "pasta" ? "folder" : "files").click(); },
+    clique(e) { const b = e.target.closest("[data-i]"); if (!b) return; fecharFolha(); if (b.dataset.i === "aparelho") return procurarNoAparelho(true); if (b.dataset.i === "pastaap") return escolherPastaAparelho(); $(b.dataset.i === "pasta" ? "folder" : "files").click(); },
   });
 }
 $("files").addEventListener("change", (e) => { const f = [...e.target.files]; e.target.value = ""; importar(f); });
@@ -1491,7 +1572,7 @@ function renderTemas() {
       <div class="btns"><button class="btn ghost sm" data-exp="copiar">${T("Copiar JSON")}</button><button class="btn ghost sm" data-exp="baixar">${T("Baixar .json")}</button><button class="btn ghost sm" data-imp="arquivo">${T("Abrir .json")}</button><button class="btn ghost sm" data-imp="colar">${T("Colar JSON")}</button></div></div>
     <div class="card stack"><h2>${T("Biblioteca")}</h2>${tg("exemplos", T("Mostrar as músicas de exemplo"))}${tg("coracoes", T("Mostrar o coração das favoritas nas listas"))}
       ${faixas.some((x) => x.oculta) ? `<div class="opt"><span>${plural(faixas.filter((x) => x.oculta).length, "música oculta", "músicas ocultas")}</span><button class="btn ghost sm" data-verocultas>${T("Ver")}</button></div>` : ""}
-      ${MUS ? `<div class="btns"><button class="btn ghost sm" data-aparelho>${T("Procurar novas músicas no aparelho")}</button>${importadas().some((x) => x.mid) ? `<button class="btn ghost sm" data-pastasap>${T("Pastas do aparelho")}</button>` : ""}</div>` : ""}
+      ${MUS ? `<div class="btns"><button class="btn ghost sm" data-aparelho>${T("Procurar novas músicas no aparelho")}</button>${importadas().some((x) => x.mid) ? `<button class="btn ghost sm" data-pastasap>${T("Pastas do aparelho")}</button>` : ""}<button class="btn ghost sm" data-pastasesc>${T("Pastas escolhidas")}${(cfg.pastasEscolhidas || []).length ? " · " + cfg.pastasEscolhidas.length : ""}</button></div>` : ""}
       <p class="note" id="espaco">${T("Calculando o espaço usado…")}</p>
       ${importadas().length ? `<div class="btns"><button class="btn danger sm" data-limparbib>${T("Apagar todas as músicas importadas")}</button></div>` : ""}
       ${NATIVO ? "" : `<p class="note">${T("Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita, ↑ e ↓ mudam o volume, M deixa mudo.")}</p>`}</div>
@@ -1576,6 +1657,7 @@ $("tm").addEventListener("click", (e) => {
   if (t.closest("[data-boasvindas]")) return boasVindas();
   if (t.closest("[data-aparelho]")) return procurarNoAparelho(true);
   if (t.closest("[data-pastasap]")) return menuPastasAparelho();
+  if (t.closest("[data-pastasesc]")) return menuPastasEscolhidas();
   const lc = t.closest("[data-ledcor]"); if (lc) { cfg.ledCor = lc.dataset.ledcor; salvarCfg(); ledId = null; prepararLed(cur()); return renderTemas(); }
   const fo = t.closest("[data-forma]"); if (fo) { cfg.formaCapa = fo.dataset.forma; salvarCfg(); aplicarVisual(); return renderTemas(); }
   const vi = t.closest("[data-vis]"); if (vi) { cfg.visual = vi.dataset.vis; salvarCfg(); aplicarVisual(); if (cfg.visual === "led") prepararLed(cur()); return renderTemas(); }
@@ -1611,6 +1693,7 @@ $("tm").addEventListener("click", (e) => {
   if (t.closest("[data-limparbib]")) {
     return confirmar(T("Apagar músicas importadas?"), plural(importadas().length, "música sai", "músicas saem") + T(" do Orolon. Os arquivos originais continuam no seu aparelho. As playlists ficam, mas sem essas músicas."), T("Apagar tudo"), () => {
       importadas().forEach((x) => removerFaixa(x.id, true));
+      (cfg.pastasEscolhidas || []).forEach((p) => nat(() => MUS && MUS.soltarPasta({ uri: p.uri }))); cfg.pastasEscolhidas = [];
       cfg.aparelho = false; salvarCfg(); // não procura de novo sozinho; o botão "Procurar" traz tudo de volta
       renderTemas(); toast(T("Biblioteca limpa"));
     });
@@ -2808,7 +2891,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.17.0";
+const VERSAO = "1.17.1";
 const linkPrivacidade = () => "https://kirarahoshi.github.io/compasso-player/privacidade.html" + (LANG === "en" ? "#en" : "#pt");
 let instalar = null;
 const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
@@ -3033,6 +3116,7 @@ requestAnimationFrame(quadro);
   if (cfg.capasVer !== 1) setTimeout(acertarCapas, 2500);
   if (!guardado.get("compasso.boasvindas", false) && !importadas().length) boasVindas();
   if (MUS && cfg.aparelho) setTimeout(() => procurarNoAparelho(false), 1500);
+  else if (MUS && (cfg.pastasEscolhidas || []).length) setTimeout(() => procurarNasPastas(false), 1500);
 })();
 
 if (!window.Capacitor && "serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {

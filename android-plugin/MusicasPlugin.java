@@ -5,6 +5,14 @@ package PACOTE;
 // O script scripts/musicas-android.mjs copia este arquivo para o projeto Android e troca PACOTE pelo pacote do app.
 
 import android.Manifest;
+import android.app.Activity;
+import android.content.Intent;
+import android.content.UriPermission;
+import android.provider.DocumentsContract;
+import androidx.activity.result.ActivityResult;
+import com.getcapacitor.annotation.ActivityCallback;
+import java.util.ArrayDeque;
+import java.util.HashSet;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.database.Cursor;
@@ -126,17 +134,17 @@ public class MusicasPlugin extends Plugin {
             try {
                 Bitmap bmp = null;
                 Uri u = Uri.parse(uri);
-                if (Build.VERSION.SDK_INT >= 29) {
+                // 1º a arte gravada no próprio arquivo (cada música com a sua, como os MP3 baixados do YouTube)
+                MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                try {
+                    mmr.setDataSource(getContext(), u);
+                    byte[] art = mmr.getEmbeddedPicture();
+                    if (art != null) bmp = BitmapFactory.decodeByteArray(art, 0, art.length);
+                } catch (Exception e) { bmp = null; }
+                finally { try { mmr.release(); } catch (Exception e) { /* ignora */ } }
+                // 2º a miniatura do Android (capa do álbum ou imagem da pasta)
+                if (bmp == null && Build.VERSION.SDK_INT >= 29) {
                     try { bmp = getContext().getContentResolver().loadThumbnail(u, new Size(tam, tam), null); } catch (Exception e) { bmp = null; }
-                }
-                if (bmp == null) {
-                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-                    try {
-                        mmr.setDataSource(getContext(), u);
-                        byte[] art = mmr.getEmbeddedPicture();
-                        if (art != null) bmp = BitmapFactory.decodeByteArray(art, 0, art.length);
-                    } catch (Exception e) { bmp = null; }
-                    finally { try { mmr.release(); } catch (Exception e) { /* ignora */ } }
                 }
                 if (bmp != null) {
                     if (bmp.getWidth() > tam || bmp.getHeight() > tam) {
@@ -153,4 +161,117 @@ public class MusicasPlugin extends Plugin {
             call.resolve(r);
         }).start();
     }
+
+    // ---------------- Pasta escolhida pela pessoa (seletor de pastas do Android) ----------------
+    // O Android decide quais pastas podem ser escolhidas (algumas de outros apps são bloqueadas por segurança).
+
+    @PluginMethod
+    public void escolherPasta(PluginCall call) {
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(call, i, "depoisDaPasta");
+    }
+
+    @ActivityCallback
+    private void depoisDaPasta(PluginCall call, ActivityResult res) {
+        JSObject r = new JSObject();
+        Intent d = res.getData();
+        if (res.getResultCode() != Activity.RESULT_OK || d == null || d.getData() == null) { r.put("cancelado", true); call.resolve(r); return; }
+        Uri arvore = d.getData();
+        try { getContext().getContentResolver().takePersistableUriPermission(arvore, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception e) { /* sem permissão permanente */ }
+        String id = DocumentsContract.getTreeDocumentId(arvore);
+        int k = id.indexOf(':');
+        r.put("uri", arvore.toString());
+        r.put("nome", k >= 0 ? id.substring(k + 1) : id);
+        call.resolve(r);
+    }
+
+    @PluginMethod
+    public void soltarPasta(PluginCall call) {
+        String uri = call.getString("uri");
+        try { getContext().getContentResolver().releasePersistableUriPermission(Uri.parse(uri), Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception e) { /* já solta */ }
+        call.resolve();
+    }
+
+    private boolean temAcesso(Uri arvore) {
+        for (UriPermission p : getContext().getContentResolver().getPersistedUriPermissions())
+            if (p.isReadPermission() && p.getUri().equals(arvore)) return true;
+        return false;
+    }
+
+    private static final java.util.regex.Pattern EXT = java.util.regex.Pattern.compile("(?i).*\\.(mp3|flac|m4a|aac|ogg|oga|opus|wav|aif|aiff)$");
+
+    @PluginMethod
+    public void listarPasta(PluginCall call) {
+        String uriTxt = call.getString("uri");
+        if (uriTxt == null) { call.reject("sem-uri"); return; }
+        HashSet<String> conhecidos = new HashSet<>();
+        try { JSArray c = call.getArray("conhecidos"); if (c != null) for (int n = 0; n < c.length(); n++) conhecidos.add(c.getString(n)); } catch (Exception e) { /* lista vazia */ }
+        new Thread(() -> {
+            try {
+                Uri arvore = Uri.parse(uriTxt);
+                if (!temAcesso(arvore)) { call.reject("sem-acesso"); return; }
+                ContentResolver cr = getContext().getContentResolver();
+                String[] campos = { DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE, DocumentsContract.Document.COLUMN_SIZE, DocumentsContract.Document.COLUMN_LAST_MODIFIED };
+                ArrayDeque<String[]> pilha = new ArrayDeque<>();
+                pilha.push(new String[] { DocumentsContract.getTreeDocumentId(arvore), "" , "0" });
+                JSArray lista = new JSArray();
+                int total = 0;
+                while (!pilha.isEmpty() && total < 6000) {
+                    String[] atual = pilha.pop();
+                    Uri filhos = DocumentsContract.buildChildDocumentsUriUsingTree(arvore, atual[0]);
+                    try (Cursor c = cr.query(filhos, campos, null, null, null)) {
+                        if (c == null) continue;
+                        while (c.moveToNext()) {
+                            String id = c.getString(0), nome = c.getString(1), mime = c.isNull(2) ? "" : c.getString(2);
+                            if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
+                                int prof = Integer.parseInt(atual[2]);
+                                if (prof < 12 && nome != null && !nome.startsWith(".")) pilha.push(new String[] { id, atual[1] + nome + "/", String.valueOf(prof + 1) });
+                                continue;
+                            }
+                            if (nome == null || !(mime.startsWith("audio/") || EXT.matcher(nome).matches())) continue;
+                            total++;
+                            Uri doc = DocumentsContract.buildDocumentUriUsingTree(arvore, id);
+                            JSObject m = new JSObject();
+                            m.put("doc", doc.toString());
+                            String tocar = doc.toString(); long mediaId = 0;
+                            if (Build.VERSION.SDK_INT >= 29) { // o endereço da biblioteca de mídia toca com mais segurança que o do documento
+                                try { Uri mu = MediaStore.getMediaUri(getContext(), doc); if (mu != null) { tocar = mu.toString(); mediaId = ContentUris.parseId(mu); } } catch (Exception e) { /* fora da biblioteca de mídia */ }
+                            }
+                            m.put("uri", tocar);
+                            m.put("mediaId", mediaId);
+                            m.put("nome", nome);
+                            m.put("mime", mime);
+                            m.put("tamanho", c.isNull(3) ? 0 : c.getLong(3));
+                            m.put("modificado", c.isNull(4) ? 0 : c.getLong(4) / 1000);
+                            m.put("pasta", atual[1]);
+                            if (!conhecidos.contains(doc.toString())) { // só lê as etiquetas dos arquivos novos
+                                MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                                try {
+                                    mmr.setDataSource(getContext(), doc);
+                                    m.put("titulo", nn(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)));
+                                    m.put("artista", nn(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)));
+                                    m.put("album", nn(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)));
+                                    String dur = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                                    m.put("duracao", dur == null ? 0 : Long.parseLong(dur));
+                                    String fx = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER);
+                                    try { m.put("faixa", fx == null ? 0 : Integer.parseInt(fx.split("/")[0].trim())); } catch (Exception e) { m.put("faixa", 0); }
+                                } catch (Exception e) { /* arquivo sem etiquetas legíveis */ }
+                                finally { try { mmr.release(); } catch (Exception e) { /* ignora */ } }
+                            }
+                            lista.put(m);
+                        }
+                    }
+                }
+                JSObject r = new JSObject();
+                r.put("musicas", lista);
+                call.resolve(r);
+            } catch (Exception e) {
+                call.reject("falha-na-pasta: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private static String nn(String v) { return v == null ? "" : v; }
 }
