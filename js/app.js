@@ -71,7 +71,7 @@ const I = {
 const NATIVO = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 // os plugins nativos podem estar em Capacitor.Plugins ou precisar ser registrados por nome (depende da versão)
 const pegarPlugin = (n) => { if (!NATIVO) return null; try { const P = window.Capacitor.Plugins; if (P && P[n]) return P[n]; if (window.Capacitor.registerPlugin) return window.Capacitor.registerPlugin(n); } catch (e) { /* sem o plugin */ } return null; };
-const PLUG = { MediaSession: pegarPlugin("MediaSession"), SystemBars: pegarPlugin("SystemBars"), App: pegarPlugin("App") };
+const PLUG = { MediaSession: pegarPlugin("MediaSession"), SystemBars: pegarPlugin("SystemBars"), App: pegarPlugin("App"), Musicas: pegarPlugin("Musicas") };
 if (NATIVO) document.documentElement.classList.add("nativo");
 // Chamadas para o lado nativo nunca podem derrubar o app: algumas devolvem promessa, outras um código, outras falham na hora
 function nat(f) { try { const r = f(); if (r && typeof r.catch === "function") r.catch(() => {}); return r; } catch (e) { return null; } }
@@ -214,7 +214,8 @@ const EXEMPLOS = [
 
 let faixas = EXEMPLOS.slice();
 const porId = new Map(faixas.map((x) => [x.id, x]));
-const visivel = (x) => x && !x.oculta && (!x.demo || cfg.exemplos);
+const pastaFora = (x) => !!(x && x.mid && (cfg.pastasFora || []).includes(x.pasta || ""));
+const visivel = (x) => x && !x.oculta && !pastaFora(x) && (!x.demo || cfg.exemplos);
 const vis = () => faixas.filter(visivel);
 const importadas = () => faixas.filter((x) => !x.demo);
 function adicionarFaixa(x) { faixas.push(x); porId.set(x.id, x); }
@@ -227,7 +228,7 @@ const linha2 = (x) => x.a + (x.al ? " · " + x.al : "");
 /* Formato sem perdas (FLAC, WAV, AIFF): ganha a etiqueta no app */
 function semPerdas(x) {
   if (!x || x.demo) return "";
-  const nome = (x.arq && x.arq.name) || (x.sig || "").split("|")[0] || "", tipo = (x.arq && x.arq.type) || "";
+  const nome = (x.arq && x.arq.name) || (x.sig || "").split("|")[0] || "", tipo = (x.arq && x.arq.type) || x.tipo || "";
   if (/\.flac$/i.test(nome) || /flac/i.test(tipo)) return "FLAC";
   if (/\.wav$/i.test(nome) || /wav/i.test(tipo)) return "WAV";
   if (/\.aiff?$/i.test(nome) || /aiff/i.test(tipo)) return "AIFF";
@@ -304,8 +305,8 @@ function dbTodos(nome) {
     try { const r = loja(nome).getAll(); r.onsuccess = () => ok(r.result || []); r.onerror = () => ok([]); } catch (e) { ok([]); }
   });
 }
-const salvarFaixa = (x) => dbPut("faixas", { id: x.id, t: x.t, a: x.a, al: x.al, n: x.n, d: x.d, c: x.c, arq: x.arq, capaBlob: x.capaBlob, sig: x.sig, em: x.em, letra: x.letra || "", pasta: x.pasta || "", oculta: !!x.oculta });
-function montar(x) { x.url = URL.createObjectURL(x.arq); if (x.capaBlob) x.cover = URL.createObjectURL(x.capaBlob); }
+const salvarFaixa = (x) => dbPut("faixas", { id: x.id, t: x.t, a: x.a, al: x.al, n: x.n, d: x.d, c: x.c, arq: x.arq, uri: x.uri, mid: x.mid, orig: x.orig, doc: x.doc, alId: x.alId, tipo: x.tipo, capaBlob: x.capaBlob, sig: x.sig, em: x.em, letra: x.letra || "", pasta: x.pasta || "", oculta: !!x.oculta });
+function montar(x) { x.url = x.uri ? window.Capacitor.convertFileSrc(x.uri) : URL.createObjectURL(x.arq); if (x.capaBlob) x.cover = URL.createObjectURL(x.capaBlob); }
 
 /* ---- Importar ---- */
 const EXT = /\.(mp3|flac|m4a|aac|ogg|oga|opus|wav|aif|aiff|webm|mp4|m4v|mov)$/i;
@@ -379,6 +380,185 @@ async function importar(lista) {
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   } else toast(repetidas ? T("Essas músicas já estavam na biblioteca") : T("Não deu para importar esses arquivos"));
 }
+/* ---- Músicas do aparelho (app Android) ----
+   Lê a biblioteca de mídia do Android, a mesma do atalho "Áudio" do seletor de arquivos e dos outros players.
+   Nada é copiado: o app guarda só o endereço e toca direto do arquivo. Tudo continua offline. */
+const MUS = PLUG.Musicas;
+const OCULTAR_PASTA = /whatsapp|telegram|voice ?notes?|recordings?|grava[cç]|chamada|call ?rec|notifica|ringtone|alarm/i;
+let procurando = false;
+const desconhecido = (v) => !v || /^<unknown>$/i.test(v);
+const ultimaPasta = (p) => String(p || "").replace(/\/+$/, "").split("/").pop();
+const albumDe = (al, pasta) => (desconhecido(al) || al.trim().toLowerCase() === ultimaPasta(pasta).toLowerCase() ? "" : al.trim());
+const chaveArq = (nome, tam) => (nome || "") + "|" + (tam || 0);
+function b64Blob(b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: "image/jpeg" }); }
+async function procurarNoAparelho(manual) {
+  if (!MUS || procurando || importando) return;
+  let st = { estado: "denied" };
+  try { st = await MUS.permissao(); } catch (e) { /* plugin indisponível */ }
+  if (st.estado !== "granted") {
+    if (!manual) return;
+    try { st = await MUS.pedir(); } catch (e) { st = { estado: "denied" }; }
+    if (st.estado !== "granted") { toast(T("Sem permissão para ler as músicas. Libere em Configurações do Android › Apps › Orolon › Permissões › Músicas e áudio.")); return; }
+  }
+  procurando = true;
+  if (manual) $("count").textContent = T("Procurando músicas no aparelho…");
+  let lista = [];
+  try { lista = ((await MUS.listar()) || {}).musicas || []; }
+  catch (e) { procurando = false; renderBib(); if (manual) toast(T("Não deu para ler as músicas do aparelho")); return; }
+  const primeira = !cfg.aparelho;
+  cfg.aparelho = true;
+  // pastas de áudio de conversa e gravações começam desligadas (dá para ligar em Ajustes › Pastas do aparelho)
+  const vistas = new Set(cfg.pastasVistas || []), fora = new Set(cfg.pastasFora || []);
+  for (const m of lista) { const p = m.pasta || ""; if (!vistas.has(p)) { vistas.add(p); if (OCULTAR_PASTA.test(p)) fora.add(p); } }
+  cfg.pastasVistas = [...vistas]; cfg.pastasFora = [...fora]; salvarCfg();
+  const ignoradas = new Set(cfg.ignoradas || []);
+  const doAparelho = new Map(importadas().filter((x) => x.mid && x.mid[0] === "m").map((x) => [x.mid, x]));
+  const copias = new Set(importadas().filter((x) => !x.mid || x.mid[0] !== "m").map((x) => (x.sig || "").split("|").slice(0, 2).join("|")));
+  const achadas = new Set(), novasFaixas = [];
+  for (const m of lista) {
+    const mid = "m" + m.id; achadas.add(mid);
+    const ja = doAparelho.get(mid);
+    if (ja) { if (ja.uri !== m.uri) { ja.uri = m.uri; montar(ja); salvarFaixa(ja); } continue; }
+    if (ignoradas.has(mid) || copias.has((m.nome || "") + "|" + m.tamanho)) continue; // removida pela pessoa ou já importada como cópia
+    const base = (m.nome || "").replace(/\.[^.]+$/, ""), partes = base.split(" - ");
+    const x = {
+      id: uid("f"), mid, uri: m.uri, alId: m.albumId ? "a" + m.albumId : "", tipo: m.mime || "",
+      sig: (m.nome || "") + "|" + m.tamanho + "|" + (m.modificado || 0) * 1000, em: Date.now(),
+      t: (!desconhecido(m.titulo) ? m.titulo : (partes.length > 1 ? partes.slice(1).join(" - ") : partes[0])).trim() || T("Sem título"),
+      a: !desconhecido(m.artista) ? m.artista : (partes.length > 1 ? partes[0].trim() : T("Artista desconhecido")),
+      al: albumDe(m.album, m.pasta), n: (m.faixa || 0) % 1000, d: (m.duracao || 0) / 1000, letra: "", pasta: m.pasta || "", capaBlob: null,
+    };
+    x.c = coresDoNome(x.a + x.al + base);
+    montar(x); adicionarFaixa(x); salvarFaixa(x); novasFaixas.push(x);
+  }
+  let sumiram = 0;
+  for (const [mid, x] of doAparelho) if (!achadas.has(mid)) { removerFaixa(x.id, true); sumiram++; }
+  procurando = false;
+  renderBib(); renderPl();
+  if (!queue.length || (queue.every((id) => (porId.get(id) || {}).demo) && novasFaixas.length)) filaPadrao();
+  if (novasFaixas.length && cfg.exemplos && !cfg.exemplosMexeu) { cfg.exemplos = false; cfg.exemplosMexeu = true; salvarCfg(); mudouExemplos(); }
+  if (manual || novasFaixas.length || sumiram) {
+    const partesMsg = [];
+    if (novasFaixas.length) partesMsg.push(plural(novasFaixas.length, "música nova encontrada", "músicas novas encontradas"));
+    if (sumiram) partesMsg.push(plural(sumiram, "música saiu porque não está mais no aparelho", "músicas saíram porque não estão mais no aparelho"));
+    toast(partesMsg.length ? partesMsg.join(". ") : (lista.length ? T("Nenhuma música nova") : T("Nenhuma música encontrada no aparelho")),
+      novasFaixas.length ? [T("Ver"), () => { plAberta = "auto:novas"; ir("playlists"); renderPl(); }] : undefined);
+  }
+  if (primeira && fora.size && novasFaixas.length) setTimeout(() => toast(T("Algumas pastas de áudios de conversa e gravações ficaram de fora. Mude em Ajustes › Pastas do aparelho.")), 4200);
+  let refazer = novasFaixas;
+  if (cfg.apVer !== 2) { // 1.17.0 dava a mesma capa a músicas sem álbum da mesma pasta: corrige uma vez
+    cfg.apVer = 2; salvarCfg();
+    for (const x of doAparelho.values()) if (porId.has(x.id)) { const al = albumDe(x.al, x.pasta); if (al !== x.al) { x.al = al; } x.capaBlob = null; x.cover = null; x.c = coresDoNome(x.a + x.al + x.t); salvarFaixa(x); }
+    refazer = [...doAparelho.values()].filter((x) => porId.has(x.id)).concat(novasFaixas);
+    renderBib();
+  }
+  await procurarNasPastas();
+  if (refazer.length) capasDoAparelho(refazer);
+}
+async function capasDoAparelho(lista) {
+  const grupos = new Map();
+  for (const x of lista) { const k = x.al && x.alId ? x.alId : x.mid; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(x); } // só agrupa álbuns de verdade
+  let n = 0;
+  for (const g of grupos.values()) {
+    let b64 = null;
+    try { b64 = ((await MUS.capa({ uri: g[0].uri, tamanho: 512 })) || {}).base64; } catch (e) { /* sem capa */ }
+    if (!b64) continue;
+    try {
+      const bruto = b64Blob(b64), capaBlob = (await cortarCapa(bruto)) || bruto, c = await coresDaCapa(capaBlob);
+      for (const x of g) { if (!porId.has(x.id)) continue; x.capaBlob = capaBlob; x.cover = URL.createObjectURL(capaBlob); if (c) x.c = c; salvarFaixa(x); }
+    } catch (e) { /* capa ilegível */ }
+    if (++n % 12 === 0) { renderBib(); paint(); }
+  }
+  renderBib(); renderPl(); paint();
+}
+/* ---- Pastas escolhidas pela pessoa ---- */
+async function escolherPastaAparelho() {
+  if (!MUS || !MUS.escolherPasta) return;
+  let r; try { r = await MUS.escolherPasta(); } catch (e) { toast(T("Não deu para abrir as pastas do aparelho")); return; }
+  if (!r || r.cancelado || !r.uri) return;
+  const ps = cfg.pastasEscolhidas || [];
+  if (!ps.some((p) => p.uri === r.uri)) { ps.push({ uri: r.uri, nome: r.nome || T("Pasta") }); cfg.pastasEscolhidas = ps; salvarCfg(); }
+  await procurarNasPastas(true, r.uri);
+}
+async function procurarNasPastas(manual, so) {
+  if (!MUS || !MUS.listarPasta) return;
+  const ps = (cfg.pastasEscolhidas || []).filter((p) => !so || p.uri === so);
+  const ignoradas = new Set(cfg.ignoradas || []);
+  let novas = [], sumiram = 0, semAcesso = [];
+  for (const p of ps) {
+    const daPasta = importadas().filter((x) => x.orig === p.uri);
+    let lista;
+    try { if (manual) $("count").textContent = T("Procurando músicas em {0}…", p.nome); lista = ((await MUS.listarPasta({ uri: p.uri, conhecidos: daPasta.map((x) => x.doc) })) || {}).musicas || []; }
+    catch (e) { semAcesso.push(p.nome); continue; }
+    const porDoc = new Map(daPasta.map((x) => [x.doc, x])), achados = new Set();
+    const outras = new Set(importadas().filter((x) => x.orig !== p.uri).map((x) => (x.sig || "").split("|").slice(0, 2).join("|")));
+    for (const m of lista) {
+      achados.add(m.doc);
+      const ja = porDoc.get(m.doc);
+      if (ja) { if (ja.uri !== m.uri) { ja.uri = m.uri; montar(ja); salvarFaixa(ja); } continue; }
+      const mid = "d" + (m.mediaId || m.doc);
+      if (ignoradas.has(mid) || outras.has(chaveArq(m.nome, m.tamanho))) continue; // removida pela pessoa ou já está na biblioteca
+      const base = (m.nome || "").replace(/\.[^.]+$/, ""), partes = base.split(" - "), pasta = (p.nome + "/" + (m.pasta || "")).replace(/\/+$/, "/");
+      const x = {
+        id: uid("f"), mid, uri: m.uri, doc: m.doc, orig: p.uri, alId: "", tipo: m.mime || "",
+        sig: chaveArq(m.nome, m.tamanho) + "|" + (m.modificado || 0) * 1000, em: Date.now(),
+        t: (!desconhecido(m.titulo) ? m.titulo : (partes.length > 1 ? partes.slice(1).join(" - ") : partes[0])).trim() || T("Sem título"),
+        a: !desconhecido(m.artista) ? m.artista : (partes.length > 1 ? partes[0].trim() : T("Artista desconhecido")),
+        al: albumDe(m.album, pasta), n: m.faixa || 0, d: (m.duracao || 0) / 1000, letra: "", pasta, capaBlob: null,
+      };
+      x.c = coresDoNome(x.a + x.al + base);
+      montar(x); adicionarFaixa(x); salvarFaixa(x); novas.push(x);
+    }
+    for (const x of daPasta) if (!achados.has(x.doc)) { removerFaixa(x.id, true); sumiram++; }
+  }
+  if (!ps.length) return;
+  renderBib(); renderPl();
+  if (novas.length && (!queue.length || queue.every((id) => (porId.get(id) || {}).demo))) filaPadrao();
+  if (novas.length && cfg.exemplos && !cfg.exemplosMexeu) { cfg.exemplos = false; cfg.exemplosMexeu = true; salvarCfg(); mudouExemplos(); }
+  if (manual || novas.length || sumiram || semAcesso.length) {
+    const msg = [];
+    if (novas.length) msg.push(plural(novas.length, "música nova encontrada", "músicas novas encontradas"));
+    if (sumiram) msg.push(plural(sumiram, "música saiu porque não está mais no aparelho", "músicas saíram porque não estão mais no aparelho"));
+    if (semAcesso.length) msg.push(T("Sem acesso a {0}. Escolha a pasta de novo em Importar.", semAcesso.join(", ")));
+    if (msg.length || manual) toast(msg.length ? msg.join(". ") : T("Nenhuma música nova"));
+  }
+  if (novas.length) capasDoAparelho(novas);
+}
+function menuPastasEscolhidas() {
+  const html = () => {
+    const ps = cfg.pastasEscolhidas || [];
+    return `<p class="note" style="padding:0 8px">${T("O Orolon procura músicas novas nestas pastas sempre que abre. Tirar uma pasta não apaga os arquivos.")}</p><div class="stack">${ps.map((p, i) => `<div class="opt"><span>${esc(p.nome)} <span class="note">· ${importadas().filter((x) => x.orig === p.uri).length}</span></span><button class="btn ghost sm" data-tirarpasta="${i}">${T("Tirar")}</button></div>`).join("") || `<p class="note">${T("Nenhuma pasta escolhida.")}</p>`}</div><div class="btns"><button class="btn sm" data-novapasta>${ico("folder", 18)}${T("Escolher uma pasta")}</button></div>`;
+  };
+  abrirFolha({
+    titulo: T("Pastas escolhidas"), html: html(),
+    clique(e) {
+      if (e.target.closest("[data-novapasta]")) { fecharFolha(); return escolherPastaAparelho(); }
+      const b = e.target.closest("[data-tirarpasta]"); if (!b) return;
+      const ps = cfg.pastasEscolhidas || [], p = ps[+b.dataset.tirarpasta]; if (!p) return;
+      importadas().filter((x) => x.orig === p.uri).forEach((x) => removerFaixa(x.id, true));
+      cfg.pastasEscolhidas = ps.filter((q) => q !== p); salvarCfg(); nat(() => MUS.soltarPasta({ uri: p.uri }));
+      $("sheet-b").innerHTML = html(); renderTemas(); toast(T("Pasta tirada do Orolon"));
+    },
+  });
+}
+function menuPastasAparelho() {
+  const cont = new Map();
+  for (const x of importadas()) if (x.mid) cont.set(x.pasta || "", (cont.get(x.pasta || "") || 0) + 1);
+  if (!cont.size) { toast(T("Nenhuma música do aparelho ainda")); return; }
+  const html = () => `<p class="note" style="padding:0 8px">${T("Desligue as pastas que não são de música, como áudios de conversa. Os arquivos não são apagados.")}</p><div class="stack">${[...cont].sort((a, b) => comparar(a[0], b[0])).map(([p, n], i) =>
+    `<div class="opt"><span id="l-pasta${i}">${esc(p.replace(/\/$/, "") || T("Sem pasta"))} <span class="note">· ${n}</span></span><button class="tg" data-pasta="${esc(p)}" role="switch" aria-checked="${!(cfg.pastasFora || []).includes(p)}" aria-labelledby="l-pasta${i}"></button></div>`).join("")}</div>`;
+  abrirFolha({
+    titulo: T("Pastas do aparelho"), html: html(),
+    clique(e) {
+      const b = e.target.closest("[data-pasta]"); if (!b) return;
+      const p = b.dataset.pasta, f = new Set(cfg.pastasFora || []);
+      if (f.has(p)) f.delete(p); else f.add(p);
+      cfg.pastasFora = [...f]; salvarCfg();
+      $("sheet-b").innerHTML = html();
+      const atual = cur(); renderBib(); renderPl(); if (atual && !visivel(atual) && !playing) filaPadrao();
+    },
+  });
+}
 async function arquivosDoDrop(dt) {
   const entradas = [...(dt.items || [])].map((i) => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null)).filter(Boolean);
   if (!entradas.length) return [...dt.files];
@@ -396,8 +576,9 @@ async function arquivosDoDrop(dt) {
   for (const en of entradas) await ler(en);
   return saida.filter(Boolean);
 }
-function removerFaixa(id) {
+function removerFaixa(id, sumiu) {
   const x = porId.get(id); if (!x || x.demo) return;
+  if (x.mid && !sumiu) { cfg.ignoradas = [...new Set([...(cfg.ignoradas || []), x.mid])]; salvarCfg(); }
   const eraAtual = cur() && cur().id === id;
   if (eraAtual && playing) pausar();
   const atualId = cur() && cur().id;
@@ -406,7 +587,7 @@ function removerFaixa(id) {
   if (i >= 0) { queue.splice(i, 1); if (i < qi) qi--; }
   if (origem) origem = origem.filter((q) => q !== id);
   for (const p of pls) if (p.ids.includes(id)) { p.ids = p.ids.filter((q) => q !== id); salvarPl(p); }
-  URL.revokeObjectURL(x.url); if (x.cover) URL.revokeObjectURL(x.cover);
+  if (!x.uri) URL.revokeObjectURL(x.url); if (x.cover) URL.revokeObjectURL(x.cover);
   dbDel("faixas", id);
   if (!queue.length) filaPadrao();
   else if (eraAtual) { qi = Math.min(qi, queue.length - 1); carregar(false); }
@@ -422,7 +603,7 @@ function tocarLista(ids, i, ctx) {
   ids = ids.filter((id) => visivel(porId.get(id)));
   if (!ids.length) return;
   i = Math.max(0, Math.min(i || 0, ids.length - 1));
-  contexto = ctx; origem = ids.slice();
+  contexto = ctx || T("Biblioteca"); origem = ids.slice();
   if (shuffle) { const alvo = ids[i], resto = ids.filter((_, j) => j !== i); queue = [alvo, ...embaralhar(resto)]; qi = 0; }
   else { queue = ids.slice(); qi = i; }
   carregar(true);
@@ -721,6 +902,7 @@ function aplicarVolume(agora) {
   if (volNo) volNo.gain.setTargetAtTime(ganhoVol(), ctx.currentTime, agora ? 0 : 0.03);
   const v = cfg.mudo ? 0 : Math.round(cfg.vol * 100), b = $("b-vol"), r = $("vol");
   b.innerHTML = ico(v === 0 ? "vol0" : v < 50 ? "vol1" : "vol", 20);
+  const bp = $("b-volpill"); if (bp) bp.innerHTML = ico(v === 0 ? "vol0" : v < 50 ? "vol1" : "vol", 18);
   b.setAttribute("aria-label", cfg.mudo ? T("Tirar do mudo") : T("Deixar mudo"));
   b.setAttribute("aria-pressed", !!cfg.mudo);
   if (document.activeElement !== r) r.value = Math.round(cfg.vol * 100);
@@ -735,6 +917,19 @@ function mudarVolume(v, salvar = true) {
 $("vol").addEventListener("input", (e) => mudarVolume(e.target.value / 100, false));
 $("vol").addEventListener("change", () => salvarCfg());
 $("vol").addEventListener("wheel", (e) => { e.preventDefault(); mudarVolume(cfg.vol + (e.deltaY < 0 ? 0.05 : -0.05)); }, { passive: false });
+function aplicarVolRec() { const r = !!cfg.volRec; $("volume").dataset.rec = r ? "1" : ""; const b = $("b-volpill"); b.setAttribute("aria-expanded", String(!r)); b.setAttribute("aria-label", (r ? T("Mostrar o volume") : T("Recolher o volume")) + T(". Segure para deixar mudo")); b.classList.toggle("on", !r); ajustarDial(); }
+/* Botão de volume da fileira de baixo: um toque mostra/esconde a barra; segurar (~1 s) deixa mudo ou devolve o som */
+let volSegura = null, volSegurou = false;
+function alternarMudo() {
+  cfg.mudo = !cfg.mudo; if (!cfg.mudo && cfg.vol === 0) cfg.vol = 0.5;
+  aplicarVolume(); salvarCfg(); nat(() => navigator.vibrate && navigator.vibrate(25));
+  toast(cfg.mudo ? T("Mudo") : T("Volume {0}%", Math.round(cfg.vol * 100)));
+}
+const soltarVol = () => { clearTimeout(volSegura); volSegura = null; };
+$("b-volpill").addEventListener("pointerdown", (e) => { if (e.button > 0) return; volSegurou = false; soltarVol(); volSegura = setTimeout(() => { volSegurou = true; volSegura = null; alternarMudo(); }, 800); });
+["pointerup", "pointerleave", "pointercancel"].forEach((ev) => $("b-volpill").addEventListener(ev, soltarVol));
+$("b-volpill").addEventListener("contextmenu", (e) => e.preventDefault());
+$("b-volpill").addEventListener("click", (e) => { if (volSegurou) { volSegurou = false; e.preventDefault(); return; } cfg.volRec = !cfg.volRec; aplicarVolRec(); salvarCfg(); });
 $("b-vol").addEventListener("click", () => { cfg.mudo = !cfg.mudo; if (!cfg.mudo && cfg.vol === 0) cfg.vol = 0.5; aplicarVolume(); salvarCfg(); });
 
 /* ===================== Luz de fundo e mostrador ===================== */
@@ -878,7 +1073,7 @@ function paint() {
   $("mini").hidden = !x;
   if (!x) {
     $("np-t").textContent = T("Nada tocando"); $("np-a").textContent = T("Importe músicas na Biblioteca");
-    $("selo").style.background = "var(--card)"; $("selo").textContent = ""; $("b-fila").innerHTML = ico("queue", 18) + T("Fila vazia");
+    $("selo").style.background = "var(--card)"; $("selo").textContent = ""; { const tx = T("Fila vazia"); $("b-fila").innerHTML = ico("queue", 18) + `<span class="pill-t">${tx}</span>`; $("b-fila").setAttribute("aria-label", tx); }
     return;
   }
   $("np-ctx").textContent = T("Tocando · {0}", contexto);
@@ -887,7 +1082,7 @@ function paint() {
   $("mini-th").innerHTML = capa(x); $("mini-t").textContent = x.t; $("mini-a").textContent = x.a;
   $("tot").textContent = fmt(x.d);
   const depois = queue.length - qi - 1;
-  $("b-fila").innerHTML = ico("queue", 18) + (depois ? T("Fila · {0}", depois) : T("Fila · última"));
+  { const tx = depois ? T("Fila · {0}", depois) : T("Fila · última"); $("b-fila").innerHTML = ico("queue", 18) + `<span class="pill-t">${esc(tx)}</span>`; $("b-fila").setAttribute("aria-label", tx); }
   $("b-npmais").innerHTML = ico("more", 18);
   const fav = ehFav(x.id), bf = $("b-fav");
   bf.innerHTML = ico(fav ? "heartOn" : "heart"); bf.classList.toggle("act", fav); bf.setAttribute("aria-pressed", fav);
@@ -1054,9 +1249,10 @@ $("b-import").addEventListener("click", menuImportar);
 function menuImportar() {
   abrirFolha({
     titulo: T("Importar músicas"),
-    html: `<div class="menu"><button data-i="arquivos">${ico("note")}${T("Escolher arquivos")}</button>${NATIVO ? "" : `<button data-i="pasta">${ico("folder")}${T("Escolher uma pasta inteira")}</button>`}</div>
+    html: `<div class="menu">${MUS ? `<button data-i="aparelho">${ico("folder")}${T("Procurar músicas no aparelho")}</button>` : ""}${MUS ? `<button data-i="pastaap">${ico("folder")}${T("Escolher uma pasta")}</button>` : ""}<button data-i="arquivos">${ico("note")}${MUS ? T("Escolher arquivos (cópia dentro do app)") : T("Escolher arquivos")}</button>${NATIVO ? "" : `<button data-i="pasta">${ico("folder")}${T("Escolher uma pasta inteira")}</button>`}</div>
+      ${MUS ? `<p class="note" style="padding:0 8px">${T("“Procurar músicas no aparelho” encontra as músicas que o Android já conhece (pasta Música, Downloads e outras), sem copiar nada: o app toca direto do arquivo. “Escolher uma pasta” usa só a pasta que você indicar; o Android decide quais pastas podem ser abertas.")}</p>` : ""}
       <p class="note" style="padding:0 8px">${NATIVO ? T("As músicas ficam guardadas só neste aparelho. Letras em .lrc com o mesmo nome da música entram junto.") : T("As músicas ficam guardadas só neste navegador. Letras em .lrc com o mesmo nome da música entram junto. No PC, você também pode arrastar arquivos e pastas para a janela.")}</p>`,
-    clique(e) { const b = e.target.closest("[data-i]"); if (!b) return; fecharFolha(); $(b.dataset.i === "pasta" ? "folder" : "files").click(); },
+    clique(e) { const b = e.target.closest("[data-i]"); if (!b) return; fecharFolha(); if (b.dataset.i === "aparelho") return procurarNoAparelho(true); if (b.dataset.i === "pastaap") return escolherPastaAparelho(); $(b.dataset.i === "pasta" ? "folder" : "files").click(); },
   });
 }
 $("files").addEventListener("change", (e) => { const f = [...e.target.files]; e.target.value = ""; importar(f); });
@@ -1376,18 +1572,20 @@ function renderTemas() {
       <div class="btns"><button class="btn ghost sm" data-exp="copiar">${T("Copiar JSON")}</button><button class="btn ghost sm" data-exp="baixar">${T("Baixar .json")}</button><button class="btn ghost sm" data-imp="arquivo">${T("Abrir .json")}</button><button class="btn ghost sm" data-imp="colar">${T("Colar JSON")}</button></div></div>
     <div class="card stack"><h2>${T("Biblioteca")}</h2>${tg("exemplos", T("Mostrar as músicas de exemplo"))}${tg("coracoes", T("Mostrar o coração das favoritas nas listas"))}
       ${faixas.some((x) => x.oculta) ? `<div class="opt"><span>${plural(faixas.filter((x) => x.oculta).length, "música oculta", "músicas ocultas")}</span><button class="btn ghost sm" data-verocultas>${T("Ver")}</button></div>` : ""}
+      ${MUS ? `<div class="btns"><button class="btn ghost sm" data-aparelho>${T("Procurar novas músicas no aparelho")}</button>${importadas().some((x) => x.mid) ? `<button class="btn ghost sm" data-pastasap>${T("Pastas do aparelho")}</button>` : ""}<button class="btn ghost sm" data-pastasesc>${T("Pastas escolhidas")}${(cfg.pastasEscolhidas || []).length ? " · " + cfg.pastasEscolhidas.length : ""}</button></div>` : ""}
       <p class="note" id="espaco">${T("Calculando o espaço usado…")}</p>
       ${importadas().length ? `<div class="btns"><button class="btn danger sm" data-limparbib>${T("Apagar todas as músicas importadas")}</button></div>` : ""}
       ${NATIVO ? "" : `<p class="note">${T("Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita, ↑ e ↓ mudam o volume, M deixa mudo.")}</p>`}</div>
     <div class="card stack"><h2>${T("Sobre")}</h2><p class="note">${NATIVO ? T("Orolon Player {0}. Sem anúncios, sem conta e sem coleta de dados: tudo o que você guarda fica neste aparelho.", VERSAO) : T("Orolon Player {0}. Código aberto, sem anúncios e sem conta. Se o app te ajuda, apoiar o projeto mantém ele assim.", VERSAO)}</p>
       ${NATIVO ? "" : `<div class="btns"><a class="btn sm" href="https://github.com/sponsors/KiraraHoshi" target="_blank" rel="noopener">${ico("heartOn", 18)}${T("Apoiar o projeto")}</a><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player" target="_blank" rel="noopener">${T("Código no GitHub")}</a></div>`}
       <div class="btns">${instalado() ? "" : `<button class="btn ghost sm" data-instalar>${T("Instalar como app")}</button>`}<button class="btn ghost sm" data-boasvindas>${T("Ver as boas-vindas")}</button><a class="btn ghost sm" href="${linkPrivacidade()}" target="_blank" rel="noopener">${T("Política de privacidade")}</a></div>
-      ${NATIVO ? "" : `<p class="note">${T("Os dois botões de cima e o da política de privacidade abrem o navegador. O app em si não se conecta a nada.")}</p>`}</div>`;
+      ${NATIVO ? `<p class="note">${T("Enquanto o Orolon não está na Google Play, as versões novas ficam no GitHub. Baixe o APK e instale por cima deste: suas músicas, playlists e ajustes continuam. O app não procura atualizações sozinho, porque não usa a internet.")}</p><div class="btns"><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player/releases/tag/android-teste" target="_blank" rel="noopener">${T("Ver se há versão nova")}</a></div>` : `<p class="note">${T("Os dois botões de cima e o da política de privacidade abrem o navegador. O app em si não se conecta a nada.")}</p>`}</div>`;
   espaco();
 }
 async function espaco() {
-  const imp = importadas(), soma = imp.reduce((s, x) => s + (x.arq ? x.arq.size : 0), 0);
-  let txt = imp.length ? `${plural(imp.length, "música importada ocupa", "músicas importadas ocupam")} ${mb(soma)}${NATIVO ? T(" neste aparelho.") : T(" neste navegador.")}` : T("Nenhuma música importada ainda.");
+  const imp = importadas().filter((x) => x.arq), soma = imp.reduce((s, x) => s + x.arq.size, 0), ap = importadas().filter((x) => x.mid).length;
+  let txt = imp.length ? `${plural(imp.length, "música importada ocupa", "músicas importadas ocupam")} ${mb(soma)}${NATIVO ? T(" neste aparelho.") : T(" neste navegador.")}` : (ap ? "" : T("Nenhuma música importada ainda."));
+  if (ap) txt = (txt ? txt + " " : "") + T("{0} do aparelho tocam direto do arquivo e não ocupam espaço extra.", plural(ap, "música", "músicas"));
   try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); if (e.quota) txt += T(" Espaço livre para o app: cerca de {0}.", mb(Math.max(0, e.quota - e.usage))); } } catch (e) { /* sem estimativa */ }
   if (!db) txt += " " + T("Este navegador não deixou guardar a biblioteca, então as músicas somem ao fechar.");
   const p = $("espaco"); if (p) p.textContent = txt;
@@ -1457,6 +1655,9 @@ $("tm").addEventListener("click", (e) => {
   if (ga) { const n = validarTema(GALERIA[+ga.dataset.galeria]); n.id = uid("t"); meusTemas.push(n); salvarTemas(); cfg.tema = n.id; aplicarTema(); renderTemas(); return toast(T('Tema "{0}" adicionado', n.nome)); }
   if (t.closest("[data-instalar]")) return pedirInstalacao();
   if (t.closest("[data-boasvindas]")) return boasVindas();
+  if (t.closest("[data-aparelho]")) return procurarNoAparelho(true);
+  if (t.closest("[data-pastasap]")) return menuPastasAparelho();
+  if (t.closest("[data-pastasesc]")) return menuPastasEscolhidas();
   const lc = t.closest("[data-ledcor]"); if (lc) { cfg.ledCor = lc.dataset.ledcor; salvarCfg(); ledId = null; prepararLed(cur()); return renderTemas(); }
   const fo = t.closest("[data-forma]"); if (fo) { cfg.formaCapa = fo.dataset.forma; salvarCfg(); aplicarVisual(); return renderTemas(); }
   const vi = t.closest("[data-vis]"); if (vi) { cfg.visual = vi.dataset.vis; salvarCfg(); aplicarVisual(); if (cfg.visual === "led") prepararLed(cur()); return renderTemas(); }
@@ -1491,7 +1692,9 @@ $("tm").addEventListener("click", (e) => {
   }
   if (t.closest("[data-limparbib]")) {
     return confirmar(T("Apagar músicas importadas?"), plural(importadas().length, "música sai", "músicas saem") + T(" do Orolon. Os arquivos originais continuam no seu aparelho. As playlists ficam, mas sem essas músicas."), T("Apagar tudo"), () => {
-      importadas().forEach((x) => removerFaixa(x.id));
+      importadas().forEach((x) => removerFaixa(x.id, true));
+      (cfg.pastasEscolhidas || []).forEach((p) => nat(() => MUS && MUS.soltarPasta({ uri: p.uri }))); cfg.pastasEscolhidas = [];
+      cfg.aparelho = false; salvarCfg(); // não procura de novo sozinho; o botão "Procurar" traz tudo de volta
       renderTemas(); toast(T("Biblioteca limpa"));
     });
   }
@@ -2065,7 +2268,7 @@ function restaurarBackup(o) {
   for (const t of o.temas || []) { try { const v = validarTema(t); if (!meusTemas.some((m) => m.nome === v.nome)) { v.id = uid("t"); meusTemas.push(v); } } catch (err) { /* tema inválido: pula */ } }
   salvarTemas();
   const aj = o.ajustes || {};
-  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "leve", "coracoes", "corCapa", "formaCapa", "ledCor"]) if (k in aj) cfg[k] = aj[k];
+  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "volRec", "leve", "coracoes", "corCapa", "formaCapa", "ledCor"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
   if (aj.ajustes) cfg.ajustes = aj.ajustes;
@@ -2382,17 +2585,18 @@ function desenharViz() {
     return;
   }
   const cv = $("viz"), w = cv.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1); if (!w) return;
-  if (cv.width !== Math.round(w * dpr)) cv.width = cv.height = Math.round(w * dpr);
+  const hc = v === "led" ? cv.clientHeight || w : w;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(hc * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(hc * dpr); }
   { const ag = performance.now(); fqV = passoT(ag, ultV); ultV = ag; }
-  const c = cv.getContext("2d"), W = cv.width, vivo = playing && an && !calmo;
-  c.clearRect(0, 0, W, W);
+  const c = cv.getContext("2d"), W = cv.width, H = cv.height, vivo = playing && an && !calmo;
+  c.clearRect(0, 0, W, H);
   if (corViz2) { tinta = c.createLinearGradient(0, 0, W, W); tinta.addColorStop(0.15, corViz); tinta.addColorStop(0.85, corViz2); } else tinta = corViz;
   c.fillStyle = c.strokeStyle = tinta;
   if (aura) { auraLimpa = false; return desenharAura(c, W, vivo); }
   if (v === "espectro") return desenharEspectro(c, W, vivo);
   if (v === "anel") return desenharAnel(c, W, vivo);
   if (v === "neon") return desenharNeon(c, W, vivo);
-  if (v === "led") return desenharLed(c, W, vivo);
+  if (v === "led") return desenharLed(c, W, vivo, H);
   if (v === "barras") {
     if (vivo) lerBins();
     const n = 28, vao = W * 0.012, bw = (W - vao * (n - 1)) / n;
@@ -2500,9 +2704,17 @@ const corLedFileira = (j) => {
   return LED_COR[j];
 };
 /* LED: equalizador clássico em blocos, do azul ao vermelho, com o pico caindo devagar e reflexo embaixo */
-const LED_N = 32, LED_S = 18, ledNiv = new Float32Array(LED_N), ledPico = new Float32Array(LED_N), ledEspera = new Float32Array(LED_N);
-const LED_COR = Array.from({ length: LED_S }, (_, j) => { const p = j / (LED_S - 1); return `hsl(${Math.round(205 - 205 * Math.pow(p, 1.25))} 88% ${52 + p * 6}%)`; });
-function desenharLed(c, W, vivo) {
+const LED_N = 32; let LED_S = 18; const ledNiv = new Float32Array(LED_N), ledPico = new Float32Array(LED_N), ledEspera = new Float32Array(LED_N);
+const corPadraoLed = () => Array.from({ length: LED_S }, (_, j) => { const p = j / (LED_S - 1); return `hsl(${Math.round(205 - 205 * Math.pow(p, 1.25))} 88% ${52 + p * 6}%)`; });
+let LED_COR = corPadraoLed();
+function fileirasLed(n) { // o LED largo do celular ganha fileiras para usar a altura livre com blocos quadrados
+  if (n === LED_S) return;
+  LED_S = n; LED_COR = corPadraoLed(); ledArte = ledGrad = null; ledId = null;
+  if (cfg.visual === "led") prepararLed(cur());
+}
+function desenharLed(c, W, vivo, H = W) {
+  { const largo = c.canvas.parentNode && c.canvas.parentNode.style.aspectRatio === "auto";
+    fileirasLed(largo ? Math.max(18, Math.min(44, Math.round((H * 0.86) / ((W * 0.94) / LED_N)))) : 18); }
   if (vivo) lerBins();
   for (let i = 0; i < LED_N; i++) {
     const p = i / (LED_N - 1), alvo = vivo ? Math.min(1, (bins[2 + Math.round(150 * Math.pow(p, 1.5))] / 255) * (1 + p * 0.45)) : 0; // agudos ganham um pouco, para a direita não ficar sempre baixa
@@ -2510,7 +2722,7 @@ function desenharLed(c, W, vivo) {
     if (ledNiv[i] >= ledPico[i]) { ledPico[i] = ledNiv[i]; ledEspera[i] = 18; } // o pico segura um instante e depois cai
     else if ((ledEspera[i] -= fqV) <= 0) ledPico[i] = Math.max(ledNiv[i], ledPico[i] - 0.012 * fqV);
   }
-  const x0 = W * 0.03, larg = W * 0.94, base = W * 0.66, alt = W * 0.56, bw = larg / LED_N, vao = bw * 0.22, sh = alt / LED_S, sg = sh * 0.24;
+  const x0 = W * 0.03, larg = W * 0.94, quad = !(c.canvas.parentNode && c.canvas.parentNode.style.aspectRatio === "auto"), base = quad ? W * 0.66 : H * 0.92, alt = quad ? W * 0.56 : H * 0.86, bw = larg / LED_N, vao = bw * 0.22, sh = alt / LED_S, sg = sh * 0.24; // largo (celular): colado embaixo, perto da barra de progresso
   const arte = (cfg.ledCor === "arte" && ledArte) || (cfg.ledCor === "capa" && ledGrad); // os dois pintam bloco a bloco
   if (arte) { // a capa vira um mosaico: cada bloco aceso mostra a cor daquele pedaço da arte (os apagados não aparecem)
     for (let j = 0; j < LED_S; j++) { const lim = (j + 0.5) / LED_S; for (let i = 0; i < LED_N; i++) {
@@ -2679,7 +2891,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.16.1";
+const VERSAO = "1.17.1";
 const linkPrivacidade = () => "https://kirarahoshi.github.io/compasso-player/privacidade.html" + (LANG === "en" ? "#en" : "#pt");
 let instalar = null;
 const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
@@ -2694,7 +2906,7 @@ function boasVindas() {
   guardado.set("compasso.boasvindas", true);
   const html = () => `<p class="note" style="padding:0 6px">${NATIVO ? T("Um player de música que funciona sem internet, sem conta e sem anúncios. Dois passos e está pronto.") : T("Um player de música que funciona sem internet, sem conta e sem anúncios. Três passos e está pronto.")}</p>
     <div class="card stack"><div class="row"><span class="passo">1</span><h2 class="grow">${T("Traga suas músicas")}</h2></div><p class="note">${T("Elas ficam guardadas só neste aparelho. Servem MP3, FLAC, M4A, OGG e Opus.")}</p>
-      <div class="btns"><button class="btn sm" data-bv="arquivos">${ico("note", 18)}${T("Escolher arquivos")}</button>${NATIVO ? "" : `<button class="btn ghost sm" data-bv="pasta">${ico("folder", 18)}${T("Escolher pasta")}</button>`}</div></div>
+      <div class="btns">${MUS ? `<button class="btn sm" data-bv="aparelho">${ico("folder", 18)}${T("Procurar no aparelho")}</button>` : ""}<button class="btn ${MUS ? "ghost " : ""}sm" data-bv="arquivos">${ico("note", 18)}${T("Escolher arquivos")}</button>${NATIVO ? "" : `<button class="btn ghost sm" data-bv="pasta">${ico("folder", 18)}${T("Escolher pasta")}</button>`}</div></div>
     <div class="card stack"><div class="row"><span class="passo">2</span><h2 class="grow">${T("Escolha o visual")}</h2></div>
       <div class="btns">${["claro", "escuro"].map((k) => `<button class="btn ${cfg.tema === k ? "" : "ghost"} sm" data-bv-tema="${k}" aria-pressed="${cfg.tema === k}">${BASE[k].nome}</button>`).join("")}</div><p class="note">${T("Em Ajustes você cria seus temas, muda o mostrador e liga o som de época (rádio, vinil, fita e CD).")}</p></div>
     ${instalado() ? "" : `<div class="card stack"><div class="row"><span class="passo">3</span><h2 class="grow">${T("Instale como app")}</h2></div>${instalar ? `<div class="btns"><button class="btn sm" data-bv="instalar">${T("Instalar o Orolon")}</button></div>` : `<p class="note">${T("No menu do navegador, toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>. Ele abre em tela cheia e funciona offline.")}</p>`}</div>`}
@@ -2707,7 +2919,7 @@ function boasVindas() {
       const a = b.dataset.bv;
       if (a === "instalar") return pedirInstalacao();
       fecharFolha();
-      if (a === "arquivos") $("files").click(); else if (a === "pasta") $("folder").click();
+      if (a === "aparelho") procurarNoAparelho(true); else if (a === "arquivos") $("files").click(); else if (a === "pasta") $("folder").click();
     },
   });
 }
@@ -2719,12 +2931,14 @@ const GALERIA = [{"nome": T("Entardecer"), "fundo": "#0E1119", "card": "#1A1F2B"
 const TELAS = [["biblioteca", T("Biblioteca"), "lib"], ["tocando", T("Tocando"), "now"], ["playlists", T("Playlists"), "pls"], ["voce", T("Você"), "user"], ["temas", T("Ajustes"), "thm"]];
 const montarNav = () => { $("nav").innerHTML = TELAS.map((v) => `<button data-v="${v[0]}">${ico(v[2])}<span>${v[1]}</span></button>`).join(""); };
 montarNav();
-function ir(v) {
+let historico = [], rolagens = {}; // telas visitadas, para o voltar refazer o caminho
+function ir(v, voltando) {
   if (!TELAS.some((x) => x[0] === v)) v = "biblioteca";
+  const antes = $("app").dataset.view;
+  if (antes && antes !== v) { rolagens[antes] = $("main").scrollTop; if (!voltando) { historico.push(antes); if (historico.length > 30) historico.shift(); } }
   $("app").dataset.view = v;
   document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + v));
   document.querySelectorAll("nav button").forEach((b) => { const on = b.dataset.v === v; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
-  $("main").scrollTop = 0;
   if (v === "voce") renderVoce();
   ultSeek = -1;
   if (v === "playlists") renderPl();
@@ -2733,19 +2947,25 @@ function ir(v) {
   atualizarTela();
   ajustarDial();
   if (location.hash.slice(1) !== v) try { history.replaceState(null, "", "#" + v); } catch (e) { /* ignora */ }
+  $("main").scrollTop = voltando ? rolagens[v] || 0 : 0;
 }
 /* No celular em pé, o mostrador encolhe o que for preciso para todos os controles caberem na tela sem rolar */
 const DUAS_COLUNAS = matchMedia("(min-width:1000px) and (min-aspect-ratio:4/3), (orientation:landscape) and (max-height:560px) and (min-width:560px)");
 function ajustarDial() {
   const dial = document.querySelector("#v-tocando .dial"), vw = $("v-tocando"), m = $("main");
   if (!dial) return;
-  if (APP.dataset.view !== "tocando" || DUAS_COLUNAS.matches || emPalco() || APP.dataset.letra === "1") { dial.style.width = ""; vw.style.rowGap = ""; return; }
+  const largo = APP.dataset.visual === "led";
+  const meta = vw.querySelector(".np-meta");
+  dial.style.marginTop = meta.style.marginTop = ""; // o LED largo (celular) desce até perto do título; o espaço que sobra fica em cima
+  if (APP.dataset.view !== "tocando" || DUAS_COLUNAS.matches || emPalco() || APP.dataset.letra === "1") { dial.style.width = dial.style.height = dial.style.aspectRatio = ""; vw.style.rowGap = ""; return; }
   const cs = getComputedStyle(m), H = m.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
   vw.style.rowGap = "";
   let outros = 0, n = 0;
   for (const el of vw.children) { if (el === dial || el.offsetParent === null) continue; outros += el.offsetHeight; n++; }
   let livre = H - outros - (parseFloat(getComputedStyle(vw).rowGap) || 0) * n - 4;
   if (livre < 220) { vw.style.rowGap = "8px"; livre = H - outros - 8 * n - 4; } // tela baixa: aperta os espaços antes de encolher mais o mostrador
+  if (largo) { dial.style.width = "100%"; dial.style.aspectRatio = "auto"; dial.style.height = Math.floor(Math.max(140, Math.min(livre, 620))) + "px"; dial.style.marginTop = "auto"; meta.style.marginTop = "0"; return; }
+  dial.style.height = dial.style.aspectRatio = "";
   const w = Math.max(140, Math.min(innerWidth * 0.8, 400, livre));
   dial.style.width = Math.floor(w) + "px";
 }
@@ -2836,7 +3056,8 @@ function voltarUmPasso() {
   if (v === "biblioteca" && aberto) { aberto = null; renderBib(); return true; }
   if (v === "playlists" && plAberta) { plAberta = null; renderPl(); return true; }
   if (v === "temas" && editando) { editando = null; aplicarTema(); renderTemas(); return true; }
-  if (v !== "biblioteca") { ir("biblioteca"); return true; }
+  while (historico.length) { const p = historico.pop(); if (p !== v) { ir(p, true); return true; } } // volta para a tela anterior, não para a primeira
+  if (v !== "biblioteca") { ir("biblioteca", true); return true; }
   return false;
 }
 if (PLUG.App) nat(() => PLUG.App.addListener("backButton", () => { if (!voltarUmPasso()) nat(() => PLUG.App.minimizeApp()); }));
@@ -2872,7 +3093,7 @@ addEventListener("drop", async (e) => {
 /* ===================== Início ===================== */
 traduzirPagina(document.body);
 APP.dataset.leve = cfg.leve ? "1" : "";
-aplicarVolume(true); aplicarVel();
+aplicarVolume(true); aplicarVolRec(); aplicarVel();
 aplicarTema(); aplicarFundo(); aplicarVisual(); renderLetra();
 ir(location.hash.slice(1) || "biblioteca");
 renderBib(); renderTemas(); paint();
@@ -2881,7 +3102,7 @@ requestAnimationFrame(quadro);
 (async function iniciar() {
   try { db = await abrirDB(); } catch (e) { db = null; }
   for (const x of await dbTodos("faixas")) {
-    try { if (!x.arq) continue; montar(x); adicionarFaixa(x); } catch (e) { /* registro com defeito: ignora */ }
+    try { if (!x.arq && !(x.uri && NATIVO)) continue; montar(x); adicionarFaixa(x); } catch (e) { /* registro com defeito: ignora */ }
   }
   pls = db ? await dbTodos("playlists") : guardado.get("compasso.pls", []);
   if (!pls.length && !guardado.get("compasso.semente", false)) {
@@ -2894,6 +3115,8 @@ requestAnimationFrame(quadro);
   if (cfg.tagsVer !== 2) setTimeout(relerLetras, 1500);
   if (cfg.capasVer !== 1) setTimeout(acertarCapas, 2500);
   if (!guardado.get("compasso.boasvindas", false) && !importadas().length) boasVindas();
+  if (MUS && cfg.aparelho) setTimeout(() => procurarNoAparelho(false), 1500);
+  else if (MUS && (cfg.pastasEscolhidas || []).length) setTimeout(() => procurarNasPastas(false), 1500);
 })();
 
 if (!window.Capacitor && "serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {

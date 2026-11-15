@@ -1,5 +1,23 @@
 # Histórico de versões
 
+## 1.17.1
+- Capas: cada música usa a arte gravada no próprio arquivo. Antes, músicas sem álbum na mesma pasta (como MP3 baixados do YouTube) ficavam todas com a capa da primeira. As que entraram assim são corrigidas sozinhas ao abrir o app.
+- O nome da pasta (por exemplo "Download") não aparece mais como se fosse o álbum.
+- Importar › **Escolher uma pasta**: use uma pasta específica do aparelho. O Orolon lembra a pasta e procura músicas novas nela ao abrir. O Android decide quais pastas podem ser escolhidas. Gerencie em Ajustes › Pastas escolhidas.
+
+## 1.17.0
+- App Android: **Procurar músicas no aparelho**. O Orolon encontra sozinho as músicas que o Android já conhece (pasta Música, Downloads e outras), como os outros players. Nada é copiado: ele toca direto do arquivo e não ocupa espaço extra.
+  - Ao abrir o app, entram as músicas novas e saem as que foram apagadas do aparelho.
+  - Pastas de áudios de conversa e gravações (WhatsApp, Telegram, gravador) começam desligadas. Mude em Ajustes › Pastas do aparelho.
+  - Remover uma música do Orolon não apaga o arquivo, e ela não volta na próxima busca.
+  - "Escolher arquivos" continua funcionando e copia as músicas para dentro do app, como antes.
+- O botão voltar refaz o caminho: volta para a tela em que você estava antes (e na mesma posição da lista), não sempre para a Biblioteca.
+- Tocando agora no estilo do YouTube Music: capa ou visual em cima, nome e botões no meio, progresso e controles embaixo, perto do polegar. Os botões ficam à esquerda.
+- O volume virou um botão no fim da fileira: um toque mostra ou esconde a barra de volume (ela fica como você deixou), e segurar cerca de 1 segundo deixa mudo ou devolve o som.
+- O visual LED ocupa a largura da tela no celular e usa a altura livre: ganha fileiras para as barras subirem mais com blocos quadrados, logo acima do nome da música. Com o volume recolhido, a fileira de opções desce e o LED cresce.
+- Em telas bem estreitas, a fileira de botões cabe numa linha só.
+- Ajustes › Sobre (Android): botão para ver se há versão nova no GitHub. O app continua sem usar a internet; o botão só abre a página no navegador. Instalar o APK novo por cima mantém músicas, playlists e ajustes.
+
 ## 1.16.1
 - Corrigido o zoom de pinça, que dava zoom na tela inteira e deixava o app cortado e travando. Agora o gesto de pinça é ignorado fora do recorte de foto, onde ele continua funcionando.
 
