@@ -2631,7 +2631,7 @@ function desenharLed(c, W, vivo, H = W) {
     if (ledNiv[i] >= ledPico[i]) { ledPico[i] = ledNiv[i]; ledEspera[i] = 18; } // o pico segura um instante e depois cai
     else if ((ledEspera[i] -= fqV) <= 0) ledPico[i] = Math.max(ledNiv[i], ledPico[i] - 0.012 * fqV);
   }
-  const x0 = W * 0.03, larg = W * 0.94, quad = H >= W * 0.95, base = quad ? W * 0.66 : H * 0.86, alt = quad ? W * 0.56 : H * 0.8, bw = larg / LED_N, vao = bw * 0.22, sh = alt / LED_S, sg = sh * 0.24; // largo (celular): colado embaixo, perto da barra de progresso
+  const x0 = W * 0.03, larg = W * 0.94, quad = !(c.canvas.parentNode && c.canvas.parentNode.style.aspectRatio === "auto"), base = quad ? W * 0.66 : H * 0.92, alt = quad ? W * 0.56 : Math.min(H * 0.86, W * 0.62), bw = larg / LED_N, vao = bw * 0.22, sh = alt / LED_S, sg = sh * 0.24; // largo (celular): colado embaixo, perto da barra de progresso
   const arte = (cfg.ledCor === "arte" && ledArte) || (cfg.ledCor === "capa" && ledGrad); // os dois pintam bloco a bloco
   if (arte) { // a capa vira um mosaico: cada bloco aceso mostra a cor daquele pedaço da arte (os apagados não aparecem)
     for (let j = 0; j < LED_S; j++) { const lim = (j + 0.5) / LED_S; for (let i = 0; i < LED_N; i++) {
@@ -2864,6 +2864,8 @@ function ajustarDial() {
   const dial = document.querySelector("#v-tocando .dial"), vw = $("v-tocando"), m = $("main");
   if (!dial) return;
   const largo = APP.dataset.visual === "led";
+  const meta = vw.querySelector(".np-meta");
+  dial.style.marginTop = meta.style.marginTop = ""; // o LED largo (celular) desce até perto do título; o espaço que sobra fica em cima
   if (APP.dataset.view !== "tocando" || DUAS_COLUNAS.matches || emPalco() || APP.dataset.letra === "1") { dial.style.width = dial.style.height = dial.style.aspectRatio = ""; vw.style.rowGap = ""; return; }
   const cs = getComputedStyle(m), H = m.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
   vw.style.rowGap = "";
@@ -2871,7 +2873,7 @@ function ajustarDial() {
   for (const el of vw.children) { if (el === dial || el.offsetParent === null) continue; outros += el.offsetHeight; n++; }
   let livre = H - outros - (parseFloat(getComputedStyle(vw).rowGap) || 0) * n - 4;
   if (livre < 220) { vw.style.rowGap = "8px"; livre = H - outros - 8 * n - 4; } // tela baixa: aperta os espaços antes de encolher mais o mostrador
-  if (largo) { dial.style.width = "100%"; dial.style.aspectRatio = "auto"; dial.style.height = Math.floor(Math.max(140, Math.min(livre, 460))) + "px"; return; }
+  if (largo) { dial.style.width = "100%"; dial.style.aspectRatio = "auto"; dial.style.height = Math.floor(Math.max(140, Math.min(livre, 460))) + "px"; dial.style.marginTop = "auto"; meta.style.marginTop = "0"; return; }
   dial.style.height = dial.style.aspectRatio = "";
   const w = Math.max(140, Math.min(innerWidth * 0.8, 400, livre));
   dial.style.width = Math.floor(w) + "px";
