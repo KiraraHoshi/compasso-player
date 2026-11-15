@@ -411,3 +411,5 @@ nav{padding-bottom:calc(8px + var(--base))}
 @media (max-width:360px){#v-tocando .np-bar{gap:4px}#v-tocando .np-bar .pill{padding:6px 7px}}
 @media (max-width:340px){#v-tocando #b-fila .pill-t{display:none}}
 .app[data-palco="1"] #v-tocando .np-meta{margin-top:0} /* tela cheia mantém o espaçamento uniforme */
+.marca{width:76%;height:76%;display:block}
+.selo .marca{position:absolute;left:18%;top:18%;width:64%;height:64%}
