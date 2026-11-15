@@ -223,7 +223,14 @@ function adicionarFaixa(x) { faixas.push(x); porId.set(x.id, x); }
 const grad = (c) => `linear-gradient(140deg,${c[0]},${c[1]})`;
 const fundoDe = (x) => (x.cover ? `url('${x.cover}') center/cover` : grad(x.c));
 const inicial = (s) => esc((String(s || "?").trim()[0] || "?").toUpperCase());
-const capa = (x, cls = "thumb") => `<span class="${cls}" style="background:${fundoDe(x)}">${x.cover ? "" : inicial(x.t)}</span>`;
+/* Símbolo do Orolon (o mostrador do ícone), em branco por cima do degradê de cada música: usado quando a música não tem capa */
+const MARCA = (() => {
+  let t = "";
+  for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12, s = Math.sin(a), c = Math.cos(a), f = (v) => v.toFixed(1);
+    t += `<line x1="${f(50 + s * 38)}" y1="${f(50 - c * 38)}" x2="${f(50 + s * 45)}" y2="${f(50 - c * 45)}" stroke-opacity="${i < 17 ? 0.85 : 0.35}"/>`; }
+  return `<svg class="marca" viewBox="0 0 100 100" aria-hidden="true"><g stroke="#fff" stroke-width="3.4" stroke-linecap="round">${t}</g><circle cx="50" cy="50" r="27" fill="#fff" fill-opacity=".24"/><circle cx="50" cy="50" r="4.5" fill="#000" fill-opacity=".45"/></svg>`;
+})();
+const capa = (x, cls = "thumb") => `<span class="${cls}" style="background:${fundoDe(x)}">${x.cover ? "" : MARCA}</span>`;
 const linha2 = (x) => x.a + (x.al ? " · " + x.al : "");
 /* Formato sem perdas (FLAC, WAV, AIFF): ganha a etiqueta no app */
 function semPerdas(x) {
@@ -1078,7 +1085,7 @@ function paint() {
   }
   $("np-ctx").textContent = T("Tocando · {0}", contexto);
   $("np-t").textContent = x.t; $("np-a").textContent = linha2(x) + (x.demo ? T(" · exemplo") : semPerdas(x) ? " · " + semPerdas(x) : "");
-  $("selo").style.background = fundoDe(x); $("selo").textContent = x.cover ? "" : (x.t[0] || "?").toUpperCase();
+  $("selo").style.background = fundoDe(x); $("selo").innerHTML = x.cover ? "" : MARCA;
   $("mini-th").innerHTML = capa(x); $("mini-t").textContent = x.t; $("mini-a").textContent = x.a;
   $("tot").textContent = fmt(x.d);
   const depois = queue.length - qi - 1;
@@ -1132,7 +1139,7 @@ function artistas() {
   for (const x of vis()) { if (!m.has(x.a)) m.set(x.a, []); m.get(x.a).push(x); }
   return [...m].map(([n, fx]) => ({ n, fx, albuns: new Set(fx.map(nomeAlbum)).size, capa: fx.find((x) => x.cover) || fx[0] })).sort((a, b) => comparar(a.n, b.n));
 }
-const capaGrupo = (g, cls = "cover") => `<span class="${cls}" style="background:${fundoDe(g.capa)}">${g.capa.cover ? "" : inicial(g.n)}</span>`;
+const capaGrupo = (g, cls = "cover") => `<span class="${cls}" style="background:${fundoDe(g.capa)}">${g.capa.cover ? "" : MARCA}</span>`;
 function linhaFaixa(x, o = {}) {
   const atual = cur() && cur().id === x.id;
   return `<div class="track${atual ? " cur" : ""}" data-row="${x.id}">` +
@@ -2891,7 +2898,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.17.2";
+const VERSAO = "1.17.3";
 const linkPrivacidade = () => "https://kirarahoshi.github.io/compasso-player/privacidade.html" + (LANG === "en" ? "#en" : "#pt");
 let instalar = null;
 const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;

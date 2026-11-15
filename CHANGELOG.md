@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.17.3
+- Músicas sem capa mostram o símbolo do Orolon (o mostrador do ícone) sobre o degradê de cores de cada música, em vez da primeira letra do título. Vale nas listas, álbuns, artistas, mini player e no centro do Relógio e do Vinil.
+
 ## 1.17.2
 - PC e tablet: o Tocando agora segue a mesma ordem do celular (nome, botões com o volume na ponta, barra de volume, progresso e controles), igual no app Android.
 
