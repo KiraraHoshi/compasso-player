@@ -5,7 +5,7 @@ name: App Android
 on:
   push:
     branches: [main]
-    paths: ["index.html", "css/**", "js/**", "icons/**", "temas/**", "manifest.json", "android-assets/**", "capacitor.config.json", "package.json", "scripts/**", "android-teste/**", ".github/workflows/android.yml"]
+    paths: ["index.html", "css/**", "js/**", "icons/**", "temas/**", "manifest.json", "android-assets/**", "capacitor.config.json", "package.json", "scripts/**", "android-plugin/**", "android-teste/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
 permissions:
@@ -34,6 +34,7 @@ jobs:
           npm run www
           npx cap add android
           node scripts/permissoes-android.mjs
+          node scripts/musicas-android.mjs
           cp -r android-assets assets
           npx @capacitor/assets generate --android --iconBackgroundColor "#14111F" --iconBackgroundColorDark "#14111F" --splashBackgroundColor "#14111F" --splashBackgroundColorDark "#14111F"
           npx cap sync android

@@ -317,6 +317,9 @@ main{contain:content}
 #vol::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--text);margin-top:-5px}
 #vol::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:var(--text)}
 #vol-n{min-width:40px}
+.volume[data-rec="1"]{display:none}
+.np-bar .volpill{margin-left:auto}
+.np-bar .volpill.on{color:var(--accent)}
 .app[data-palco="1"] .volume{display:none}
 /* Recorte da foto do perfil */
 .corte{position:relative;width:240px;height:240px;align-self:center;border-radius:var(--radius);overflow:hidden;background:var(--card);touch-action:none}
@@ -389,3 +392,22 @@ nav{padding-bottom:calc(8px + var(--base))}
 /* Avisos com botão: texto à esquerda, sem virar uma bola quando quebra linha */
 .toast.acao{text-align:left;border-radius:18px}
 .toast.acao button{flex:none}
+
+/* Tocando agora (celular), no estilo do YouTube Music: capa ou visual em cima; nome, botões (com o volume na ponta)
+   e a barra de volume no meio; progresso e controles embaixo, ao alcance do polegar */
+#v-tocando .np-top{order:0}
+#v-tocando .hora{order:1}
+#v-tocando :is(.dial,.letra){order:2}
+#v-tocando .np-meta{order:3;margin-top:auto}
+#v-tocando .np-bar{order:4;justify-content:flex-start}
+#v-tocando .volume{order:5}
+#v-tocando .seek{order:6}
+#v-tocando .ctl{order:7}
+#v-tocando{justify-content:flex-start}
+#v-tocando .np-bar{flex-wrap:nowrap;gap:6px}
+#v-tocando .np-bar .pill{flex:0 0 auto}
+#v-tocando .volpill{-webkit-touch-callout:none;user-select:none;touch-action:manipulation}
+@media (max-width:400px){#v-tocando .np-bar .pill{padding:7px 9px}}
+@media (max-width:360px){#v-tocando .np-bar{gap:4px}#v-tocando .np-bar .pill{padding:6px 7px}}
+@media (max-width:340px){#v-tocando #b-fila .pill-t{display:none}}
+.app[data-palco="1"] #v-tocando .np-meta{margin-top:0} /* tela cheia mantém o espaçamento uniforme */
