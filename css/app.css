@@ -409,7 +409,6 @@ nav{padding-bottom:calc(8px + var(--base))}
 #v-tocando .volpill{-webkit-touch-callout:none;user-select:none;touch-action:manipulation}
 @media (max-width:400px){#v-tocando .np-bar .pill{padding:7px 9px}}
 @media (max-width:360px){#v-tocando .np-bar{gap:4px}#v-tocando .np-bar .pill{padding:6px 7px}}
-@media (max-width:340px){#v-tocando #b-fila .pill-t{display:none}}
 .app[data-palco="1"] #v-tocando .np-meta{margin-top:0} /* tela cheia mantém o espaçamento uniforme */
 .marca{width:76%;height:76%;display:block}
 .selo .marca{position:absolute;left:18%;top:18%;width:64%;height:64%}
@@ -443,3 +442,14 @@ nav{padding-bottom:calc(8px + var(--base))}
 .porta-ic{width:40px;height:40px;flex:none;border-radius:calc(var(--radius) * .75);display:grid;place-items:center;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .porta-h{gap:6px;margin-left:-6px}
 .chev{color:var(--muted);display:grid;place-items:center}
+/* Biblioteca: ações numa linha só */
+.bib-acoes{gap:6px;flex-wrap:nowrap}
+.bib-acoes .btns{flex-wrap:nowrap;gap:6px}
+.bib-acoes .so-ic{padding:6px 9px}
+.bib-acoes select{min-width:0;max-width:128px;flex:0 1 auto;text-overflow:ellipsis}
+@media (max-width:399px){.bib-acoes [data-aleatorio] .rot{display:none}.bib-acoes [data-aleatorio]{padding:6px 9px}}
+/* Tocando: botões com nome curto embaixo do ícone, em colunas iguais */
+#v-tocando .np-bar{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;flex-wrap:nowrap}
+#v-tocando .np-bar .pill{flex-direction:column;justify-content:center;gap:3px;padding:7px 2px;border-radius:calc(var(--radius) * .8);min-width:0;font-size:10.5px;line-height:1.15}
+#v-tocando .np-bar .pill-t{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#v-tocando .np-bar .volpill{margin-left:0}
