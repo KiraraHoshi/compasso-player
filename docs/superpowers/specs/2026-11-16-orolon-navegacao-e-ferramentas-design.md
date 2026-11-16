@@ -171,7 +171,7 @@ Tudo é grátis, feito com a Web Audio que o app já usa (o equalizador e o nive
 
 ---
 
-## Decisões tomadas na revisão (escolhas do Claude, para o Jo-ah conferir)
+## Decisões tomadas na revisão (para o Jo-ah conferir)
 
 1. **Tocar ao conectar o fone funciona só com o app aberto ou tocando em segundo plano.** Usa `AudioManager.registerAudioDeviceCallback` no `MusicasPlugin`, sem permissão nova. Fazer funcionar com o app fechado exigiria `BLUETOOTH_CONNECT`, o que quebraria a antimeta das permissões.
 2. **Abrir o Tocando ao tocar na notificação passa para a 1.20.** A notificação vem do plugin `@capgo/capacitor-media-session` e não avisa o JS. Detectar o toque exige código nativo, e a 1.18 continua só web (sem código nativo). Até lá, tocar na notificação abre o app normalmente.
