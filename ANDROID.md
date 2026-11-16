@@ -30,7 +30,7 @@ Na primeira publicação, deixe ativado o **Play App Signing** (o padrão): o Go
 
 ## Fone e notificação (1.20)
 
-O mesmo plugin avisa o app quando um fone entra ou sai (com fio, Bluetooth ou USB) e quando a pessoa toca na notificação de mídia. Isso usa o aviso de aparelhos de som do Android (`registerAudioDeviceCallback`), que **não pede permissão nova**. Por isso, "Tocar ao conectar o fone" só funciona com o Orolon aberto ou em segundo plano.
+O mesmo plugin avisa o app quando um fone entra ou sai (com fio, Bluetooth ou USB) e quando a pessoa toca na notificação de mídia. Isso usa o aviso de aparelhos de som do Android (`registerAudioDeviceCallback`), que **não pede permissão nova**. Para pausar ao tirar o fone, ele ouve o aviso "o som vai sair pelo alto-falante" (`ACTION_AUDIO_BECOMING_NOISY`), que chega antes da troca. O plugin também mantém a tela ligada no modo carro e na tela cheia (`FLAG_KEEP_SCREEN_ON`). Por isso, "Tocar ao conectar o fone" só funciona com o Orolon aberto ou em segundo plano.
 
 ## Política de privacidade
 

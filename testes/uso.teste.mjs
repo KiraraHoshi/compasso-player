@@ -134,11 +134,23 @@ export default [
     },
   },
   {
+    nome: "tela ligada também pelo app Android (o navegador embutido pode não ter a trava de tela)",
+    rodar: async (p) => {
+      await p.avaliar(() => { window.__tela = []; window.__plug = { manterTela: (o) => { window.__tela.push(o.ligado); return Promise.resolve(); } }; });
+      await p.avaliar(() => atualizarTela(window.__plug));
+      await abrirCarro(p);
+      await p.avaliar(() => atualizarTela(window.__plug));
+      await p.avaliar(() => atualizarTela(window.__plug)); // sem mudança: não chama de novo
+      await p.avaliar(() => { fecharCarro(); return atualizarTela(window.__plug); });
+      assert.deepEqual(await p.avaliar(() => window.__tela), [true, false]);
+    },
+  },
+  {
     nome: "plugin do Android avisa do fone e da notificação",
     node: true,
     rodar: async () => {
       const j = readFileSync(new URL("../android-plugin/MusicasPlugin.java", import.meta.url), "utf8");
-      for (const t of ["registerAudioDeviceCallback", "unregisterAudioDeviceCallback", "handleOnNewIntent", 'notifyListeners("fone"', 'notifyListeners("notificacao"', "import android.media.AudioDeviceCallback;", "import android.media.AudioManager;"]) assert.ok(j.includes(t), "falta no plugin: " + t);
+      for (const t of ["ACTION_AUDIO_BECOMING_NOISY", "unregisterReceiver", "public void manterTela", "FLAG_KEEP_SCREEN_ON", "registerAudioDeviceCallback", "unregisterAudioDeviceCallback", "handleOnNewIntent", 'notifyListeners("fone"', 'notifyListeners("notificacao"', "import android.media.AudioDeviceCallback;", "import android.media.AudioManager;"]) assert.ok(j.includes(t), "falta no plugin: " + t);
       // tira comentários e textos entre aspas antes de contar chaves e parênteses
       const semTexto = j.replace(/"(?:[^"\\]|\\.)*"/g, '""').replace(/'(?:[^'\\]|\\.)'/g, "''").replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
       for (const [a, b] of ["{}", "()", "[]"]) assert.equal(semTexto.split(a).length, semTexto.split(b).length, `${a} e ${b} desbalanceados no plugin`);
