@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 1.25.0
+- **Relógio com ponteiros:** um ponteiro âmbar mostra quanto da música já passou e um ponteiro fino anda um tracinho a cada batida, com o tranco de relógio. O bumbo agora corre pelos tracinhos, de cima para baixo, e cada tracinho deixa um pontinho de pico. No Relógio a capa passa a ser sempre redonda (os ponteiros não combinam com a capa quadrada).
+- **Espectro:** ganhou brilho, o rastro da forma de um instante atrás, a linha que clareia na caixa e as ondas do bumbo saindo da capa.
+- **Anel:** gira devagar e ganha impulso no bumbo, com brilho e um pontinho de pico em cada barrinha.
+- **Neon:** brilho de verdade, o bumbo corre do meio para as pontas e as duas cores se separam um instante na caixa.
+- **Barras:** sobem rápido e descem devagar, com brilho e uma tampinha de pico em cada ponta.
+- **Cores:** em todos esses mostradores as cores passam devagar de uma música para a outra.
+- **Celular mais frio:** o app não desenha mais que cerca de 60 vezes por segundo, mesmo em tela de 90 ou 120 Hz; com a música pausada, desenha bem menos; e o brilho, que é a parte mais pesada, passou a custar a metade.
+- No modo leve e com "reduzir movimento" não há brilho nem ponteiro da batida.
+
 ## 1.24.0
 - **Aura refinada:** brilho macio em volta da capa, poeira com profundidade que cintila no prato, uma onda que sai da capa em cada bumbo e freia, e um fio de luz que clareia na caixa.
 - **Troca de música na Aura:** a Aura recolhe e abre de novo, as cores passam devagar de uma música para a outra e a capa nova entra pelo lado (voltando, entra pelo outro lado).

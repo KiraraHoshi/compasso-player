@@ -37,7 +37,7 @@ export default [
     nome: "troca de música: as cores passam aos poucos de uma para a outra",
     rodar: async (p) => {
       const r = await p.avaliar(() => {
-        corAura[0] = [255, 0, 0]; corAura[1] = [255, 0, 0]; corViz = "#0000ff"; corViz2 = null;
+        corAura[0] = [255, 0, 0]; corAura[1] = [255, 0, 0]; corViz = "#0000ff"; corViz2 = null; corAuraPronta = true;
         fqV = 1; passoCorAura(); const logo = corAura[0][2];
         for (let i = 0; i < 90; i++) passoCorAura();
         return { logo, depois: corAura[0][2], seg: corAura[1][2] };

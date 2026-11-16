@@ -36,11 +36,9 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - Voltar e avançar 10 segundos, velocidade no Tocando agora, etiqueta FLAC/WAV, importar vídeos, lembrar a posição das músicas longas, aviso com atalho para as novas, prévia da letra e opção de esconder os corações.
 
 **Médias, na versão web**
-- Amplificador de volume (acima de 100%, com limitador para não distorcer).
-- Reverb (sala, palco, catedral) e um "aprimorador" com graves, agudos e intensidade em botões giratórios.
-- Abas Música e Letra no topo do Tocando agora, deslizando entre elas.
-- Modo condução: tela com botões enormes e só o essencial.
-- Aba Início opcional, com tocadas recentemente e favoritas.
+- ✅ Amplificador de volume, reverb e aprimorador (1.19).
+- ✅ Modo condução, como "modo carro" (1.20), e aba Início (1.18).
+- Abas Música e Letra no topo do Tocando agora, deslizando entre elas (ainda não feito; hoje a letra abre pelo botão Letra).
 
 **Só no Android**
 - Procurar as músicas das pastas do aparelho sozinho, com progresso e escolha de pastas.
@@ -61,10 +59,21 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - ✅ **1.20 Uso:** modo carro, "já começar tocando" ao abrir, pausar ao tirar o fone, tocar ao conectar o fone e notificação abrindo o Tocando.
 - ✅ **1.21 Personalizar:** pincel no Tocando agora com a folha "Personalizar", capa personalizada de álbum e de música, "Enviar backup" e backup automático numa pasta.
 - ✅ **1.22 Biblioteca:** estrelas de 1 a 5, mais ordens, playlists `.m3u`, repetir trecho (A-B) e marcadores para áudios longos.
-- **1.23 Movimento (parte 1):** escuta nova de batidas (bumbo, caixa e prato), andamento da música e capa com mola. Feita.
-- **1.24 Aura refinada:** brilho macio, poeira com profundidade, onda do bumbo, fio de luz na caixa e troca de música. Em teste na branch `1.24-aura`.
-- Próximas partes do movimento: um mostrador por vez, Relógio com ponteiros.
-- Depois: prints novos da loja e do README.
+- ✅ **1.23 Movimento (parte 1):** escuta nova de batidas (bumbo, caixa e prato), andamento da música e capa com mola.
+- **1.24 Aura refinada:** brilho macio, poeira com profundidade, onda do bumbo, fio de luz na caixa e troca de música. Em teste.
+- **1.25 Mostradores:** Relógio redondo com ponteiros, Espectro, Anel, Neon e Barras refinados, e economia de bateria (menos desenhos por segundo). Em teste.
+
+## Onde o app está (depois da 1.25)
+
+O Orolon já tem o que os players grátis conhecidos têm, e mais os mostradores. **O que falta para lançar não é função, é publicação.** Ordem sugerida:
+
+1. **Publicar na Google Play.** É o passo que mais demora: conta pessoal nova precisa de teste fechado com 12 testadores por 14 dias seguidos. Falta a ficha da loja, os prints novos (`loja/pt`, `loja/en`), as artes e a declaração da permissão de áudio. Vale começar a juntar testadores já.
+2. **README e prints** com as novidades da 1.19 à 1.25.
+3. **Pacote "Apoiador"** (compra única, só cosmético): estilos da Aura (Phonk, Lo-fi, Anos 80), LED refinado como opção, temas e ícones extras. Só depois de o app estar na loja.
+4. **Só no Android:** widgets e Android Auto.
+5. **Efeitos extras de som** (lista abaixo) e os pequenos acertos adiados das revisões.
+
+Vinil, Cassete e Rádio ainda não foram refinados como os outros mostradores.
 
 ## Sugestões para versões futuras (anotadas em 16/11/2026)
 
@@ -79,12 +88,7 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - **Pular silêncio** no começo e no fim das faixas (comum em MP3 do YouTube e em podcasts).
 
 **O que quase todo player grátis tem e ainda falta no Orolon**
-- **Pausar ao tirar o fone** (fio ou Bluetooth). Precisa conferir no Android: se a WebView não faz isso sozinha, é a primeira da lista, porque o som sair alto no viva-voz é a reclamação mais comum.
-- **Importar e exportar playlists .m3u.** É o formato que os outros players usam, então ajuda quem está trocando de app.
-- **Repetir um trecho (A-B)**, bom para estudar música ou idioma.
-- **Mais ordens na Biblioteca:** álbum, duração, mais tocadas, data do arquivo e número da faixa.
-- **Favoritar ou avaliar com estrelas**, com playlists automáticas "5 estrelas".
-- **Marcadores e retomar por arquivo** em áudios longos (audiolivros e podcasts). Hoje só as músicas longas lembram a posição.
+- ✅ Pausar ao tirar o fone (1.20); playlists .m3u, repetir trecho A-B, mais ordens, estrelas e marcadores (1.22).
 - **Widgets e Android Auto** (já no plano da versão Android).
 - **Compartilhar o arquivo da música** pelo menu do Android.
 - **Achar músicas repetidas** na biblioteca.

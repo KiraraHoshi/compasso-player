@@ -60,7 +60,7 @@ const EN = {
  "Formato da capa": "Cover shape",
  "Quadrada": "Square",
  "Redonda": "Round",
- "Vale para Relógio, Aura, Espectro e Anel. No Vinil a capa é sempre redonda.": "Applies to Clock, Aura, Spectrum and Ring. On Vinyl the cover is always round.",
+ "Vale para Aura, Espectro e Anel. No Relógio e no Vinil a capa é sempre redonda.": "Applies to Aura, Spectrum and Ring. On Clock and Vinyl the cover is always round.",
  "Cores do visual seguem a capa da música": "Visual colors follow the album cover",
  "Espectro": "Spectrum",
  "Neon": "Neon",
