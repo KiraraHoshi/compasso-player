@@ -60,8 +60,10 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - ✅ **1.21 Personalizar:** pincel no Tocando agora com a folha "Personalizar", capa personalizada de álbum e de música, "Enviar backup" e backup automático numa pasta.
 - ✅ **1.22 Biblioteca:** estrelas de 1 a 5, mais ordens, playlists `.m3u`, repetir trecho (A-B) e marcadores para áudios longos.
 - ✅ **1.23 Movimento (parte 1):** escuta nova de batidas (bumbo, caixa e prato), andamento da música e capa com mola.
-- **1.24 Aura refinada:** brilho macio, poeira com profundidade, onda do bumbo, fio de luz na caixa e troca de música. Em teste.
-- **1.25 Mostradores:** Relógio redondo com ponteiros, Espectro, Anel, Neon e Barras refinados, e economia de bateria (menos desenhos por segundo). Em teste.
+- ✅ **1.24 Aura refinada:** brilho macio, poeira com profundidade, onda do bumbo, fio de luz na caixa e troca de música.
+- ✅ **1.25 Mostradores:** Relógio redondo com ponteiros, Espectro, Anel, Neon e Barras refinados, e economia de bateria (menos desenhos por segundo).
+- ✅ **1.25.1:** correção da capa esticada ao sair do LED, fluidez máxima (90/120 Hz) como opção e menos trabalho fora do Tocando agora.
+- **Próxima:** estilos da Aura (Phonk, Lo-fi, Anos 80), que depois entram no pacote Apoiador.
 
 ## Onde o app está (depois da 1.25)
 
