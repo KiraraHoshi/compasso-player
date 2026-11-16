@@ -1,5 +1,16 @@
 # Histórico de versões
 
+## 1.22.0
+- **Estrelas:** dê de 1 a 5 estrelas a cada música, no topo do menu "⋯" (o botão Mais do Tocando agora abre o mesmo menu). Tocar na mesma nota de novo tira a nota. O coração das favoritas continua igual.
+- As notas viram duas playlists automáticas, **5 estrelas** e **4 ou mais**, que aparecem quando têm músicas, e uma ordem nova na Biblioteca.
+- **Aleatório mais esperto:** todas as músicas da fila continuam tocando uma vez, mas as bem avaliadas têm mais chance de vir antes. Sem nenhuma nota, o aleatório é igual ao de sempre.
+- **Mais ordens na Biblioteca:** Álbum, Número da faixa, Duração, Mais tocadas, Data do arquivo e Nota.
+- **Playlists .m3u:** importe uma playlist feita em outro player (Playlists › Importar .m3u) e exporte as suas (menu da playlist › Exportar .m3u). As músicas são reconhecidas pelo nome do arquivo; as que não estão na biblioteca são contadas no aviso.
+- **Repetir trecho (A-B):** no menu da música que está tocando, marque o início e o fim, e o trecho fica repetindo. Bom para estudar um instrumento ou um idioma.
+- **Marcadores:** guarde pontos de uma música ou de um áudio longo e volte a eles com um toque.
+- As notas e os marcadores ficam só no aparelho e entram no backup. Nada é gravado dentro dos arquivos de música.
+- No Android, exportar uma playlist usa o compartilhamento do aparelho.
+
 ## 1.21.0
 - **Pincel no Tocando agora:** no canto de cima à esquerda, abre a folha **Personalizar**. Nela você troca o visual do mostrador por miniaturas, o formato da capa, as cores, a luz de fundo e a batida. A folha é baixa, então cada mudança aparece no mostrador na hora.
 - **Capa personalizada:** escolha uma imagem para uma música (menu "⋯" › Trocar capa) ou para um álbum inteiro (botão Trocar capa na tela do álbum), com o mesmo recorte da foto do perfil. A capa do álbum vale para as músicas dele que não têm capa própria. Os arquivos das músicas não são alterados, e dá para tirar a capa depois.
