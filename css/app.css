@@ -164,6 +164,15 @@ nav button.on{color:var(--accent);font-weight:600}
 .scrim.on{opacity:1}
 .sheet{position:fixed;left:0;right:0;bottom:0;margin:0 auto;max-width:520px;max-height:82%;display:flex;flex-direction:column;background:var(--bg);border-radius:calc(var(--radius) + 6px) calc(var(--radius) + 6px) 0 0;z-index:21;transform:translateY(100%);transition:transform .25s ease;box-shadow:0 -12px 40px -12px rgba(0,0,0,.4)}
 .sheet.on{transform:none}
+.sheet[data-baixa="1"]{max-height:46%}
+.scrim[data-claro="1"]{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}
+.minis{flex:none;display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:none;overscroll-behavior-x:contain}
+.minis::-webkit-scrollbar{display:none}
+.mini-v{flex:0 0 68px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 4px 7px;border-radius:var(--radius);background:var(--card);border:1.5px solid var(--line);color:var(--muted);font-size:11.5px;line-height:1.2}
+.mini-v svg{width:30px;height:30px;color:var(--accent)}
+.mini-v span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-v.on{border-color:var(--accent);color:var(--text);background:color-mix(in srgb,var(--accent) 16%,var(--card))}
+.app[data-palco="1"] #b-pincel{visibility:hidden}
 .sheet-h{display:flex;align-items:center;gap:8px;padding:14px 12px 8px 18px}
 .sheet-b{overflow-y:auto;padding:4px 12px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
 .sheet .grab{width:40px;height:4px;border-radius:9px;background:var(--line);margin:8px auto 0}

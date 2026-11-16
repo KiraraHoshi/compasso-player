@@ -36,6 +36,7 @@ const I = {
   rep: tr("M5 12V9.5A2.5 2.5 0 017.5 7H18M19 12v2.5a2.5 2.5 0 01-2.5 2.5H6M15.5 4.5L18 7l-2.5 2.5M8.5 14.5L6 17l2.5 2.5"),
   ondas: tr("M2.5 12c1.6-3.2 3.2-3.2 4.8 0s3.2 3.2 4.8 0 3.2-3.2 4.8 0 3.2 3.2 4.8 0") + tr("M6 5.8a9 9 0 0 1 12 0M6 18.2a9 9 0 0 0 12 0"),
   carro: tr("M5 11.5l1.5-4.3A2 2 0 0 1 8.4 5.8h7.2a2 2 0 0 1 1.9 1.4l1.5 4.3M4 11.5h16v6H4zM6.5 17.5v1.7M17.5 17.5v1.7M7 14.5h.5M16.5 14.5h.5"),
+  pincel: tr("M19.6 4.4a2 2 0 0 0-2.9 0L9.2 11.9l2.9 2.9 7.5-7.5a2 2 0 0 0 0-2.9zM8 13.4c-1.9.3-3 1.7-3 3.3 0 1-.6 1.9-1.5 2.3 2.7.6 6.6-.3 6.6-3.6"),
   dial: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/>',
   radio: tr("M4 9.5h16v10H4zM8 9.5l9-5") + '<circle cx="15" cy="14.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M6.5 13h3M6.5 16h3"),
   info: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M12 11v5.5") + '<circle cx="12" cy="7.8" r="1.2" fill="currentColor"/>',
@@ -1336,6 +1337,7 @@ function abrirFolha(o) {
   const jaAberta = !!folha;
   folha = o;
   $("sheet-t").textContent = o.titulo; $("sheet-b").innerHTML = o.html;
+  $("sheet").dataset.baixa = o.baixa ? "1" : ""; $("scrim").dataset.claro = o.baixa ? "1" : "";
   $("scrim").hidden = false; $("sheet").hidden = false;
   requestAnimationFrame(() => { $("scrim").classList.add("on"); $("sheet").classList.add("on"); });
   if (!jaAberta) focoAntes = document.activeElement;
@@ -2272,6 +2274,39 @@ const chipsDe = (lista, sel, attr) => `<div class="chips" role="group">${lista.m
 function abrirFolhaVisual() {
   const html = () => chipsDe(Object.entries(VISUAIS), cfg.visual, "data-vis") + `<p class="note">${T("Mais opções do mostrador em Ajustes › Aparência.")}</p>`;
   abrirFolha({ titulo: T("Visual do mostrador"), html: html(), clique(e) { const b = e.target.closest("[data-vis]"); if (b) { escolherVisual(b.dataset.vis); $("sheet-b").innerHTML = html(); } } });
+}
+/* ---- Personalizar o Tocando (1.21): o pincel abre uma folha baixa, e cada mudança aparece no mostrador na hora ---- */
+const MINIS = { // miniaturas dos visuais (desenhos simples, no traço dos ícones)
+  relogio: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/>' + tr("M12 7v5l3.2 2"),
+  vinil: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".6"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/>',
+  aura: '<circle cx="12" cy="12" r="9.5" fill="currentColor" opacity=".18"/><circle cx="12" cy="12" r="6.5" fill="currentColor" opacity=".3"/><circle cx="12" cy="12" r="3.4" fill="currentColor"/>',
+  espectro: tr("M4 14v-4M8 17V7M12 19V5M16 16V8M20 13v-2"),
+  anel: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="2.2 2.6"/>',
+  neon: tr("M3 12c2-5 4-5 6 0s4 5 6 0 4-5 6 0") + '<path d="M3 16c2-3 4-3 6 0s4 3 6 0 4-3 6 0" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/>',
+  barras: '<rect x="4" y="11" width="3.4" height="8" rx="1" fill="currentColor"/><rect x="8.9" y="6" width="3.4" height="13" rx="1" fill="currentColor"/><rect x="13.8" y="9" width="3.4" height="10" rx="1" fill="currentColor"/><rect x="18.7" y="13" width="3.4" height="6" rx="1" fill="currentColor" opacity=".7"/>',
+  led: [5, 10, 15, 20].map((x, i) => [7, 12, 17].map((y, j) => `<rect x="${x - 1.7}" y="${y - 1.7}" width="3.4" height="3.4" rx=".8" fill="currentColor" opacity="${(i + j) % 3 === 0 ? 1 : 0.45}"/>`).join("")).join(""),
+};
+function abrirPersonalizar() {
+  const liga = (k, rotulo) => `<div class="opt"><span id="pz-l-${k}">${rotulo}</span><button class="tg" data-tg="${k}" role="switch" aria-checked="${!!cfg[k]}" aria-labelledby="pz-l-${k}"></button></div>`;
+  const faixa = (k, rotulo, ligado) => `<div class="opt sub-opt"${ligado ? "" : " hidden"}><label for="pz-r-${k}">${rotulo}</label><input type="range" id="pz-r-${k}" data-rg="${k}" min="0.15" max="1" step="0.05" value="${cfg[k]}"></div>`;
+  const html = () => `<div class="minis" role="group" aria-label="${T("Visual do mostrador")}">${Object.entries(VISUAIS).map(([k, n]) => `<button class="mini-v${cfg.visual === k ? " on" : ""}" data-vis="${k}" aria-pressed="${cfg.visual === k}"><svg viewBox="0 0 24 24" aria-hidden="true">${MINIS[k] || MINIS.relogio}</svg><span>${n}</span></button>`).join("")}</div>
+    ${cfg.visual === "led" ? `<p class="t">${T("Cores do LED")}</p>` + chipsDe([["arte", T("Arte da capa")], ["capa", T("Cores da capa")], ["tema", T("Cores do tema")], ["classico", T("Clássico")]], cfg.ledCor, "data-ledcor") : ""}
+    <p class="t">${T("Formato da capa")}</p>${chipsDe([["quadrada", T("Quadrada")], ["redonda", T("Redonda")]], cfg.formaCapa === "redonda" ? "redonda" : "quadrada", "data-forma")}
+    ${liga("corCapa", T("Cores do visual seguem a capa da música"))}
+    ${liga("amb", T("Luz de fundo com as cores da capa"))}${faixa("ambF", T("Intensidade da luz"), cfg.amb)}
+    ${liga("reage", T("Reagir à batida da música"))}${faixa("batF", T("Força da batida"), cfg.reage)}`;
+  const refazer = () => { const r = $("sheet-b"), y = r.scrollTop; r.innerHTML = html(); r.scrollTop = y; };
+  abrirFolha({
+    titulo: T("Personalizar o Tocando"), html: html(), baixa: true,
+    clique(e) {
+      const t = e.target;
+      const v = t.closest("[data-vis]"); if (v) { escolherVisual(v.dataset.vis); refazer(); const b = $("sheet-b").querySelector(`[data-vis="${v.dataset.vis}"]`); if (b) b.focus(); return; }
+      const lc = t.closest("[data-ledcor]"); if (lc) { cfg.ledCor = lc.dataset.ledcor; salvarCfg(); ledId = null; prepararLed(cur()); return refazer(); }
+      const fo = t.closest("[data-forma]"); if (fo) { cfg.formaCapa = fo.dataset.forma; salvarCfg(); aplicarVisual(); return refazer(); }
+      const g = t.closest("[data-tg]"); if (g) { const k = g.dataset.tg; cfg[k] = !cfg[k]; salvarCfg(); aplicarEfeitos(); if (k === "corCapa") atualizarCorViz(); return refazer(); }
+    },
+    entrada(e) { const k = e.target.dataset.rg; if (k) { cfg[k] = +e.target.value; salvarCfg(); aplicarEfeitos(); } },
+  });
 }
 function abrirFolhaVolumeMais() {
   const html = () => htmlAmp() + `<p class="note">${T("Aumenta o volume além de 100% para músicas baixas. Um limitador segura os picos para o som não estourar.")}</p>`;
@@ -3263,6 +3298,8 @@ function atualizarHora() { if (emPalco()) $("hora").textContent = new Date().toL
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && emPalco()) alternarPalco(false); });
 $("b-palco").addEventListener("click", () => alternarPalco());
 $("b-palco").innerHTML = ico("expand", 20);
+$("b-pincel").innerHTML = ico("pincel", 20);
+$("b-pincel").addEventListener("click", abrirPersonalizar);
 
 
 /* ===================== Seleção múltipla ===================== */

@@ -70,6 +70,7 @@ const EN = {
  "Volume +": "Volume +",
  "Modo carro": "Car mode",
  "Trocar capa": "Change cover",
+ "Personalizar o Tocando": "Customize Now Playing",
  "Usar esta capa": "Use this cover",
  "Escolher imagem": "Choose image",
  "Tirar a capa personalizada": "Remove custom cover",
