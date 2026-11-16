@@ -14,12 +14,12 @@ const svg = readFileSync(join(RAIZ, "icons/orolon.svg"), "utf8").replace(/<!--[\
 const FUNDO = "radial-gradient(70% 70% at 28% 18%, #2A2140 0%, #14111F 72%)";
 const ARQUIVOS = [
   // [caminho, tamanho, fundo, tamanho do símbolo em fração do lado]
-  ["icons/icon-192.png", 192, FUNDO, 0.74],
-  ["icons/icon-512.png", 512, FUNDO, 0.74],
-  ["loja/icone-512.png", 512, FUNDO, 0.74],
-  ["icons/maskable-512.png", 512, FUNDO, 0.58], // cabe no círculo seguro de 80%
-  ["android-assets/icon-only.png", 1024, FUNDO, 0.62],
-  ["android-assets/icon-foreground.png", 1024, "transparent", 0.46], // área segura do ícone adaptativo
+  ["icons/icon-192.png", 192, FUNDO, 0.88],
+  ["icons/icon-512.png", 512, FUNDO, 0.88],
+  ["loja/icone-512.png", 512, FUNDO, 0.88],
+  ["icons/maskable-512.png", 512, FUNDO, 0.8], // o anel (73% do símbolo) cabe no círculo seguro de 80%
+  ["android-assets/icon-only.png", 1024, FUNDO, 0.82],
+  ["android-assets/icon-foreground.png", 1024, "transparent", 0.68], // anel com 50% do lado, dentro da área segura de 61%
   ["android-assets/icon-background.png", 1024, FUNDO, 0],
   ["android-assets/splash.png", 2732, "#14111F", 0.2],
   ["android-assets/splash-dark.png", 2732, "#14111F", 0.2],
