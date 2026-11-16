@@ -1,10 +1,11 @@
 # Monta o app Android do Orolon com Capacitor, no próprio GitHub (nada precisa ser instalado no seu PC).
-# Cada envio para a main gera um APK de teste, publicado na página de Releases como "Android (teste)".
+# Cada envio (main ou qualquer branch) que mexe no app gera um APK de teste, publicado na página de Releases
+# como "Android (teste)". A página diz de qual branch veio o APK; o último envio substitui o anterior.
 name: App Android
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     paths: ["index.html", "css/**", "js/**", "icons/**", "temas/**", "manifest.json", "android-assets/**", "capacitor.config.json", "package.json", "scripts/**", "android-plugin/**", "android-teste/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
@@ -76,6 +77,6 @@ jobs:
           make_latest: false
           files: Orolon-*-teste.apk
           body: |
-            APK de teste do Orolon Player ${{ env.VERSAO }} (build ${{ github.run_number }}).
+            APK de teste do Orolon Player ${{ env.VERSAO }} (build ${{ github.run_number }}), da branch `${{ github.ref_name }}`.
             No celular: baixe o arquivo .apk abaixo e abra. O Android pede para permitir a instalação de apps desta fonte.
             Esta versão é só para testar; a da Google Play vai ser assinada com a chave oficial.

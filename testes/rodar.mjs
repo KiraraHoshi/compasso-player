@@ -33,7 +33,7 @@ async function abrirChrome() {
   const exe = CHROMES.find((c) => existsSync(c));
   if (!exe) throw new Error("Chrome não encontrado. Defina ORO_CHROME com o caminho do executável.");
   const perfil = await mkdtemp(join(tmpdir(), "orolon-teste-"));
-  const proc = spawn(exe, ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${perfil}`, "--no-first-run", "--no-default-browser-check", "--autoplay-policy=no-user-gesture-required", "--mute-audio", "about:blank"], { stdio: "ignore" });
+  const proc = spawn(exe, ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${perfil}`, "--no-first-run", "--no-default-browser-check", "--autoplay-policy=no-user-gesture-required", "--mute-audio", "--lang=pt-BR", "--accept-lang=pt-BR", ...(process.env.CI ? ["--no-sandbox"] : []), "about:blank"], { stdio: "ignore", env: { ...process.env, LANGUAGE: "pt_BR", LANG: "pt_BR.UTF-8" } }); // sempre em português: os testes conferem os textos;  // no GitHub (Linux) o Chrome não abre com a caixa de areia
   const arq = join(perfil, "DevToolsActivePort");
   for (let i = 0; i < 100 && !existsSync(arq); i++) await espera(100);
   const [porta, caminho] = readFileSync(arq, "utf8").trim().split("\n");
