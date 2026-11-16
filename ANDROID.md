@@ -32,6 +32,11 @@ Na primeira publicação, deixe ativado o **Play App Signing** (o padrão): o Go
 
 O mesmo plugin avisa o app quando um fone entra ou sai (com fio, Bluetooth ou USB) e quando a pessoa toca na notificação de mídia. Isso usa o aviso de aparelhos de som do Android (`registerAudioDeviceCallback`), que **não pede permissão nova**. Para pausar ao tirar o fone, ele ouve o aviso "o som vai sair pelo alto-falante" (`ACTION_AUDIO_BECOMING_NOISY`), que chega antes da troca. O plugin também mantém a tela ligada no modo carro e na tela cheia (`FLAG_KEEP_SCREEN_ON`). Por isso, "Tocar ao conectar o fone" só funciona com o Orolon aberto ou em segundo plano.
 
+## Backup (1.21)
+
+- **Enviar backup:** o plugin grava o arquivo na pasta temporária do app e abre o compartilhamento do Android pelo `FileProvider` que o Capacitor já traz. Quem envia é o app escolhido pela pessoa; o Orolon continua sem acessar a internet.
+- **Backup automático:** a pessoa escolhe uma pasta no seletor do Android, que libera só aquela pasta (sem permissão de armazenamento). O app grava uma cópia por dia (`orolon-backup-AAAA-MM-DD.json`) e mantém as 5 mais novas. No celular novo, basta escolher a mesma pasta e tocar em "Restaurar o mais recente da pasta".
+
 ## Política de privacidade
 
 [`privacidade.html`](https://kirarahoshi.github.io/compasso-player/privacidade.html), em português e inglês.

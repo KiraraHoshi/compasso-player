@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 
 // Controles da tela de Ajustes da 1.17.3 (contados antes de dividir): 57, incluindo o seletor de idioma
-const CONTROLES = "#tm :is(select, input, [role=switch], [data-vis], [data-epoca], [data-cor], [data-forma], [data-ledcor], button):not([data-porta], [data-porta-voltar])";
+const CONTROLES = "#tm :is(select, input, [role=switch], [data-vis], [data-epoca], [data-cor], [data-forma], [data-ledcor], button):not([data-porta], [data-porta-voltar], [data-bkp-enviar])"; // "Enviar backup" só aparece onde o aparelho sabe compartilhar arquivo
 // 1.19: + 10 no cartão Efeitos da porta Som (5 chips do amplificador, 4 do reverb e a faixa do efeito 3D)
 const TOTAL_1173 = 57 + 10;
 const textoH2 = (p) => p.avaliar(() => [...document.querySelectorAll("#tm h2, #tm .t, #tm label, #tm .sec-t")].map((e) => e.textContent).join(" | "));
