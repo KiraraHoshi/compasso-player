@@ -186,3 +186,67 @@ Tudo é grátis, feito com a Web Audio que o app já usa (o equalizador e o nive
 - Se as portas de Ajustes viram estado interno de `renderTemas` (como `editando`) ou subtelas com hash próprio. Em qualquer caso, o voltar tem que funcionar.
 - Os valores exatos do limitador, do reverb e do 3D, desde que não distorçam com o amplificador a 200%.
 - A ordem dos atalhos na grade de ferramentas.
+
+---
+
+## Segunda rodada de decisões (16/11/2026, depois da 1.18.0 no celular)
+
+### Ordem das próximas versões
+
+| Versão | O que entra |
+|---|---|
+| **1.18.1 Ícone** | Ícone **B3** em todo lugar (detalhes abaixo) |
+| **1.19 Som** | Como na seção 1.19 (plano em `docs/superpowers/plans/2026-11-16-orolon-1.19-som.md`) |
+| **1.20 Uso** | Como na seção 1.20, mais a notificação abrindo o Tocando e **pausar ao tirar o fone** (fio e Bluetooth) |
+| **1.21 Personalizar** | Pincel com a folha "Personalizar", capa personalizada e backup mais fácil |
+| **1.22 Biblioteca** | Estrelas, mais ordens, playlists `.m3u`, repetir trecho (A-B) e marcadores para áudios longos |
+
+Os efeitos extras ("Slowed + reverb", "Nightcore", 8D, karaokê, tom, crossfeed, mono/balanço) ficam no ROADMAP para depois da 1.22.
+
+### 1.18.1: ícone B3 ("O tocando")
+
+O símbolo é um anel grosso em forma de O que funciona como barra de progresso:
+- uns 75% do anel ficam acesos, no degradê lilás→bronze, começando no topo e indo no sentido horário;
+- o resto do anel fica apagado (o "trilho");
+- uma cabeça de leitura redonda fica na ponta da parte acesa;
+- no centro, três barrinhas de equalizador, com a do meio mais alta.
+
+Ele foi escolhido entre B, B2 (com play, que lembra o YouTube Music) e B3, porque diz "player" sem copiar ninguém e continua legível a 28 px. Uma busca rápida não achou marca chamada "Orolon". Antes de registrar a marca, vale buscar no INPI e na base de marcas da OMPI.
+
+O símbolo aparece em quatro lugares:
+- **Ícone do app:** símbolo colorido sobre o fundo escuro do app (`#14111F` com um brilho lilás suave no canto de cima).
+- **Ícone adaptativo do Android:** a frente leva o símbolo dentro da área segura central (66%); o fundo é o mesmo escuro.
+- **Ícone `maskable` do PWA:** o símbolo cabe no círculo seguro de 80%.
+- **Capa padrão** (músicas sem capa, a `MARCA` em `js/app.js`): a mesma forma, toda em branco. O trilho fica em branco translúcido e as barras em branco cheio, por cima do degradê nas cores do tema da 1.18.
+
+Arquivos que mudam juntos:
+- `icons/icon-192.png`, `icons/icon-512.png` e `icons/maskable-512.png`;
+- `loja/icone-512.png`;
+- `android-assets/icon-only.png`, `icon-foreground.png`, `icon-background.png`, `splash.png` e `splash-dark.png`;
+- a `MARCA` em `js/app.js`.
+
+Todos saem de um SVG mestre guardado no repositório, gerado por um script, para que uma mudança futura no ícone seja um comando só.
+
+### 1.21: Personalizar
+
+- **Pincel no Tocando agora**, no canto de cima à esquerda (hoje vazio). A tela cheia continua no canto direito.
+- O pincel abre a folha baixa "Personalizar o Tocando" (modelo P1). Ela traz o visual do mostrador com miniaturas, as cores (da capa, do tema, clássico), o formato da capa, a luz de fundo e a batida.
+- O mostrador continua visível em cima, então cada mudança aparece ao vivo. Os visuais pagos do futuro entram nessa folha.
+- **Capa personalizada:** escolher uma imagem para um álbum (vale para todas as músicas dele que não têm capa própria) ou para uma música só, com o mesmo recorte da foto do perfil. A imagem fica no aparelho e entra no backup, reduzida.
+- **Backup mais fácil (sem servidor):**
+  - O backup serve para guardar os dados ao trocar de app ou de celular.
+  - **Não haverá Supabase nem conta**, porque quebraria a promessa de app 100% offline e sem conta.
+  - **"Enviar backup":** abre o compartilhamento do Android (Drive, WhatsApp, e-mail). Quem envia é o app escolhido, não o Orolon.
+  - **Backup automático** para uma pasta escolhida pela pessoa.
+
+### 1.22: Biblioteca
+
+- **Estrelas (offline):**
+  - De 1 a 5, pelo menu "⋯" da música e no Tocando.
+  - A nota fica no aparelho e entra no backup.
+  - Viram playlists automáticas ("5 estrelas" e "4 ou mais"), uma ordem na Biblioteca e um aleatório que toca mais as bem avaliadas.
+  - O favorito (❤) continua igual.
+  - Notas que outros players gravaram no arquivo podem ser lidas na importação, sem gravar nada no arquivo.
+- **Mais ordens:** álbum, duração, mais tocadas, data do arquivo e número da faixa.
+- **Playlists `.m3u`:** importar e exportar.
+- **Repetir trecho (A-B)** e **marcadores** para áudios longos.
