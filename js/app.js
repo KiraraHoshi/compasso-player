@@ -253,12 +253,12 @@ const temCapa = (x) => !!(x && (x.cover || x.capaBlob));
 const coresDe = (x) => (temCapa(x) ? x.c : coresPadrao((x.a || "") + (x.al || "") + (x.t || "")));
 const fundoDe = (x) => (x.cover ? `url('${x.cover}') center/cover` : grad(coresDe(x)));
 const inicial = (s) => esc((String(s || "?").trim()[0] || "?").toUpperCase());
-/* Símbolo do Orolon (o mostrador do ícone), em branco por cima do degradê de cada música: usado quando a música não tem capa */
+/* Símbolo do Orolon ("O tocando": anel que é barra de progresso, com equalizador no centro), em branco por cima
+   do degradê nas cores do tema: usado quando a música não tem capa. É o mesmo desenho de icons/orolon.svg. */
 const MARCA = (() => {
-  let t = "";
-  for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12, s = Math.sin(a), c = Math.cos(a), f = (v) => v.toFixed(1);
-    t += `<line x1="${f(50 + s * 38)}" y1="${f(50 - c * 38)}" x2="${f(50 + s * 45)}" y2="${f(50 - c * 45)}" stroke-opacity="${i < 17 ? 0.85 : 0.35}"/>`; }
-  return `<svg class="marca" viewBox="0 0 100 100" aria-hidden="true"><g stroke="#fff" stroke-width="3.4" stroke-linecap="round">${t}</g><circle cx="50" cy="50" r="27" fill="#fff" fill-opacity=".24"/><circle cx="50" cy="50" r="4.5" fill="#000" fill-opacity=".45"/></svg>`;
+  const f = (v) => v.toFixed(1), fim = 1.55 * Math.PI, ex = 50 + Math.sin(fim) * 30, ey = 50 - Math.cos(fim) * 30;
+  const barras = [[42, 12], [50, 20], [58, 14]].map(([x, h]) => `<rect x="${x - 2.6}" y="${50 - h / 2}" width="5.2" height="${h}" rx="2.6"/>`).join("");
+  return `<svg class="marca" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="30" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="13"/><path d="M50 20 A30 30 0 1 1 ${f(ex)} ${f(ey)}" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round"/><circle cx="${f(ex)}" cy="${f(ey)}" r="7" fill="#fff"/><g fill="#fff">${barras}</g></svg>`;
 })();
 const capa = (x, cls = "thumb") => `<span class="${cls}" style="background:${fundoDe(x)}">${x.cover ? "" : MARCA}</span>`;
 const semArtista = (a) => desconhecido(a) || a === T("Artista desconhecido") || a === "Artista desconhecido";
