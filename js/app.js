@@ -89,7 +89,7 @@ const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i>
 
 /* ===================== Ajustes e temas ===================== */
 const cfg = Object.assign(
-  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, amp: 1, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false, corCapa: true, formaCapa: "quadrada", ledCor: "arte" },
+  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, amp: 1, reverb: "nenhum", largura: 1, apGraves: 0, apAgudos: 0, apInt: 0, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false, corCapa: true, formaCapa: "quadrada", ledCor: "arte" },
   guardado.get("compasso.cfg", {})
 );
 const salvarCfg = () => guardado.set("compasso.cfg", cfg);
@@ -693,7 +693,7 @@ function tirarDaFila(i) {
 
 /* ---- Áudio ---- */
 let ctx, an, mestre, el, bins, relogio, filtros, entrada, ganhoEl, pausaPend, passo = 0, proxT = 0, pos = 0, posBase = 0, inicioT = 0, erros = 0;
-let volNo = null, els = [], ganhos = [], elAtivo = 0, trocando = null, eraIn, eraNos = [], ruido = null, comp = null, ondas;
+let volNo = null, els = [], ganhos = [], elAtivo = 0, trocando = null, eraIn, eraNos = [], ruido = null, comp = null, ondas, efeitosNos = [];
 function usarEl(i) { elAtivo = i; el = els[i]; ganhoEl = ganhos[i]; }
 const VELS = [0.75, 1, 1.25, 1.5, 2];
 function aplicarVel() {
@@ -1889,6 +1889,51 @@ if (!Array.isArray(cfg.eq.g10) || cfg.eq.g10.length !== 10) cfg.eq.g10 = EQ10.ma
 if (cfg.eq.modo !== 10) cfg.eq.modo = 5;
 const eqBandas = () => (cfg.eq.modo === 10 ? EQ10 : EQ5);
 const eqGanhos = () => (cfg.eq.modo === 10 ? cfg.eq.g10 : cfg.eq.g);
+/* ---- Efeitos (1.19): aprimorador, 3D e reverb. Cada construtora aceita qualquer contexto de áudio (os testes usam um OfflineAudioContext) ---- */
+const REVERBS = { nenhum: null, sala: [1.2, 3], palco: [2.2, 2.5], catedral: [4.5, 2] }; // [segundos, quão rápido decai]
+function impulsoReverb(c, segundos, decai) { // ruído estéreo que some aos poucos: gerado no aparelho, sem arquivo
+  const n = Math.max(1, Math.round(c.sampleRate * segundos)), b = c.createBuffer(2, n, c.sampleRate);
+  for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, decai); }
+  return b;
+}
+function criarReverb(c, tipo) {
+  const r = REVERBS[tipo]; if (!r) return null;
+  const entrada = c.createGain(), saida = c.createGain(), seco = c.createGain(), molhado = c.createGain(), conv = c.createConvolver();
+  seco.gain.value = 0.9; molhado.gain.value = 0.28; conv.buffer = impulsoReverb(c, r[0], r[1]);
+  entrada.connect(seco).connect(saida); entrada.connect(conv).connect(molhado).connect(saida);
+  return { entrada, saida, nos: [entrada, seco, conv, molhado, saida] };
+}
+function criarLargura(c, largura) { // meio/lado: o "lado" (diferença entre L e R) é multiplicado; o mono (L = R) não muda
+  const entrada = c.createGain(), sep = c.createChannelSplitter(2), meio = c.createGain(), lado = c.createGain(), invR = c.createGain(), invLado = c.createGain(), saida = c.createChannelMerger(2);
+  entrada.channelCount = 2; entrada.channelCountMode = "explicit"; entrada.channelInterpretation = "speakers"; // mono vira estéreo antes de separar
+  meio.gain.value = 0.5; lado.gain.value = 0.5 * Math.max(1, Math.min(2, largura)); invR.gain.value = -1; invLado.gain.value = -1;
+  entrada.connect(sep);
+  sep.connect(meio, 0); sep.connect(meio, 1); sep.connect(lado, 0); sep.connect(invR, 1); invR.connect(lado);
+  meio.connect(saida, 0, 0); meio.connect(saida, 0, 1); lado.connect(saida, 0, 0); lado.connect(invLado); invLado.connect(saida, 0, 1);
+  return { entrada, saida, nos: [entrada, sep, meio, lado, invR, invLado, saida] };
+}
+function criarAprimorador(c, graves, agudos, intensidade) {
+  const lim = (v) => Math.max(-6, Math.min(9, +v || 0));
+  const entrada = c.createBiquadFilter(), ag = c.createBiquadFilter(), saida = c.createGain(), cp = c.createDynamicsCompressor(), mix = c.createGain();
+  entrada.type = "lowshelf"; entrada.frequency.value = 110; entrada.gain.value = lim(graves);
+  ag.type = "highshelf"; ag.frequency.value = 7000; ag.gain.value = lim(agudos);
+  cp.threshold.value = -30; cp.ratio.value = 4; mix.gain.value = Math.max(0, Math.min(1, +intensidade || 0)) * 0.6; // compressão paralela: encorpa sem achatar
+  entrada.connect(ag); ag.connect(saida); ag.connect(cp).connect(mix).connect(saida);
+  return { entrada, saida, nos: [entrada, ag, cp, mix, saida] };
+}
+function montarEfeitos(depois) { // aprimorador → 3D → reverb; efeito no valor neutro não entra na cadeia
+  efeitosNos.forEach((n) => n.disconnect()); efeitosNos = [];
+  const blocos = [];
+  if (+cfg.apGraves || +cfg.apAgudos || +cfg.apInt) blocos.push(criarAprimorador(ctx, cfg.apGraves, cfg.apAgudos, cfg.apInt));
+  if (+cfg.largura > 1) blocos.push(criarLargura(ctx, +cfg.largura));
+  const rv = criarReverb(ctx, cfg.reverb); if (rv) blocos.push(rv);
+  return blocos.reduce((a, b) => { a.connect(b.entrada); efeitosNos.push(...b.nos); return b.saida; }, depois);
+}
+function trocarEfeitos() { // troca sem estalo: abaixa a entrada, remonta a cadeia e o aplicarEQ sobe de volta
+  if (!ctx) return;
+  entrada.gain.setTargetAtTime(0, ctx.currentTime, 0.01);
+  clearTimeout(trocarEfeitos.t); trocarEfeitos.t = setTimeout(montarFiltros, 30);
+}
 function montarFiltros() {
   if (!ctx) return;
   if (filtros) { entrada.disconnect(); filtros.forEach((f) => f.disconnect()); }
@@ -1906,7 +1951,7 @@ function montarFiltros() {
     c.threshold.value = -24; c.knee.value = 24; c.ratio.value = 3; c.attack.value = 0.01; c.release.value = 0.3; m.gain.value = 1.5;
     fim.connect(c); c.connect(m); comp = [c, m]; fim = m;
   }
-  fim.connect(eraIn);
+  montarEfeitos(fim).connect(eraIn);
   montarEra(); aplicarEQ();
 }
 function aplicarEQ() {
