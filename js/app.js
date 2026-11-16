@@ -2331,19 +2331,17 @@ $("vc").addEventListener("click", (e) => {
   const m = t.closest("[data-more]"); if (m) return menuFaixa(m.dataset.more);
   const p = t.closest("[data-play]"); if (p) tocarLista(topVoce, topVoce.indexOf(p.dataset.play), T("suas mais ouvidas"));
 });
-function editarPerfil() {
-  let foto = perfil.foto, corte = null;
-  const V = 240; // tamanho do quadro de recorte, em px
-  const htmlCorte = () => `<div class="stack corte-box"><p class="note">${T("Arraste para posicionar e use o controle para aproximar.")}</p>
-      <div class="corte"><canvas id="corte-cv" width="${V * 2}" height="${V * 2}" tabindex="0" aria-label="${T("Recorte da foto. Use as setas para mover e + ou − para aproximar.")}"></canvas></div>
-      <div class="opt"><label for="corte-z">${T("Zoom")}</label><input type="range" id="corte-z" min="1" max="4" step="0.01" value="${corte.z}"></div>
-      <div class="btns"><button class="btn" type="button" data-corte-ok>${T("Usar esta foto")}</button><button class="btn ghost" type="button" data-corte-x>${T("Cancelar")}</button></div></div>`;
-  const html = () => corte ? htmlCorte() : `<form class="stack"><div class="row">${foto ? `<span class="avatar" style="background-image:url('${foto}')"></span>` : avatar()}<div class="btns grow"><button class="btn ghost sm" type="button" data-foto>${T("Escolher foto")}</button>${foto ? `<button class="btn ghost sm" type="button" data-semfoto>${T("Tirar foto")}</button>` : ""}</div></div>
-    <label class="t" for="pf-nome">${T("Seu nome ou apelido")}</label><input class="field" id="pf-nome" name="v" value="${esc(nomeRasc)}" maxlength="30" autocomplete="off" placeholder="${T("Por exemplo: Jo")}">
-    <button class="btn" type="submit">${T("Salvar perfil")}</button><p class="note">${T("Seu perfil fica só neste aparelho. Não existe conta nem nada online.")}</p></form>`;
-  let nomeRasc = perfil.nome;
-  const redesenhar = () => { if ($("pf-nome")) nomeRasc = $("pf-nome").value; $("sheet-b").innerHTML = html(); if (corte) ligarCorte(); };
-  /* recorte: x e y são o centro do quadro em pixels da imagem; z é o zoom além do "preencher" */
+/* ---- Recorte de imagem (foto do perfil e capas): arrastar para posicionar, pinça/rolagem/controle para aproximar ---- */
+async function abrirImagem(arquivo) {
+  let bm = await createImageBitmap(arquivo);
+  if (Math.max(bm.width, bm.height) > 2400) { // foto grande de celular: reduz antes, para o recorte ficar leve
+    const k = 2400 / Math.max(bm.width, bm.height), menor = await createImageBitmap(bm, { resizeWidth: Math.round(bm.width * k), resizeHeight: Math.round(bm.height * k), resizeQuality: "high" });
+    bm.close(); bm = menor;
+  }
+  return bm;
+}
+function criarRecorte(V = 240) { // V: tamanho do quadro de recorte, em px
+  let corte = null; // x e y são o centro do quadro em pixels da imagem; z é o zoom além do "preencher"
   const escala = () => (V / Math.min(corte.w, corte.h)) * corte.z;
   function limitar() {
     const m = V / 2 / escala();
@@ -2351,13 +2349,14 @@ function editarPerfil() {
     corte.y = Math.min(corte.h - m, Math.max(m, corte.y));
   }
   function desenhar() {
-    const cv = $("corte-cv"); if (!cv) return;
+    const cv = $("corte-cv"); if (!cv || !corte) return;
     const c = cv.getContext("2d"), k = cv.width / V, sc = escala();
     limitar();
     c.clearRect(0, 0, cv.width, cv.height);
     c.drawImage(corte.bm, (V / 2 - corte.x * sc) * k, (V / 2 - corte.y * sc) * k, corte.w * sc * k, corte.h * sc * k);
   }
   function zoom(z, foco) {
+    if (!corte) return;
     const antes = escala();
     corte.z = Math.min(4, Math.max(1, z));
     if (foco) { // mantém parado o ponto sob o dedo ou o mouse
@@ -2368,12 +2367,13 @@ function editarPerfil() {
     const r = $("corte-z"); if (r) r.value = corte.z;
     desenhar();
   }
-  function ligarCorte() {
+  function ligar() {
     const cv = $("corte-cv"), dedos = new Map(); let dist0 = 0, z0 = 1;
+    if (!cv || !corte) return;
     const ponto = (e) => { const b = cv.getBoundingClientRect(); return { x: ((e.clientX - b.left) / b.width) * V, y: ((e.clientY - b.top) / b.height) * V }; };
     cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); dedos.set(e.pointerId, ponto(e)); if (dedos.size === 2) { const [a, b] = [...dedos.values()]; dist0 = Math.hypot(a.x - b.x, a.y - b.y); z0 = corte.z; } });
     cv.addEventListener("pointermove", (e) => {
-      if (!dedos.has(e.pointerId)) return;
+      if (!dedos.has(e.pointerId) || !corte) return;
       const ant = dedos.get(e.pointerId), p = ponto(e); dedos.set(e.pointerId, p);
       if (dedos.size === 2) { const [a, b] = [...dedos.values()]; if (dist0) zoom(z0 * (Math.hypot(a.x - b.x, a.y - b.y) / dist0), { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }); }
       else { const sc = escala(); corte.x -= (p.x - ant.x) / sc; corte.y -= (p.y - ant.y) / sc; desenhar(); }
@@ -2382,6 +2382,7 @@ function editarPerfil() {
     cv.addEventListener("pointerup", solta); cv.addEventListener("pointercancel", solta);
     cv.addEventListener("wheel", (e) => { e.preventDefault(); zoom(corte.z * (e.deltaY < 0 ? 1.1 : 1 / 1.1), ponto(e)); }, { passive: false });
     cv.addEventListener("keydown", (e) => {
+      if (!corte) return;
       const passo = 12 / escala(), mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
       if (mapa[e.key]) { e.preventDefault(); corte.x += mapa[e.key][0] * passo; corte.y += mapa[e.key][1] * passo; desenhar(); }
       else if (e.key === "+" || e.key === "=") { e.preventDefault(); zoom(corte.z * 1.1); }
@@ -2389,39 +2390,53 @@ function editarPerfil() {
     });
     desenhar(); setTimeout(() => cv.focus(), 60);
   }
-  function usarCorte() {
-    const sc = escala(), lado = V / sc, out = document.createElement("canvas");
-    out.width = out.height = 320;
-    out.getContext("2d").drawImage(corte.bm, corte.x - lado / 2, corte.y - lado / 2, lado, lado, 0, 0, 320, 320);
-    foto = out.toDataURL("image/jpeg", 0.86);
-    if (corte.bm.close) corte.bm.close();
-    corte = null; redesenhar();
-  }
+  return {
+    ativo: () => !!corte,
+    abrir(bm) { corte = { bm, w: bm.width, h: bm.height, x: bm.width / 2, y: bm.height / 2, z: 1 }; },
+    html: (textoOk, quadrado) => `<div class="stack corte-box"><p class="note">${T("Arraste para posicionar e use o controle para aproximar.")}</p>
+      <div class="corte${quadrado ? " quad" : ""}"><canvas id="corte-cv" width="${V * 2}" height="${V * 2}" tabindex="0" aria-label="${T("Recorte da foto. Use as setas para mover e + ou − para aproximar.")}"></canvas></div>
+      <div class="opt"><label for="corte-z">${T("Zoom")}</label><input type="range" id="corte-z" min="1" max="4" step="0.01" value="${corte.z}"></div>
+      <div class="btns"><button class="btn" type="button" data-corte-ok>${textoOk}</button><button class="btn ghost" type="button" data-corte-x>${T("Cancelar")}</button></div></div>`,
+    ligar, zoom,
+    usar(lado) { // devolve a imagem recortada num canvas quadrado e encerra o recorte
+      const sc = escala(), l = V / sc, out = document.createElement("canvas");
+      limitar();
+      out.width = out.height = lado;
+      out.getContext("2d").drawImage(corte.bm, corte.x - l / 2, corte.y - l / 2, l, l, 0, 0, lado, lado);
+      this.fechar();
+      return out;
+    },
+    fechar() { if (corte && corte.bm.close) corte.bm.close(); corte = null; },
+  };
+}
+function editarPerfil() {
+  let foto = perfil.foto;
+  const rec = criarRecorte();
+  const html = () => rec.ativo() ? rec.html(T("Usar esta foto")) : `<form class="stack"><div class="row">${foto ? `<span class="avatar" style="background-image:url('${foto}')"></span>` : avatar()}<div class="btns grow"><button class="btn ghost sm" type="button" data-foto>${T("Escolher foto")}</button>${foto ? `<button class="btn ghost sm" type="button" data-semfoto>${T("Tirar foto")}</button>` : ""}</div></div>
+    <label class="t" for="pf-nome">${T("Seu nome ou apelido")}</label><input class="field" id="pf-nome" name="v" value="${esc(nomeRasc)}" maxlength="30" autocomplete="off" placeholder="${T("Por exemplo: Jo")}">
+    <button class="btn" type="submit">${T("Salvar perfil")}</button><p class="note">${T("Seu perfil fica só neste aparelho. Não existe conta nem nada online.")}</p></form>`;
+  let nomeRasc = perfil.nome;
+  const redesenhar = () => { if ($("pf-nome")) nomeRasc = $("pf-nome").value; $("sheet-b").innerHTML = html(); if (rec.ativo()) rec.ligar(); };
   abrirFolha({
     titulo: T("Seu perfil"), html: html(),
     clique(e) {
       if (e.target.closest("[data-semfoto]")) { foto = ""; redesenhar(); }
-      if (e.target.closest("[data-corte-ok]")) return usarCorte();
-      if (e.target.closest("[data-corte-x]")) { if (corte.bm.close) corte.bm.close(); corte = null; return redesenhar(); }
+      if (e.target.closest("[data-corte-ok]")) { foto = rec.usar(320).toDataURL("image/jpeg", 0.86); return redesenhar(); }
+      if (e.target.closest("[data-corte-x]")) { rec.fechar(); return redesenhar(); }
       if (e.target.closest("[data-foto]")) {
         const inp = $("perfil-file");
         inp.onchange = async () => {
           const f = inp.files[0]; inp.value = ""; if (!f) return;
           try {
-            let bm = await createImageBitmap(f);
-            if (Math.max(bm.width, bm.height) > 2400) { // foto grande de celular: reduz antes, para o recorte ficar leve
-              const k = 2400 / Math.max(bm.width, bm.height), menor = await createImageBitmap(bm, { resizeWidth: Math.round(bm.width * k), resizeHeight: Math.round(bm.height * k), resizeQuality: "high" });
-              bm.close(); bm = menor;
-            }
+            const bm = await abrirImagem(f);
             if ($("pf-nome")) nomeRasc = $("pf-nome").value;
-            corte = { bm, w: bm.width, h: bm.height, x: bm.width / 2, y: bm.height / 2, z: 1 };
-            redesenhar();
+            rec.abrir(bm); redesenhar();
           } catch (err) { toast(T("Não deu para abrir essa imagem")); }
         };
         inp.click();
       }
     },
-    entrada(e) { if (e.target.id === "corte-z" && corte) zoom(+e.target.value); },
+    entrada(e) { if (e.target.id === "corte-z" && rec.ativo()) rec.zoom(+e.target.value); },
     enviar(d) {
       perfil = { nome: String(d.get("v") || "").trim().slice(0, 30), foto };
       try { localStorage.setItem("compasso.perfil", JSON.stringify(perfil)); } catch (err) { toast(T("Não deu para guardar a foto neste navegador")); }
