@@ -436,3 +436,10 @@ nav{padding-bottom:calc(8px + var(--base))}
 .ini-f:hover{background:var(--hover)}
 .ini-f.act{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--card))}
 .ini-vel{font-family:var(--display);font-size:18px;line-height:22px;color:var(--accent)}
+/* Ajustes em portas */
+.portas{gap:8px}
+.porta{width:100%;text-align:left;gap:14px;padding:14px}
+.porta:hover{background:var(--hover)}
+.porta-ic{width:40px;height:40px;flex:none;border-radius:calc(var(--radius) * .75);display:grid;place-items:center;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.porta-h{gap:6px;margin-left:-6px}
+.chev{color:var(--muted);display:grid;place-items:center}

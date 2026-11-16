@@ -36,6 +36,8 @@ const I = {
   rep: tr("M5 12V9.5A2.5 2.5 0 017.5 7H18M19 12v2.5a2.5 2.5 0 01-2.5 2.5H6M15.5 4.5L18 7l-2.5 2.5M8.5 14.5L6 17l2.5 2.5"),
   dial: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/>',
   radio: tr("M4 9.5h16v10H4zM8 9.5l9-5") + '<circle cx="15" cy="14.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M6.5 13h3M6.5 16h3"),
+  info: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M12 11v5.5") + '<circle cx="12" cy="7.8" r="1.2" fill="currentColor"/>',
+  chev: tr("M9.5 6l6 6-6 6"),
   home: tr("M4 11l8-6.5 8 6.5M6.5 9.5V19h11V9.5M10 19v-5h4v5"),
   lib: tr("M5 4v16M10 4v16M14.5 5l4.5 14"),
   now: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M12 7.5V12l3 2"),
@@ -417,7 +419,7 @@ async function procurarNoAparelho(manual) {
   catch (e) { procurando = false; renderBib(); if (manual) toast(T("Não deu para ler as músicas do aparelho")); return; }
   const primeira = !cfg.aparelho;
   cfg.aparelho = true;
-  // pastas de áudio de conversa e gravações começam desligadas (dá para ligar em Ajustes › Pastas do aparelho)
+  // pastas de áudio de conversa e gravações começam desligadas (dá para ligar em Ajustes › Reprodução e biblioteca › Pastas do aparelho)
   const vistas = new Set(cfg.pastasVistas || []), fora = new Set(cfg.pastasFora || []);
   for (const m of lista) { const p = m.pasta || ""; if (!vistas.has(p)) { vistas.add(p); if (OCULTAR_PASTA.test(p)) fora.add(p); } }
   cfg.pastasVistas = [...vistas]; cfg.pastasFora = [...fora]; salvarCfg();
@@ -454,7 +456,7 @@ async function procurarNoAparelho(manual) {
     toast(partesMsg.length ? partesMsg.join(". ") : (lista.length ? T("Nenhuma música nova") : T("Nenhuma música encontrada no aparelho")),
       novasFaixas.length ? [T("Ver"), () => { plAberta = "auto:novas"; ir("playlists"); renderPl(); }] : undefined);
   }
-  if (primeira && fora.size && novasFaixas.length) setTimeout(() => toast(T("Algumas pastas de áudios de conversa e gravações ficaram de fora. Mude em Ajustes › Pastas do aparelho.")), 4200);
+  if (primeira && fora.size && novasFaixas.length) setTimeout(() => toast(T("Algumas pastas de áudios de conversa e gravações ficaram de fora. Mude em Ajustes › Reprodução e biblioteca › Pastas do aparelho.")), 4200);
   let refazer = novasFaixas;
   if (cfg.apVer !== 2) { // 1.17.0 dava a mesma capa a músicas sem álbum da mesma pasta: corrige uma vez
     cfg.apVer = 2; salvarCfg();
@@ -1247,7 +1249,7 @@ $("lib").addEventListener("click", (e) => {
   const sa = t.closest("[data-selacao]"); if (sa && sel) return acaoSel(sa.dataset.selacao);
   const si = t.closest("[data-sel-id]"); if (si && sel) { const id = si.dataset.selId; if (sel.has(id)) sel.delete(id); else sel.add(id); return renderBib(); }
   const ip = t.closest("[data-irpl]"); if (ip) { plAberta = ip.dataset.irpl; return ir("playlists"); }
-  if (t.closest("[data-esconder-ex]")) { cfg.exemplos = false; cfg.exemplosMexeu = true; salvarCfg(); mudouExemplos(); return toast(T("Exemplos escondidos. Para ver de novo: Ajustes › Biblioteca")); }
+  if (t.closest("[data-esconder-ex]")) { cfg.exemplos = false; cfg.exemplosMexeu = true; salvarCfg(); mudouExemplos(); return toast(T("Exemplos escondidos. Para ver de novo: Ajustes › Reprodução e biblioteca")); }
   if (t.closest("[data-voltar]")) { aberto = null; renderBib(); return; }
   const al = t.closest("[data-al]"); if (al) return abrirNaBib("album", al.dataset.al);
   const ar = t.closest("[data-ar]"); if (ar) return abrirNaBib("artista", ar.dataset.ar);
@@ -1541,11 +1543,27 @@ function cardTema(t) {
 }
 const tg = (chave, rotulo) => `<div class="opt"><span id="l-${chave}">${rotulo}</span><button class="tg" data-tg="${chave}" role="switch" aria-checked="${!!cfg[chave]}" aria-labelledby="l-${chave}"></button></div>`;
 const faixaAjuste = (chave, rotulo, ligado) => `<div class="opt sub-opt"${ligado ? "" : " hidden"}><label for="r-${chave}">${rotulo}</label><input type="range" id="r-${chave}" data-rg="${chave}" min="0.15" max="1" step="0.05" value="${cfg[chave]}"></div>`;
+/* Ajustes em quatro portas: a raiz é curta (idioma + portas) e cada porta abre uma tela própria */
+let porta = null;
+const PORTAS = [
+  ["aparencia", T("Aparência"), T("Temas, cores e visual"), "thm"],
+  ["som", T("Som"), T("Equalizador, época e efeitos"), "sliders"],
+  ["reproducao", T("Reprodução e biblioteca"), T("Como as músicas tocam e onde ficam"), "lib"],
+  ["sobre", T("Sobre"), T("Backup, versão e privacidade"), "info"],
+];
+function abrirPorta(id) { porta = id; renderTemas(); $("main").scrollTop = 0; }
 function renderTemas() {
   if (editando) return renderEditor();
   const t = temaAtual(), cores = DESTAQUES[escuro(t) ? "escuro" : "claro"];
-  $("tm").innerHTML = `<div><h1>${T("Ajustes")}</h1><p class="sub">${T("Temas, efeitos e reprodução. Tudo fica salvo neste aparelho.")}</p></div>
+  if (!porta) {
+    $("tm").innerHTML = `<div><h1>${T("Ajustes")}</h1><p class="sub">${T("Temas, efeitos e reprodução. Tudo fica salvo neste aparelho.")}</p></div>
     <div class="card opt"><label class="t" for="s-lang">${T("Idioma")}</label><select id="s-lang" class="mini-sel" data-lang>${Object.entries(IDIOMAS).map(([k, n]) => `<option value="${k}"${k === LANG ? " selected" : ""}>${n}</option>`).join("")}</select></div>
+    <div class="stack portas">${PORTAS.map(([id, nome, resumo, ic]) => `<button class="card row porta" data-porta="${id}"><span class="porta-ic">${ico(ic, 22)}</span><span class="grow"><span class="t clip">${nome}</span><span class="sub clip">${resumo}</span></span><span class="chev">${ico("chev", 18)}</span></button>`).join("")}</div>`;
+    return;
+  }
+  const cab = `<div class="row porta-h"><button class="ic sm" data-porta-voltar aria-label="${T("Voltar")}">${ico("back", 22)}</button><h1 class="grow clip">${PORTAS.find((p) => p[0] === porta)[1]}</h1></div>`;
+  const partes = {
+    aparencia: `
     <p class="sec-t">${T("Temas")}</p>
     <div class="themes">${todosTemas().map(cardTema).join("")}<button class="th add" data-criar>${ico("plus")}${T("Criar tema")}</button></div>
     <p class="sec-t">${T("Galeria")}</p>
@@ -1567,34 +1585,41 @@ function renderTemas() {
       ${cfg.visual === "led" ? `<p class="t">${T("Cores do LED")}</p><div class="chips" role="group" aria-label="${T("Cores do LED")}">${[["arte", T("Arte da capa")], ["capa", T("Cores da capa")], ["tema", T("Cores do tema")], ["classico", T("Clássico")]].map(([k, n]) => `<button data-ledcor="${k}" aria-pressed="${cfg.ledCor === k}" class="${cfg.ledCor === k ? "on" : ""}">${n}</button>`).join("")}</div>` : ""}
       <p class="t">${T("Formato da capa")}</p><div class="chips" role="group" aria-label="${T("Formato da capa")}">${[["quadrada", T("Quadrada")], ["redonda", T("Redonda")]].map(([k, n]) => `<button data-forma="${k}" aria-pressed="${cfg.formaCapa === k}" class="${cfg.formaCapa === k ? "on" : ""}">${n}</button>`).join("")}</div>
       <p class="note">${T("Vale para Relógio, Aura, Espectro e Anel. No Vinil a capa é sempre redonda.")}</p>
-      ${tg("corCapa", T("Cores do visual seguem a capa da música"))}
-      <p class="t">${T("Época do som")}</p><div class="chips" role="group" aria-label="${T("Época do som")}">${Object.entries(ERAS).map(([k, [n]]) => `<button data-epoca="${k}" aria-pressed="${String(cfg.era) === k}" class="${String(cfg.era) === k ? "on" : ""}">${n}</button>`).join("")}</div>
+      ${tg("corCapa", T("Cores do visual seguem a capa da música"))}</div>
+    <div class="card stack"><h2>${T("Compartilhar tema")}</h2><p class="note">${T("Um tema é um arquivo JSON pequeno. Exporte o tema em uso ou importe um de outra pessoa.")}</p>
+      <div class="btns"><button class="btn ghost sm" data-exp="copiar">${T("Copiar JSON")}</button><button class="btn ghost sm" data-exp="baixar">${T("Baixar .json")}</button><button class="btn ghost sm" data-imp="arquivo">${T("Abrir .json")}</button><button class="btn ghost sm" data-imp="colar">${T("Colar JSON")}</button></div></div>`,
+    som: `
+    <div class="card stack"><h2>${T("Época do som")}</h2><div class="chips" role="group" aria-label="${T("Época do som")}">${Object.entries(ERAS).map(([k, [n]]) => `<button data-epoca="${k}" aria-pressed="${String(cfg.era) === k}" class="${String(cfg.era) === k ? "on" : ""}">${n}</button>`).join("")}</div>
       <p class="note">${ERA_DESC[cfg.era] || ERA_DESC.off} ${T("Cada época também troca o visual, e você pode escolher outro depois.")}</p>
       ${cfg.era !== "off" && cfg.era !== "90" ? tg("eraRuido", T("Chiado e estalos")) : ""}</div>
-    <div class="card stack"><h2>${T("Reprodução")}</h2>
+    <div class="card stack"><h2>${T("Ajustes do som")}</h2>
       <div class="opt"><label for="s-xfade">${T("Crossfade entre músicas")}</label><select id="s-xfade" class="mini-sel" data-sel="xfade">${[[0, T("Desligado")], [2, T("2 segundos")], [4, T("4 segundos")], [6, T("6 segundos")], [8, T("8 segundos")]].map(([v, n]) => `<option value="${v}"${+cfg.xfade === v ? " selected" : ""}>${n}</option>`).join("")}</select></div>
       <div class="opt"><label for="s-vel">${T("Velocidade")}</label><select id="s-vel" class="mini-sel" data-sel="vel">${[0.75, 1, 1.25, 1.5, 2].map((v) => `<option value="${v}"${+cfg.vel === v ? " selected" : ""}>${decimal(String(v))}×</option>`).join("")}</select></div>
       ${tg("nivelar", T("Nivelar o volume entre as músicas"))}
+      <div class="btns"><button class="btn ghost sm" data-abrireq>${ico("sliders", 18)}${T("Equalizador")}</button></div></div>`,
+    reproducao: `
+    <div class="card stack"><h2>${T("Reprodução")}</h2>
       ${tg("fade", T("Suavizar o volume ao pausar e tocar"))}
       ${tg("tela", T("Manter a tela ligada em Tocando agora"))}
       <div class="opt"><label for="s-anterior">${T("Botão Anterior")}</label><select id="s-anterior" class="mini-sel" data-sel="anterior"><option value="reiniciar"${cfg.anterior !== "sempre" ? " selected" : ""}>${T("Recomeça a música")}</option><option value="sempre"${cfg.anterior === "sempre" ? " selected" : ""}>${T("Volta para a anterior")}</option></select></div>
       <p class="note">${T("Com \"Recomeça a música\", o Anterior volta para o começo se já passaram 3 segundos, e só então para a música anterior.")}</p>
-      <div class="btns"><button class="btn ghost sm" data-abrireq>${ico("sliders", 18)}${T("Equalizador")}</button><button class="btn ghost sm" data-abrirsono>${ico("timer", 18)}${T("Temporizador")}</button></div></div>
-    <div class="card stack"><h2>${T("Backup")}</h2><p class="note">${T("Guarda num arquivo as playlists, favoritas, estatísticas, letras, perfil, temas e ajustes. As músicas não entram: no aparelho novo, importe as músicas primeiro e depois restaure.")}</p>
-      <div class="btns"><button class="btn ghost sm" data-bkp>${T("Salvar backup")}</button><button class="btn ghost sm" data-rst>${T("Restaurar backup")}</button></div></div>
-    <div class="card stack"><h2>${T("Compartilhar tema")}</h2><p class="note">${T("Um tema é um arquivo JSON pequeno. Exporte o tema em uso ou importe um de outra pessoa.")}</p>
-      <div class="btns"><button class="btn ghost sm" data-exp="copiar">${T("Copiar JSON")}</button><button class="btn ghost sm" data-exp="baixar">${T("Baixar .json")}</button><button class="btn ghost sm" data-imp="arquivo">${T("Abrir .json")}</button><button class="btn ghost sm" data-imp="colar">${T("Colar JSON")}</button></div></div>
+      <div class="btns"><button class="btn ghost sm" data-abrirsono>${ico("timer", 18)}${T("Temporizador")}</button></div></div>
     <div class="card stack"><h2>${T("Biblioteca")}</h2>${tg("exemplos", T("Mostrar as músicas de exemplo"))}${tg("coracoes", T("Mostrar o coração das favoritas nas listas"))}
       ${faixas.some((x) => x.oculta) ? `<div class="opt"><span>${plural(faixas.filter((x) => x.oculta).length, "música oculta", "músicas ocultas")}</span><button class="btn ghost sm" data-verocultas>${T("Ver")}</button></div>` : ""}
       ${MUS ? `<div class="btns"><button class="btn ghost sm" data-aparelho>${T("Procurar novas músicas no aparelho")}</button>${importadas().some((x) => x.mid) ? `<button class="btn ghost sm" data-pastasap>${T("Pastas do aparelho")}</button>` : ""}<button class="btn ghost sm" data-pastasesc>${T("Pastas escolhidas")}${(cfg.pastasEscolhidas || []).length ? " · " + cfg.pastasEscolhidas.length : ""}</button></div>` : ""}
       <p class="note" id="espaco">${T("Calculando o espaço usado…")}</p>
       ${importadas().length ? `<div class="btns"><button class="btn danger sm" data-limparbib>${T("Apagar todas as músicas importadas")}</button></div>` : ""}
-      ${NATIVO ? "" : `<p class="note">${T("Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita, ↑ e ↓ mudam o volume, M deixa mudo.")}</p>`}</div>
+      ${NATIVO ? "" : `<p class="note">${T("Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita, ↑ e ↓ mudam o volume, M deixa mudo.")}</p>`}</div>`,
+    sobre: `
+    <div class="card stack"><h2>${T("Backup")}</h2><p class="note">${T("Guarda num arquivo as playlists, favoritas, estatísticas, letras, perfil, temas e ajustes. As músicas não entram: no aparelho novo, importe as músicas primeiro e depois restaure.")}</p>
+      <div class="btns"><button class="btn ghost sm" data-bkp>${T("Salvar backup")}</button><button class="btn ghost sm" data-rst>${T("Restaurar backup")}</button></div></div>
     <div class="card stack"><h2>${T("Sobre")}</h2><p class="note">${NATIVO ? T("Orolon Player {0}. Sem anúncios, sem conta e sem coleta de dados: tudo o que você guarda fica neste aparelho.", VERSAO) : T("Orolon Player {0}. Código aberto, sem anúncios e sem conta. Se o app te ajuda, apoiar o projeto mantém ele assim.", VERSAO)}</p>
       ${NATIVO ? "" : `<div class="btns"><a class="btn sm" href="https://github.com/sponsors/KiraraHoshi" target="_blank" rel="noopener">${ico("heartOn", 18)}${T("Apoiar o projeto")}</a><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player" target="_blank" rel="noopener">${T("Código no GitHub")}</a></div>`}
       <div class="btns">${instalado() ? "" : `<button class="btn ghost sm" data-instalar>${T("Instalar como app")}</button>`}<button class="btn ghost sm" data-boasvindas>${T("Ver as boas-vindas")}</button><a class="btn ghost sm" href="${linkPrivacidade()}" target="_blank" rel="noopener">${T("Política de privacidade")}</a></div>
-      ${NATIVO ? `<p class="note">${T("Enquanto o Orolon não está na Google Play, as versões novas ficam no GitHub. Baixe o APK e instale por cima deste: suas músicas, playlists e ajustes continuam. O app não procura atualizações sozinho, porque não usa a internet.")}</p><div class="btns"><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player/releases/tag/android-teste" target="_blank" rel="noopener">${T("Ver se há versão nova")}</a></div>` : `<p class="note">${T("Os dois botões de cima e o da política de privacidade abrem o navegador. O app em si não se conecta a nada.")}</p>`}</div>`;
-  espaco();
+      ${NATIVO ? `<p class="note">${T("Enquanto o Orolon não está na Google Play, as versões novas ficam no GitHub. Baixe o APK e instale por cima deste: suas músicas, playlists e ajustes continuam. O app não procura atualizações sozinho, porque não usa a internet.")}</p><div class="btns"><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player/releases/tag/android-teste" target="_blank" rel="noopener">${T("Ver se há versão nova")}</a></div>` : `<p class="note">${T("Os dois botões de cima e o da política de privacidade abrem o navegador. O app em si não se conecta a nada.")}</p>`}</div>`,
+  };
+  $("tm").innerHTML = cab + partes[porta];
+  if (porta === "reproducao") espaco();
 }
 async function espaco() {
   const imp = importadas().filter((x) => x.arq), soma = imp.reduce((s, x) => s + x.arq.size, 0), ap = importadas().filter((x) => x.mid).length;
@@ -1643,6 +1668,7 @@ async function copiar(texto) {
   }
 }
 $("tm").addEventListener("click", (e) => {
+  { const pt = e.target.closest("[data-porta]"); if (pt) return abrirPorta(pt.dataset.porta); if (e.target.closest("[data-porta-voltar]")) return abrirPorta(null); }
   if (editando) return cliqueEditor(e);
   const t = e.target;
   const ed = t.closest("[data-editar]"); if (ed) { const x = temaPorId(ed.dataset.editar); editando = { id: x.id, rascunho: { ...x } }; renderTemas(); $("main").scrollTop = 0; return; }
@@ -2067,7 +2093,7 @@ function renderInicio() {
   recIni = (recA ? recA.ids() : []).filter((id) => visivel(porId.get(id))).slice(0, 10);
   const rec = recIni.length ? `<div class="stack" id="ini-rec"><p class="sec-t">${T("Tocadas há pouco")}</p><div class="ini-fileira">${recIni.map((id, i) => { const y = porId.get(id); return `<button class="alb ini-alb" data-ini-rec="${i}">${capa(y, "cover")}<span class="t clip">${esc(y.t)}</span><span class="sub clip">${esc(y.a)}</span></button>`; }).join("")}</div></div>` : "";
   const nFav = AUTO.find((a) => a.id === "auto:fav").ids().length;
-  const fav = nFav ? `<button class="card row ini-fav" id="ini-fav" data-ini-fav><span class="thumb ini-favic">${ico("heartOn", 22)}</span><span class="grow"><span class="t">${T("Favoritas")}</span><span class="sub">${plural(nFav, "música", "músicas")}</span></span>${ico("next", 18)}</button>` : "";
+  const fav = nFav ? `<button class="card row ini-fav" id="ini-fav" data-ini-fav><span class="thumb ini-favic">${ico("heartOn", 22)}</span><span class="grow"><span class="t">${T("Favoritas")}</span><span class="sub">${plural(nFav, "música", "músicas")}</span></span><span class="chev">${ico("chev", 18)}</span></button>` : "";
   I0.innerHTML = cab + cont + ferr + rec + fav;
   if (typeof renderFerramentas === "function") renderFerramentas();
 }
@@ -2533,7 +2559,7 @@ function ocultar(id, sim) {
   salvarFaixa(x);
   renderBib(); renderPl(); renderFilaAberta(); paint();
   if ($("app").dataset.view === "temas" && !editando) renderTemas();
-  toast(sim ? T("Música oculta. Para mostrar de novo: Ajustes › Biblioteca") : T("A música voltou para a biblioteca"));
+  toast(sim ? T("Música oculta. Para mostrar de novo: Ajustes › Reprodução e biblioteca") : T("A música voltou para a biblioteca"));
 }
 function verOcultas() {
   const html = () => { const o = faixas.filter((x) => x.oculta); return o.length ? `<div class="list">${o.map((x) => `<div class="track">${capa(x)}<span class="grow"><span class="t clip">${esc(x.t)}</span><span class="sub clip">${esc(linha2(x))}</span></span><button class="btn ghost sm" data-mostrar="${x.id}">${T("Mostrar")}</button></div>`).join("")}</div>` : vazio(T("Nenhuma música oculta.")); };
@@ -2970,7 +2996,7 @@ function acaoSel(a) {
   }
   const reais = ids.filter((id) => !porId.get(id).demo);
   if (!reais.length) return toast(T("As músicas de exemplo não podem ser ocultadas nem removidas aqui"));
-  if (a === "ocultar") { reais.forEach((id) => ocultar(id, true)); sel = null; renderBib(); return toast(plural(reais.length, "música oculta", "músicas ocultas") + T(". Para mostrar de novo: Ajustes › Biblioteca")); }
+  if (a === "ocultar") { reais.forEach((id) => ocultar(id, true)); sel = null; renderBib(); return toast(plural(reais.length, "música oculta", "músicas ocultas") + T(". Para mostrar de novo: Ajustes › Reprodução e biblioteca")); }
   if (a === "remover") confirmar(T("Remover da biblioteca?"), plural(reais.length, "música sai", "músicas saem") + T(" do Orolon e das playlists. Os arquivos originais continuam no seu aparelho."), T("Remover"), () => { reais.forEach(removerFaixa); sel = null; renderBib(); toast(plural(reais.length, "música removida", "músicas removidas")); });
 }
 
@@ -3021,6 +3047,7 @@ let historico = [], rolagens = {}; // telas visitadas, para o voltar refazer o c
 function ir(v, voltando) {
   if (!TELAS_VALIDAS.includes(v)) v = "inicio";
   const antes = $("app").dataset.view;
+  if (antes === "temas" && v !== "temas") porta = null; // Ajustes reabre na raiz
   if (antes && antes !== v) { rolagens[antes] = $("main").scrollTop; if (!voltando) { historico.push(antes); if (historico.length > 30) historico.shift(); } }
   $("app").dataset.view = v;
   document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + v));
@@ -3082,7 +3109,7 @@ const TEXTOS_FIXOS = [];
       else if (typeof v === "object" && typeof v !== "function") visitar(v);
     }
   };
-  [FONTES, BASE, CAMPOS, DESTAQUES, ORDENS, EQ_P, AUTO, ERAS, ERA_DESC, VISUAIS, GALERIA, TELAS].forEach(visitar);
+  [FONTES, BASE, CAMPOS, DESTAQUES, ORDENS, EQ_P, AUTO, ERAS, ERA_DESC, VISUAIS, GALERIA, TELAS, PORTAS, FERRAMENTAS].forEach(visitar);
 })();
 function mudarIdioma(l) {
   if (!IDIOMAS[l] || l === LANG) return;
@@ -3143,6 +3170,7 @@ function voltarUmPasso() {
   if (v === "biblioteca" && aberto) { aberto = null; renderBib(); return true; }
   if (v === "playlists" && plAberta) { plAberta = null; renderPl(); return true; }
   if (v === "temas" && editando) { editando = null; aplicarTema(); renderTemas(); return true; }
+  if (v === "temas" && porta) { abrirPorta(null); return true; }
   while (historico.length) { const p = historico.pop(); if (p !== v) { ir(p, true); return true; } } // volta para a tela anterior, não para a primeira
   if (v !== "inicio") { ir("inicio", true); return true; }
   return false;
@@ -3152,6 +3180,7 @@ if (PLUG.App) nat(() => PLUG.App.addListener("backButton", () => { if (!voltarUm
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && folha) return fecharFolha();
   if (e.key === "Escape" && emPalco()) return alternarPalco(false);
+  if (e.key === "Escape" && APP.dataset.view === "temas" && porta && !editando) return abrirPorta(null);
   const alvo = e.target, tag = alvo.tagName;
   if (folha || e.ctrlKey || e.metaKey || e.altKey || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || alvo.isContentEditable) return;
   if (e.key === " " && tag !== "BUTTON") { e.preventDefault(); alternar(); }
