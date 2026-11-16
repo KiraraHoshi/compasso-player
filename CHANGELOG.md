@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 1.23.0
+- **A capa sente a batida de verdade.** O app passou a ouvir o bumbo, a caixa e o prato separados, e só conta o que é golpe de bateria: nota de baixo e voz não fazem mais a capa pular. Em música com letra, a capa pulsa no ritmo em vez de tremer o tempo todo.
+- **Andamento:** o app percebe o andamento da música. Com ritmo firme, a capa pulsa no tempo forte; com ritmo quebrado, segue cada bumbo.
+- **Capa com peso:** leva um soco no bumbo e volta como mola, e respira pouco entre as batidas. Dois golpes colados não fazem a capa tremer.
+- **Desenho junto com o som:** os visuais esperam o tempo que o som leva para sair do aparelho (maior em fone sem fio), quando o aparelho informa esse tempo. O som em si não ganha atraso.
+- O modo leve, a opção "Reagir à batida" e a força da batida continuam valendo como antes.
+
 ## 1.22.0
 - **Estrelas:** dê de 1 a 5 estrelas a cada música, no topo do menu "⋯" (o botão Mais do Tocando agora abre o mesmo menu). Tocar na mesma nota de novo tira a nota. O coração das favoritas continua igual.
 - As notas viram duas playlists automáticas, **5 estrelas** e **4 ou mais**, que aparecem quando têm músicas, e uma ordem nova na Biblioteca.

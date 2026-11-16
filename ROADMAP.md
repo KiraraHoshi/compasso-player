@@ -61,6 +61,8 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - ✅ **1.20 Uso:** modo carro, "já começar tocando" ao abrir, pausar ao tirar o fone, tocar ao conectar o fone e notificação abrindo o Tocando.
 - ✅ **1.21 Personalizar:** pincel no Tocando agora com a folha "Personalizar", capa personalizada de álbum e de música, "Enviar backup" e backup automático numa pasta.
 - ✅ **1.22 Biblioteca:** estrelas de 1 a 5, mais ordens, playlists `.m3u`, repetir trecho (A-B) e marcadores para áudios longos.
+- **1.23 Movimento (parte 1):** escuta nova de batidas (bumbo, caixa e prato), andamento da música e capa com mola. Em teste na branch `1.23-movimento`.
+- Próximas partes do movimento: Aura refinada, um mostrador por vez, Relógio com ponteiros.
 - Depois: prints novos da loja e do README.
 
 ## Sugestões para versões futuras (anotadas em 16/11/2026)
