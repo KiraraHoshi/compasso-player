@@ -9,6 +9,48 @@ const semRolarDeLado = async (p) => {
 
 export default [
   {
+    nome: "seis ferramentas na ordem",
+    rodar: async (p) => assert.deepEqual(await p.avaliar(() => [...document.querySelectorAll("#ini-ferr [data-ferr]")].map((b) => b.dataset.ferr)), ["eq", "sono", "visual", "epoca", "vel", "palco"]),
+  },
+  {
+    nome: "equalizador abre a folha e voltar fecha",
+    rodar: async (p) => {
+      await p.clicar("[data-ferr=eq]");
+      assert.equal(await p.avaliar(() => document.getElementById("sheet").hidden), false);
+      assert.equal(await p.voltar(), true);
+      await p.esperar(() => document.getElementById("sheet").hidden, 1500); // some depois da animação de fechar
+      assert.equal(await p.avaliar(() => document.getElementById("app").dataset.view), "inicio");
+    },
+  },
+  {
+    nome: "visual pela folha muda o visual",
+    rodar: async (p) => {
+      await p.clicar("[data-ferr=visual]");
+      await p.clicar("#sheet [data-vis=vinil]");
+      assert.equal(await p.avaliar(() => cfg.visual), "vinil");
+    },
+  },
+  {
+    nome: "época pela folha muda a época",
+    rodar: async (p) => {
+      await p.clicar("[data-ferr=epoca]");
+      await p.clicar("#sheet [data-epoca='80']");
+      assert.equal(await p.avaliar(() => String(cfg.era)), "80");
+    },
+  },
+  {
+    nome: "EQ ligado marca a ferramenta",
+    rodar: async (p) => {
+      await p.avaliar(() => { cfg.eq.on = true; renderFerramentas(); });
+      assert.ok(await p.avaliar(() => document.querySelector("[data-ferr=eq]").classList.contains("act")));
+    },
+  },
+  {
+    nome: "grade de ferramentas não estoura em 320 px",
+    largura: 320,
+    rodar: async (p) => assert.ok(await p.avaliar(() => { const g = document.getElementById("ini-ferr"); return g.scrollWidth <= g.clientWidth; })),
+  },
+  {
     nome: "saudação por hora",
     rodar: async (p) => {
       assert.equal(await p.avaliar(() => saudacao(6, "Jo")), "Bom dia, Jo");

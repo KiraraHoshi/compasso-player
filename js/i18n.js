@@ -611,6 +611,8 @@ const EN = {
  "Continuar de onde parou": "Pick up where you left off",
  "faltam {0}": "{0} left",
  "Tocadas há pouco": "Recently played",
+ "Visual": "Visual",
+ "Mais opções do mostrador em Ajustes › Aparência.": "More display options in Settings › Appearance.",
  "Álbum": "Album",
  "Álbuns": "Albums",
  "Época do som": "Sound era",
