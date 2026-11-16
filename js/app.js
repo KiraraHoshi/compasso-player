@@ -3889,7 +3889,7 @@ const brilhoAura = { lento: 0, desligado: false }, temFiltro = typeof CanvasRend
 function vigiarBrilho(fq) {
   const ms = fq * 16.667;
   brilhoAura.lento = fq > 2.7 ? brilhoAura.lento + ms : Math.max(0, brilhoAura.lento - ms * 0.5);
-  if (brilhoAura.lento > 3000) brilhoAura.desligado = true;
+  if (brilhoAura.lento > 3000 && !brilhoAura.desligado) { brilhoAura.desligado = true; APP.dataset.semfx = "1"; } // o grão e as linhas de varredura dos estilos saem junto
 }
 const usarBrilho = () => temFiltro && !cfg.leve && !calmo && !brilhoAura.desligado;
 function passoCorAura() { // a cor segue a da capa aos poucos: na troca de música, uma passa para a outra

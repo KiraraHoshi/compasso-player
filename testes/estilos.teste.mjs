@@ -114,6 +114,23 @@ export default [
     },
   },
   {
+    nome: "aparelho que não dá conta: o grão e as linhas de varredura desligam sozinhos, junto com o brilho",
+    hash: "tocando",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        const fx = document.getElementById("fx-aura"), ve = () => fx.getClientRects().length > 0, o = {};
+        brilhoAura.lento = 0; brilhoAura.desligado = false; delete APP.dataset.semfx;
+        cfg.visual = "aura"; cfg.auraEst = "lofi"; aplicarVisual(); o.antes = ve();
+        for (let i = 0; i < 300; i++) vigiarBrilho(2); o.a30 = ve(); // 30 quadros por segundo (economia de bateria) não desliga
+        for (let i = 0; i < 100; i++) vigiarBrilho(3.2); o.lento = ve();
+        cfg.auraEst = "oitenta"; aplicarVisual(); o.linhas = ve();
+        brilhoAura.lento = 0; brilhoAura.desligado = false; delete APP.dataset.semfx; cfg.auraEst = "padrao"; aplicarVisual();
+        return o;
+      });
+      assert.deepEqual(r, { antes: true, a30: true, lento: false, linhas: false });
+    },
+  },
+  {
     nome: "no laço: com Phonk tocando a capa ganha tremida e clarão; ao voltar para o Padrão tudo zera",
     hash: "tocando",
     rodar: async (p) => {

@@ -7,6 +7,7 @@
   - **Anos 80:** neon rosa e ciano mais forte e linhas de varredura de TV antiga.
 - Os três estilos novos estão liberados para teste. No futuro farão parte do pacote Apoiador (só visual; nenhuma função do app é paga).
 - Com o modo leve ou com "reduzir movimento" do aparelho, os estilos mudam só as cores: nada treme, balança ou pisca.
+- Se o aparelho não der conta, o grão e as linhas de varredura desligam sozinhos (junto com o brilho da Aura) até o app ser fechado.
 
 ## 1.25.1
 - **Correção:** ao sair do LED para outro mostrador pelo pincel, a capa ficava esticada (o quadrado virava retângulo e o redondo virava oval) até sair e voltar ao Tocando agora.
