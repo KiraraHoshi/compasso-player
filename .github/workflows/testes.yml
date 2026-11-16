@@ -1,0 +1,22 @@
+# Roda os testes do Orolon (Chrome sem janela) a cada envio, em qualquer branch.
+# Um erro aparece aqui mesmo que ninguém tenha rodado os testes no PC.
+name: Testes
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Rodar os testes
+        run: node testes/rodar.mjs
