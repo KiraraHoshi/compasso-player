@@ -817,7 +817,7 @@ function posAtual() {
   if (!x.demo) return el && el.dataset.id === x.id ? el.currentTime : pos;
   return playing && ctx ? posBase + (ctx.currentTime - inicioT) : pos;
 }
-function aoTrocar(x) { escuta.zerar(); if (trecho && (!x || trecho.id !== x.id)) limparTrecho(); renderInicio(); luz(coresDe(x)); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
+function aoTrocar(x) { escuta.zerar(); recolherAura(performance.now(), dirTroca); dirTroca = 1; if (trecho && (!x || trecho.id !== x.id)) limparTrecho(); renderInicio(); luz(coresDe(x)); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
 function carregar(auto) {
   const x = cur();
   if (!x) { playing = false; paint(); return; }
@@ -878,7 +878,7 @@ function proxima() { if (!queue.length) return; qi = (qi + 1) % queue.length; ca
 function anterior() {
   if (!queue.length) return;
   if (cfg.anterior !== "sempre" && posAtual() > 3) return buscarSeg(0);
-  qi = (qi - 1 + queue.length) % queue.length; carregar(playing);
+  qi = (qi - 1 + queue.length) % queue.length; dirTroca = -1; carregar(playing);
 }
 function buscarSeg(s) {
   escuta.soltarAndamento(); // o tempo forte muda de lugar ao pular
@@ -1166,6 +1166,7 @@ function criarMola() {
 }
 const escuta = criarEscuta(), molaCapa = criarMola();
 let binsBat = null, golpeBumbo = 0; // faixas da escuta em posições do analisador; golpe do quadro atual
+const golpesQ = { bumbo: 0, caixa: 0, prato: 0 }; // força do golpe de cada faixa neste quadro (0 = nenhum)
 function acertarAtrasoViz() { // a confirmar no Android: se o aparelho não informa o atraso do som, fica em zero (como era antes)
   if (!ctx || !atrasoViz) return;
   const l = Math.max(0, Math.min(0.4, +ctx.outputLatency || 0));
@@ -1211,11 +1212,12 @@ function quadro() {
     let s = 0; for (let i = 1; i < 19; i++) s += bins[i];
     alvo = Math.min(1, s / 18 / 170);
     const g = (bins[0] + bins[1] + bins[2] + bins[3]) / 4, agora = performance.now();
-    golpeBumbo = APP.dataset.view === "tocando" ? ouvirBatidas(agora).bumbo : 0; // escuta nova: só o que é batida de verdade (e só com o Tocando na tela)
+    const gq = APP.dataset.view === "tocando" ? ouvirBatidas(agora) : null; // escuta nova: só o que é batida de verdade (e só com o Tocando na tela)
+    golpeBumbo = golpesQ.bumbo = gq ? gq.bumbo : 0; golpesQ.caixa = gq ? gq.caixa : 0; golpesQ.prato = gq ? gq.prato : 0;
     if (golpeBumbo) { alvoBatida = Math.max(alvoBatida, golpeBumbo); ultimaBatida = agora; }
     // pulso da capa: segue a força dos graves acima do nível médio da música, para pulsar mesmo em músicas altas
     const gv = g / 255; graveEnv += (gv - graveEnv) * sq(gv > graveEnv ? 0.35 : 0.1); gravePiso += (graveEnv - gravePiso) * sq(0.015);
-  } else { golpeBumbo = 0; if (!playing) alvo = 0.25; graveEnv *= Math.pow(0.92, fqQ); }
+  } else { golpeBumbo = golpesQ.bumbo = golpesQ.caixa = golpesQ.prato = 0; if (!playing) alvo = 0.25; graveEnv *= Math.pow(0.92, fqQ); }
   alvoBatida *= Math.pow(0.93, fqQ); batida += (alvoBatida - batida) * sq(0.22);
   const naTela = APP.dataset.view === "tocando", leve = !!cfg.leve;
   // os tracinhos só se mexem quando o mostrador de relógio está na tela
@@ -3436,7 +3438,7 @@ function contornoCapa(c, W, cx, off, inverso) { // contorno da capa (mais um afa
   c.closePath();
 }
 const FOLGA_VIZ = 1.5; // Aura e Espectro desenham numa área 50% maior que o mostrador
-let auraNiv = new Float32Array(64), ondinhas = [], ultOndinha = 0, auraLimpa = true;
+let auraNiv = new Float32Array(64), auraLimpa = true;
 /* Aura: um anel suave em volta da capa (Relógio e Vinil) que respira com a música, sem exagero */
 const temAura = (v) => v === "aura" && APP.dataset.letra !== "1";
 function desenharViz() {
@@ -3636,10 +3638,43 @@ function desenharNeon(c, W, vivo) {
   c.globalAlpha = 0.9; c.fillStyle = "#fff"; c.fillRect(0, cy - W * 0.0018, W, W * 0.0036);
   c.globalAlpha = 1;
 }
-/* Aura: uma forma macia que envolve a capa e flui com a música, no estilo dos visualizadores tipo Trap Nation:
-   reação rápida, forma suavizada entre vizinhos (parece líquido) e duas camadas de eco atrás que acompanham com atraso */
+/* Aura (1.24, refinada): uma forma macia que envolve a capa e flui com a música, no estilo dos visualizadores tipo Trap Nation.
+   Brilho macio (pintado pequeno e borrado, depois esticado), poeira com profundidade que cintila no prato,
+   uma onda em cada bumbo que sai rápido e freia, e um fio de luz que clareia na caixa. */
 const AURA_N = 64, auraEco1 = new Float32Array(AURA_N), auraEco2 = new Float32Array(AURA_N), auraTmp = new Float32Array(AURA_N);
-let auraGiro = 0;
+let auraGiro = 0, auraPres = 1, recolheuEm = -1e9, dirTroca = 1; // auraPres: 0 = recolhida na borda da capa, 1 = aberta
+const ondasAura = [], corAura = [[106, 75, 216], [106, 75, 216]], BRANCO_A = [255, 255, 255];
+const foraAura = document.createElement("canvas"), cfa = foraAura.getContext("2d");
+const poeiraAura = Array.from({ length: 70 }, () => ({ a: Math.random() * Math.PI * 2, d: Math.random(), z: 0.45 + Math.random() * 1.2, v: 0.6 + Math.random(), br: 0 })); // z: perto (grande e rápida) ou longe
+const saidaOnda = (t) => 1 - Math.pow(1 - t, 3); // sai rápido e freia
+function passoOndas(l, golpe, fq) { // uma onda por bumbo, no máximo 4 ao mesmo tempo
+  if (golpe && l.length < 4) l.push({ t: 0, f: golpe });
+  for (let i = l.length - 1; i >= 0; i--) if ((l[i].t += 0.021 * fq) >= 1) l.splice(i, 1);
+  return l;
+}
+/* O brilho é o que mais pesa. Desliga sozinho (até fechar o app) se o aparelho ficar uns 3 s abaixo de ~22 quadros por segundo;
+   30 quadros (economia de bateria) não conta. Sem filtro de desenho no navegador, fica sem brilho. Modo leve e "reduzir movimento" também. */
+const brilhoAura = { lento: 0, desligado: false }, temFiltro = typeof CanvasRenderingContext2D !== "undefined" && "filter" in CanvasRenderingContext2D.prototype;
+function vigiarBrilho(fq) {
+  const ms = fq * 16.667;
+  brilhoAura.lento = fq > 2.7 ? brilhoAura.lento + ms : Math.max(0, brilhoAura.lento - ms * 0.5);
+  if (brilhoAura.lento > 3000) brilhoAura.desligado = true;
+}
+const usarBrilho = () => temFiltro && !cfg.leve && !calmo && !brilhoAura.desligado;
+function passoCorAura() { // a cor segue a da capa aos poucos: na troca de música, uma passa para a outra
+  const a = paraRgb(corViz) || corAura[0], b = (corViz2 && paraRgb(corViz2)) || a, k = cfg.leve || calmo ? 1 : sv(0.07);
+  for (let i = 0; i < 3; i++) { corAura[0][i] += (a[i] - corAura[0][i]) * k; corAura[1][i] += (b[i] - corAura[1][i]) * k; }
+}
+/* Troca de música: a Aura recolhe para a borda da capa e abre de novo, e a capa nova entra pelo lado (a anterior, pelo outro).
+   Só na Aura: no Vinil a capa gira, e o Relógio ganha a dele depois. Uma troca nova interrompe a animação anterior. */
+function recolherAura(agora, dir) {
+  if (!temAura(cfg.visual) || APP.dataset.view !== "tocando" || calmo || cfg.leve) return;
+  recolheuEm = agora; ondasAura.length = 0;
+  const d = $("disc"); if (!d || !d.animate) return;
+  d.getAnimations().forEach((a) => { if (!(a instanceof CSSAnimation)) a.cancel(); });
+  d.animate([{ translate: `${18 * dir}% 0`, scale: "0.86", opacity: 0 }, { translate: "0 0", scale: "1", opacity: 1 }], { duration: 440, easing: "cubic-bezier(.2,.9,.25,1.15)" });
+}
+function passoPres(agora, fq) { const alvo = agora - recolheuEm < 240 ? 0 : 1; auraPres += (alvo - auraPres) * (1 - Math.pow(0.9, fq)); }
 function curvaAura(c, niv, W, off, A, cx, giro, buraco) {
   const n = niv.length, N = n * 2, pts = [], teto = cx - 4; // nunca encosta na borda da tela de desenho
   for (let j = 0; j < N; j++) {
@@ -3654,7 +3689,8 @@ function curvaAura(c, niv, W, off, A, cx, giro, buraco) {
   if (buraco) contornoCapa(c, W, cx, -0.5, true); // não pinta por cima da capa
 }
 function desenharAura(c, Wc, vivo) {
-  const W = Wc / FOLGA_VIZ, n = AURA_N, k = cfg.reage ? cfg.batF : 0.3, cx = Wc / 2; // a tela de desenho é maior que o mostrador
+  const W = Wc / FOLGA_VIZ, n = AURA_N, k = cfg.reage ? cfg.batF : 0.3, cx = Wc / 2, ouve = vivo && cfg.reage, O = escuta.O; // a tela de desenho é maior que o mostrador
+  const eB = ouve ? O.bumbo.env : 0, eC = ouve ? O.caixa.env : 0, agora = performance.now(), parado = calmo ? 0 : 1;
   if (vivo) lerBins();
   for (let i = 0; i < n; i++) {
     const p = i / (n - 1), alvo = vivo ? bins[2 + Math.round(110 * Math.pow(p, 1.5))] / 255 : 0;
@@ -3669,33 +3705,57 @@ function desenharAura(c, Wc, vivo) {
     const alvo = auraTmp[i];
     auraNiv[i] += (alvo - auraNiv[i]) * sv(alvo > auraNiv[i] ? 0.55 : 0.18); // sobe na hora, desce rápido
     auraEco1[i] += (auraNiv[i] - auraEco1[i]) * sv(0.12);
-    auraEco2[i] += (auraEco1[i] - auraEco2[i]) * sv(0.08);
+    auraEco2[i] += (auraEco1[i] - auraEco2[i]) * sv(0.07);
   }
-  const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0;
-  auraGiro += (0.0012 + batida * 0.004 * k) * fqV; // gira bem devagar, um pouco mais nas batidas
-  const R = W * 0.34 * escDisco + W * 0.01, A = W * 0.13 * (0.45 + k * 0.75);
-  desenharPoeira(c, W, R, k, graves, Wc);
-  c.lineJoin = "round"; c.fillStyle = c.strokeStyle = tinta;
-  // ecos atrás: maiores, mais transparentes e atrasados
-  const off = 0;
-  curvaAura(c, auraEco2, W, off, A * 1.25, cx, -auraGiro * 0.6, true); c.globalAlpha = 0.08; c.fill("evenodd");
-  curvaAura(c, auraEco1, W, off, A * 1.12, cx, auraGiro * 0.5, true); c.globalAlpha = 0.12; c.fill("evenodd");
-  curvaAura(c, auraEco1, W, off, A * 1.12, cx, auraGiro * 0.5); c.globalAlpha = 0.3; c.lineWidth = W * 0.003; c.stroke();
-  // camada principal
-  curvaAura(c, auraNiv, W, off, A, cx, auraGiro, true);
-  c.globalAlpha = 0.16 + batida * 0.08 * k; c.fill("evenodd");
-  curvaAura(c, auraNiv, W, off, A, cx, auraGiro);
-  c.globalAlpha = 0.07 + batida * 0.07 * k; c.fill(); // véu leve da cor por cima da capa, mais forte nas batidas
-  c.globalAlpha = 0.18; c.lineWidth = W * 0.022; c.stroke();
-  c.globalAlpha = 0.85; c.lineWidth = W * 0.005; c.stroke();
-  // uma onda sai da capa em cada batida forte
-  if (vivo && ultimaBatida !== ultOndinha && performance.now() - ultimaBatida < 60) { ultOndinha = ultimaBatida; if (ondinhas.length < 3) ondinhas.push(0); }
-  c.lineWidth = W * 0.005;
-  for (let i = ondinhas.length - 1; i >= 0; i--) {
-    const t = (ondinhas[i] += 0.022 * fqV); if (t >= 1) { ondinhas.splice(i, 1); continue; }
-    c.globalAlpha = 0.3 * (1 - t) * k; c.beginPath(); contornoCapa(c, W, cx, t * W * 0.14); c.stroke();
+  passoCorAura(); passoPres(agora, fqV); if (vivo) vigiarBrilho(fqV);
+  const c1 = corAura[0], c2 = corAura[1], rgba = (q, a) => `rgba(${q[0] | 0},${q[1] | 0},${q[2] | 0},${a})`, mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  const tintaA = c.createLinearGradient(0, 0, Wc, Wc); tintaA.addColorStop(0.15, rgba(c1, 1)); tintaA.addColorStop(0.85, rgba(c2, 1));
+  auraGiro += (0.001 + eB * 0.006 * k) * fqV * parado; // gira bem devagar, com impulso no bumbo
+  const A = W * 0.14 * (0.45 + k * 0.75) * (1 + eB * 0.22 * k) * auraPres;
+  c.lineJoin = "round";
+  // 1) brilho macio atrás de tudo
+  if (usarBrilho()) {
+    const w = Math.round(Wc / 4), g = cfa; if (foraAura.width !== w) foraAura.width = foraAura.height = w;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.filter = "none"; g.clearRect(0, 0, w, w);
+    g.filter = `blur(${(w * 0.022).toFixed(1)}px)`; g.globalCompositeOperation = "lighter"; g.setTransform(0.25, 0, 0, 0.25, 0, 0);
+    const gr = g.createRadialGradient(cx, cx, W * 0.28, cx, cx, Wc * 0.5); gr.addColorStop(0, rgba(c1, 1)); gr.addColorStop(0.45, rgba(c2, 0.8)); gr.addColorStop(1, rgba(c2, 0));
+    g.fillStyle = gr;
+    curvaAura(g, auraEco2, W, 0, A * 1.4, cx, -auraGiro * 0.6); g.globalAlpha = 0.4; g.fill();
+    curvaAura(g, auraEco1, W, 0, A * 1.18, cx, auraGiro * 0.5); g.globalAlpha = 0.5; g.fill();
+    curvaAura(g, auraNiv, W, 0, A, cx, auraGiro); g.globalAlpha = 0.8; g.fill();
+    g.filter = "none"; g.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalCompositeOperation = "lighter"; c.globalAlpha = Math.min(1, (0.5 + eB * 0.35 * k + eC * 0.25 * k) * (0.3 + 0.7 * auraPres));
+    c.drawImage(foraAura, 0, 0, Wc, Wc);
+    c.globalCompositeOperation = "destination-out"; c.globalAlpha = 1; c.beginPath(); contornoCapa(c, W, cx, -0.5); c.fill(); // o brilho não cobre a capa
+    c.globalCompositeOperation = "source-over";
+  } else { // sem brilho: as camadas transparentes de antes, que pesam pouco
+    c.fillStyle = c.strokeStyle = tintaA;
+    curvaAura(c, auraEco2, W, 0, A * 1.25, cx, -auraGiro * 0.6, true); c.globalAlpha = 0.08; c.fill("evenodd");
+    curvaAura(c, auraEco1, W, 0, A * 1.12, cx, auraGiro * 0.5, true); c.globalAlpha = 0.12; c.fill("evenodd");
   }
-  c.globalAlpha = 1;
+  // 2) poeira com profundidade: a de perto é maior e mais rápida; o prato faz alguns grãos cintilarem
+  if (ouve && golpesQ.prato) { let j = (Math.random() * poeiraAura.length) | 0; for (let i = 0; i < 5; i++) { poeiraAura[j].br = 1; j = (j + 13) % poeiraAura.length; } }
+  const R = W * 0.34 * escDisco + W * 0.01, vel = 0.0013 * (1 + eB * 5 * k) * parado;
+  for (const q of poeiraAura) {
+    q.d += vel * q.v * q.z * fqV; if (q.d > 1) { q.d = 0; q.a = Math.random() * Math.PI * 2; }
+    q.a += 0.0012 * fqV * (q.z - 1) * parado; q.br *= Math.pow(0.86, fqV);
+    const r = R + q.d * (Wc * 0.49 - R);
+    c.globalAlpha = Math.min(1, (Math.sin(q.d * Math.PI) * (0.25 + (0.3 * q.z) / 1.65) + q.br * 0.6) * auraPres);
+    c.fillStyle = rgba(mix(q.z > 1 ? c1 : c2, BRANCO_A, q.br * 0.8), 1);
+    c.beginPath(); c.arc(cx + Math.cos(q.a) * r, cx + Math.sin(q.a) * r, W * 0.003 * q.z * (1 + q.br), 0, Math.PI * 2); c.fill();
+  }
+  // 3) corpo em degradê e fio de luz, que clareia na caixa
+  const g2 = c.createRadialGradient(cx, cx, W * 0.3, cx, cx, Wc * 0.5); g2.addColorStop(0, rgba(c1, 0.3)); g2.addColorStop(0.6, rgba(c2, 0.14)); g2.addColorStop(1, rgba(c2, 0));
+  c.globalAlpha = 1; c.fillStyle = g2; curvaAura(c, auraNiv, W, 0, A, cx, auraGiro, true); c.fill("evenodd");
+  curvaAura(c, auraEco1, W, 0, A * 1.18, cx, auraGiro * 0.5); c.strokeStyle = rgba(c2, 0.3); c.lineWidth = W * 0.003; c.stroke();
+  curvaAura(c, auraNiv, W, 0, A, cx, auraGiro);
+  c.globalAlpha = 0.05 + eB * 0.06 * k; c.fillStyle = tintaA; c.fill(); c.globalAlpha = 1; // véu leve da cor por cima da capa, mais forte no bumbo
+  c.strokeStyle = rgba(c1, 0.18); c.lineWidth = W * 0.022; c.stroke();
+  c.strokeStyle = rgba(mix(c1, BRANCO_A, Math.min(1, 0.3 + eC * 0.5 * k)), 0.95); c.lineWidth = W * (0.0045 + eC * 0.003 * k); c.stroke();
+  // 4) uma onda em cada bumbo: sai rápido da capa e freia, afinando
+  passoOndas(ondasAura, ouve ? golpesQ.bumbo : 0, fqV);
+  for (const o of ondasAura) { c.strokeStyle = rgba(c1, 0.45 * (1 - o.t) * o.f * k); c.lineWidth = W * 0.007 * (1 - o.t) + 0.6; c.beginPath(); contornoCapa(c, W, cx, saidaOnda(o.t) * W * 0.22); c.stroke(); }
+  c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
 }
 /* Tela cheia: o mostrador vira um relógio que toca */
 const emPalco = () => $("app").dataset.palco === "1";
@@ -3754,7 +3814,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.23.0";
+const VERSAO = "1.24.0";
 const linkPrivacidade = () => "https://kirarahoshi.github.io/compasso-player/privacidade.html" + (LANG === "en" ? "#en" : "#pt");
 let instalar = null;
 const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;

@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.24.0
+- **Aura refinada:** brilho macio em volta da capa, poeira com profundidade que cintila no prato, uma onda que sai da capa em cada bumbo e freia, e um fio de luz que clareia na caixa.
+- **Troca de música na Aura:** a Aura recolhe e abre de novo, as cores passam devagar de uma música para a outra e a capa nova entra pelo lado (voltando, entra pelo outro lado).
+- Se o aparelho não der conta, o brilho desliga sozinho. No modo leve e com "reduzir movimento" a Aura fica sem brilho e sem animação na troca.
+
 ## 1.23.0
 - **A capa sente a batida de verdade.** O app passou a ouvir o bumbo, a caixa e o prato separados, e só conta o que é golpe de bateria: nota de baixo e voz não fazem mais a capa pular. Em música com letra, a capa pulsa no ritmo em vez de tremer o tempo todo.
 - **Andamento:** o app percebe o andamento da música. Com ritmo firme, a capa pulsa no tempo forte; com ritmo quebrado, segue cada bumbo.
