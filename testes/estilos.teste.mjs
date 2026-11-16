@@ -40,6 +40,7 @@ export default [
         return { antes: pico(), padrao: pico(ESTILOS_AURA.padrao.soco), phonk: pico(ESTILOS_AURA.phonk.soco), lofi: pico(ESTILOS_AURA.lofi.soco) };
       });
       assert.equal(r.padrao, r.antes, "o Padrão não muda");
+      assert.equal(await p.avaliar(() => ESTILOS_AURA.padrao.soco), 0.05, "o soco do Padrão é o da 1.25");
       assert.ok(r.phonk > r.padrao * 1.8, `phonk ${r.phonk} x padrão ${r.padrao}`);
       assert.ok(r.lofi < r.padrao * 0.6, `lofi ${r.lofi} x padrão ${r.padrao}`);
     },
@@ -58,6 +59,19 @@ export default [
         return { golpe, fim, trocou, semK, lofi };
       });
       assert.deepEqual(r, { golpe: true, fim: [0, 0], trocou: [0, 0], semK: [0, 0], lofi: [0, 0] });
+    },
+  },
+  {
+    nome: "Phonk em tela de 120 Hz: a tremida vai e volta também quando só um quadro sim, um não chega à tela",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        const t = criarTremida(), E = ESTILOS_AURA.phonk, vistos = [];
+        t.passo(E, 1, 1, 0.5);
+        for (let i = 0; i < 12; i++) { const v = t.passo(E, 0, 1, 0.5); if (i % 2) vistos.push(Math.abs(v.x) > Math.abs(v.y) ? v.x : v.y); } // a tela só mostra metade das contas
+        let trocas = 0; for (let i = 1; i < vistos.length; i++) if (vistos[i] * vistos[i - 1] < 0) trocas++;
+        return { n: vistos.length, trocas };
+      });
+      assert.deepEqual(r, { n: 6, trocas: 5 }, "cada quadro mostrado fica do lado oposto do anterior");
     },
   },
   {
@@ -86,7 +100,8 @@ export default [
       const r = await p.avaliar(() => {
         const fx = document.getElementById("fx-aura"), ve = () => fx.getClientRects().length > 0, o = {};
         cfg.visual = "aura"; cfg.auraEst = "padrao"; aplicarVisual(); o.padrao = ve(); const larg = DIAL.offsetWidth;
-        cfg.auraEst = "lofi"; aplicarVisual(); o.lofi = ve(); o.mesmoTamanho = DIAL.offsetWidth === larg && larg > 200; o.grao = getComputedStyle(fx).backgroundImage.startsWith("url("); o.toque = getComputedStyle(fx).pointerEvents;
+        cfg.auraEst = "lofi"; aplicarVisual(); o.lofi = ve(); o.mesmoTamanho = DIAL.offsetWidth === larg && larg > 200;
+        { const cs = getComputedStyle(fx), a = APP.getBoundingClientRect(); o.barato = cs.mixBlendMode === "normal" && cs.position === "absolute"; o.dentro = cs.overflow !== undefined && getComputedStyle(APP).overflow === "hidden" && a.width > 0; } o.grao = getComputedStyle(fx).backgroundImage.startsWith("url("); o.toque = getComputedStyle(fx).pointerEvents;
         o.alvo = document.elementFromPoint(innerWidth / 2, innerHeight / 2) !== fx;
         cfg.auraEst = "oitenta"; aplicarVisual(); o.oitenta = ve(); o.linhas = getComputedStyle(fx).backgroundImage.includes("repeating-linear-gradient");
         definirLeve(true); o.leve = ve(); definirLeve(false);
@@ -95,7 +110,7 @@ export default [
         cfg.auraEst = "padrao"; aplicarVisual();
         return o;
       });
-      assert.deepEqual(r, { padrao: false, lofi: true, mesmoTamanho: true, grao: true, toque: "none", alvo: true, oitenta: true, linhas: true, leve: false, barras: false, inicio: false });
+      assert.deepEqual(r, { padrao: false, lofi: true, mesmoTamanho: true, barato: true, dentro: true, grao: true, toque: "none", alvo: true, oitenta: true, linhas: true, leve: false, barras: false, inicio: false });
     },
   },
   {
@@ -104,18 +119,19 @@ export default [
     rodar: async (p) => {
       const r = await p.avaliar(async () => {
         const quadros = (n) => new Promise((ok) => { const f = () => (n-- > 0 ? requestAnimationFrame(f) : ok()); f(); });
-        const lerFx = () => ["--tx", "--ty", "--bal", "--cl"].map((v) => parseFloat(DIAL.style.getPropertyValue(v)) || 0);
+        const lerFx = () => ["--tx", "--ty", "--bal", "--cl"].map((v) => parseFloat(document.getElementById("disc").style.getPropertyValue(v)) || 0);
         cfg.visual = "aura"; cfg.auraEst = "phonk"; cfg.reage = true; cfg.batF = 1; aplicarVisual(); tocar(); await quadros(4);
         const o = ouvirBatidas; let mx = [0, 0, 0, 0];
         ouvirBatidas = (a) => { const g = o(a); escuta.O.caixa.env = 0.9; return { bumbo: 1, caixa: 1, prato: 0 }; };
         for (let i = 0; i < 6; i++) { await quadros(1); mx = lerFx().map((v, j) => Math.max(mx[j], Math.abs(v))); }
         cfg.auraEst = "lofi"; aplicarVisual(); let bal = 0; for (let i = 0; i < 30; i++) { await quadros(1); bal = Math.max(bal, Math.abs(lerFx()[2])); }
         const lofiTrem = lerFx().slice(0, 2);
+        pausar(); await quadros(90); const balPausado = Math.abs(lerFx()[2]); tocar(); await quadros(2);
         ouvirBatidas = o; cfg.auraEst = "padrao"; aplicarVisual(); await quadros(6); const fim = lerFx();
         pausar(); cfg.batF = 0.7;
-        return { trem: mx[0] + mx[1] > 0.5, cl: mx[3] > 0.1, bal: bal > 0 && bal <= 1.7, lofiTrem, fim };
+        return { trem: mx[0] + mx[1] > 0.5, cl: mx[3] > 0.1, bal: bal > 0 && bal <= 1.7, lofiTrem, balPausado: balPausado < 0.1, fim, noDial: DIAL.style.getPropertyValue("--tx") };
       });
-      assert.deepEqual(r, { trem: true, cl: true, bal: true, lofiTrem: [0, 0], fim: [0, 0, 0, 0] });
+      assert.deepEqual(r, { trem: true, cl: true, bal: true, lofiTrem: [0, 0], balPausado: true, fim: [0, 0, 0, 0], noDial: "" });
     },
   },
   {

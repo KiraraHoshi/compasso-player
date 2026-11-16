@@ -1197,13 +1197,14 @@ const ESTILOS_AURA = {
 const estiloAura = () => (APP.dataset.visual === "aura" && Object.prototype.hasOwnProperty.call(ESTILOS_AURA, cfg.auraEst) && ESTILOS_AURA[cfg.auraEst]) || ESTILOS_AURA.padrao; // só a Aura tem estilo
 /* Phonk: a cada bumbo a capa leva um tranco para um lado qualquer e volta sozinha, indo e vindo cada vez menos. */
 function criarTremida() {
-  const t = { x: 0, y: 0 };
+  const t = { x: 0, y: 0 }; let ax = 0, ay = 0, fase = 0;
   return {
     passo(E, golpe, k, fq) {
-      if (!E.tremida || !k) { t.x = t.y = 0; return t; }
-      if (golpe) { const a = 2 * E.tremida * k * Math.min(1, golpe); t.x = (Math.random() - 0.5) * a; t.y = (Math.random() - 0.5) * a; if (Math.abs(t.x) + Math.abs(t.y) < 0.6) t.x = 0.6; return t; }
-      const d = -Math.pow(0.7, fq); t.x *= d; t.y *= d;
-      if (Math.abs(t.x) < 0.05) t.x = 0; if (Math.abs(t.y) < 0.05) t.y = 0;
+      if (!E.tremida || !k) { ax = ay = t.x = t.y = 0; return t; }
+      if (golpe) { const a = 2 * E.tremida * k * Math.min(1, golpe); ax = (Math.random() - 0.5) * a; ay = (Math.random() - 0.5) * a; if (Math.abs(ax) + Math.abs(ay) < 0.6) ax = 0.6; fase = 0; }
+      else { const d = Math.pow(0.7, fq); ax *= d; ay *= d; fase += fq; if (Math.abs(ax) < 0.05) ax = 0; if (Math.abs(ay) < 0.05) ay = 0; }
+      const s = Math.floor(fase + 1e-6) % 2 ? -1 : 1; // troca de lado a cada ~17 ms de relógio, não a cada conta: em tela de 120 Hz só metade das contas chega à tela
+      t.x = ax * s || 0; t.y = ay * s || 0;
       return t;
     },
   };
@@ -1222,18 +1223,23 @@ function criarMola() {
   };
 }
 const escuta = criarEscuta(), molaCapa = criarMola(), tremidaCapa = criarTremida();
-let ultFx = "0.0|0.0|0.00|0.00", balFase = 0, ultGrao = 0, graoPronto = false;
-const FX_AURA = $("fx-aura");
-function pintarFxCapa(x, y, bal, cl) { // tremida, balanço e clarão da capa: só mexe no estilo quando algum valor muda
-  const fx = x.toFixed(1) + "|" + y.toFixed(1) + "|" + bal.toFixed(2) + "|" + cl.toFixed(2);
-  if (fx === ultFx) return; ultFx = fx;
-  const s = DIAL.style; s.setProperty("--tx", x.toFixed(1) + "px"); s.setProperty("--ty", y.toFixed(1) + "px"); s.setProperty("--bal", bal.toFixed(2) + "deg"); s.setProperty("--cl", cl.toFixed(2));
+let ultFx = "", fxZerado = true, balFase = 0, balAmp = 0, ultGrao = 0, graoPronto = false;
+const FX_AURA = $("fx-aura"), DISCO = $("disc");
+function pintarFxCapa(x, y, bal, cl) { // tremida, balanço e clarão da capa: só mexe no estilo (e só na capa) quando algum valor muda
+  cl = Math.round(cl * 25) / 25; // o clarão anda em degraus: menos repinturas da capa
+  const zero = !x && !y && Math.abs(bal) < 0.005 && !cl;
+  if (zero && fxZerado) return; // Padrão e outros mostradores: nem monta o texto
+  const fx = zero ? "" : x.toFixed(1) + "|" + y.toFixed(1) + "|" + bal.toFixed(2) + "|" + cl.toFixed(2);
+  if (fx === ultFx) return; ultFx = fx; fxZerado = zero;
+  const s = DISCO.style;
+  if (zero) { for (const v of ["--tx", "--ty", "--bal", "--cl"]) s.removeProperty(v); return; }
+  s.setProperty("--tx", x.toFixed(1) + "px"); s.setProperty("--ty", y.toFixed(1) + "px"); s.setProperty("--bal", bal.toFixed(2) + "deg"); s.setProperty("--cl", cl.toFixed(2));
 }
 function prepararGrao() { // grão do Lo-fi: um quadradinho de chuvisco feito uma vez só e repetido na tela
   if (graoPronto) return; graoPronto = true;
   try {
     const cv = document.createElement("canvas"); cv.width = cv.height = 96; const g = cv.getContext("2d"), im = g.createImageData(96, 96);
-    for (let i = 0; i < im.data.length; i += 4) { im.data[i] = im.data[i + 1] = im.data[i + 2] = Math.random() * 255; im.data[i + 3] = 255; }
+    for (let i = 0; i < im.data.length; i += 4) { im.data[i] = im.data[i + 1] = im.data[i + 2] = Math.random() < 0.5 ? 0 : 255; im.data[i + 3] = Math.random() * 34; } // pontos claros e escuros já transparentes: dispensa a mistura da tela inteira
     g.putImageData(im, 0, 0); APP.style.setProperty("--grao", `url(${cv.toDataURL()})`);
   } catch (e) { /* sem grão neste navegador */ }
 }
@@ -1358,9 +1364,9 @@ function quadro(ts) {
     escDisco = molaCapa.passo(ativo ? golpeBumbo : 0, k, env, agE, fqQ, E.soco); // soco no bumbo, volta como mola e respira pouco entre as batidas
     const ev = escDisco.toFixed(3); if (svgOk && ev !== ultEsc) { ultEsc = ev; DIAL.style.setProperty("--ds", ev); }
     const tr = tremidaCapa.passo(E, ativo ? golpeBumbo : 0, k, fqQ); // o golpe dura um quadro: a conta roda sempre
-    if (E.balanco && playing) balFase += (fqQ * 16.667) / 1300; // Lo-fi: a capa balança devagar enquanto a música toca
-    if (svgOk) pintarFxCapa(tr.x, tr.y, E.balanco ? Math.sin(balFase) * E.balanco : 0, ativo && E.clarao ? Math.min(1, escuta.O.caixa.env * E.clarao * k) : 0);
-    if (E.grao && playing && FX_AURA && agE - ultGrao > 90) { ultGrao = agE; FX_AURA.style.backgroundPosition = ((Math.random() * 96) | 0) + "px " + ((Math.random() * 96) | 0) + "px"; } // o chuvisco muda de lugar ~11 vezes por segundo
+    if (E.balanco) { if (playing) balFase += (fqQ * 16.667) / 1300; balAmp += ((playing ? 1 : 0) - balAmp) * (1 - Math.pow(0.93, fqQ)); } else balAmp = 0; // Lo-fi: a capa balança devagar enquanto a música toca e endireita ao pausar
+    if (svgOk) pintarFxCapa(tr.x, tr.y, E.balanco ? Math.sin(balFase) * E.balanco * balAmp : 0, ativo && E.clarao ? Math.min(1, escuta.O.caixa.env * E.clarao * k) : 0);
+    if (E.grao && playing && FX_AURA && agE - ultGrao > 90) { ultGrao = agE; FX_AURA.style.transform = `translate3d(${(Math.random() * 96) | 0}px,${(Math.random() * 96) | 0}px,0)`; } // o chuvisco muda de lugar ~11 vezes por segundo (só desloca a camada, sem repintar)
   }
   if (naTela && playing) medirQuadro();
   if (!leve || (quadros++ & 1)) desenharViz();
@@ -3521,7 +3527,7 @@ function aplicarVisual() {
   a.dataset.visual = VISUAIS[cfg.visual] ? cfg.visual : "relogio";
   capaQuad = cfg.formaCapa !== "redonda" && ["aura", "espectro", "anel"].includes(a.dataset.visual); // no Relógio a capa é sempre redonda: ponteiro não combina com capa quadrada
   a.dataset.capa = capaQuad ? "quadrada" : "";
-  { const e = estiloAura(); a.dataset.estilo = e === ESTILOS_AURA.padrao ? "" : cfg.auraEst; if (e.grao) prepararGrao(); }
+  { const e = estiloAura(); a.dataset.estilo = e === ESTILOS_AURA.padrao ? "" : cfg.auraEst; if (e.grao) prepararGrao(); else if (FX_AURA) FX_AURA.style.transform = ""; }
   zerarPicosRelogio(); acordarViz();
   ajustarDial(); // o LED do celular estica o mostrador: ao sair dele pelo pincel, volta ao quadrado na hora
   a.dataset.era = cfg.era && cfg.era !== "off" ? cfg.era : "";
@@ -3971,8 +3977,8 @@ function desenharAura(c, Wc, vivo) {
     const r = R + q.d * (Wc * 0.49 - R);
     const pisca = E.vagalume && parado ? 0.6 + 0.4 * Math.sin(agora / 600 + q.f) : 1, px = cx + Math.cos(q.a) * r, py = cx + Math.sin(q.a) * r; // vagalume: acende e apaga devagar
     c.globalAlpha = Math.min(1, (Math.sin(q.d * Math.PI) * (0.25 + (0.3 * q.z) / 1.65) * pisca + q.br * 0.6) * auraPres);
-    c.fillStyle = c.strokeStyle = rgba(mix(q.z > 1 ? c1 : c2, BRANCO_A, q.br * 0.8), 1);
-    if (E.riscos) { const L = W * (0.008 + vel * 10) * q.v * q.z; c.lineWidth = W * 0.0026 * q.z; c.beginPath(); c.moveTo(px, py); c.lineTo(px + Math.cos(q.a) * L, py + Math.sin(q.a) * L); c.stroke(); } // Phonk: riscos no lugar dos grãos, mais compridos no bumbo
+    c.fillStyle = rgba(mix(q.z > 1 ? c1 : c2, BRANCO_A, q.br * 0.8), 1);
+    if (E.riscos) { c.strokeStyle = c.fillStyle; const L = W * (0.008 + vel * 10) * q.v * q.z; c.lineWidth = W * 0.0026 * q.z; c.beginPath(); c.moveTo(px, py); c.lineTo(px + Math.cos(q.a) * L, py + Math.sin(q.a) * L); c.stroke(); } // Phonk: riscos no lugar dos grãos, mais compridos no bumbo
     else { c.beginPath(); c.arc(px, py, W * (E.vagalume ? 0.0045 : 0.003) * q.z * (1 + q.br), 0, Math.PI * 2); c.fill(); }
   }
   // 3) corpo em degradê e fio de luz, que clareia na caixa
