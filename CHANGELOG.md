@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.21.0
+- **Pincel no Tocando agora:** no canto de cima à esquerda, abre a folha **Personalizar**. Nela você troca o visual do mostrador por miniaturas, o formato da capa, as cores, a luz de fundo e a batida. A folha é baixa, então cada mudança aparece no mostrador na hora.
+- **Capa personalizada:** escolha uma imagem para uma música (menu "⋯" › Trocar capa) ou para um álbum inteiro (botão Trocar capa na tela do álbum), com o mesmo recorte da foto do perfil. A capa do álbum vale para as músicas dele que não têm capa própria. Os arquivos das músicas não são alterados, e dá para tirar a capa depois.
+- **Enviar backup:** manda o arquivo de backup pelo compartilhamento do aparelho (Drive, WhatsApp, e-mail). Quem envia é o app que você escolher; o Orolon continua sem usar a internet.
+- **Backup automático** (Android): escolha uma pasta e o Orolon guarda nela uma cópia por dia, mantendo as 5 mais novas. No celular novo, escolha a mesma pasta e toque em "Restaurar o mais recente da pasta". Não precisa de conta nem de permissão nova.
+- Ajustes › Sobre mostra quando foi o último backup. Quem tem músicas importadas e está há mais de 30 dias sem backup recebe um lembrete discreto.
+- O backup agora leva as capas personalizadas, em tamanho reduzido.
+
 ## 1.20.0
 - **Modo carro:** uma tela cheia com a capa, o nome da música e botões enormes (anterior, tocar/pausar e próxima), mais aleatório e repetir. Mantém a tela ligada e funciona em pé e deitado. Abre pela ferramenta nova do Início e fecha pelo voltar ou pelo botão Sair.
 - **Já começar tocando** (Android): opção em Ajustes › Reprodução para o app abrir tocando de onde parou. Vem desligada.
