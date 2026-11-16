@@ -34,6 +34,8 @@ const I = {
   prev: '<path d="M18 5l-9 7 9 7zM5.5 5H8v14H5.5z" fill="currentColor"/>',
   shuf: tr("M3 7h3.5c5 0 5.5 10 10.5 10H20M3 17h3.5c2 0 3.2-1.6 4.3-3.5M20 7h-3c-1.4 0-2.5.8-3.4 1.9M17.5 4.5L20 7l-2.5 2.5M17.5 14.5L20 17l-2.5 2.5"),
   rep: tr("M5 12V9.5A2.5 2.5 0 017.5 7H18M19 12v2.5a2.5 2.5 0 01-2.5 2.5H6M15.5 4.5L18 7l-2.5 2.5M8.5 14.5L6 17l2.5 2.5"),
+  dial: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/>',
+  radio: tr("M4 9.5h16v10H4zM8 9.5l9-5") + '<circle cx="15" cy="14.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M6.5 13h3M6.5 16h3"),
   home: tr("M4 11l8-6.5 8 6.5M6.5 9.5V19h11V9.5M10 19v-5h4v5"),
   lib: tr("M5 4v16M10 4v16M14.5 5l4.5 14"),
   now: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M12 7.5V12l3 2"),
@@ -1072,6 +1074,7 @@ function paint() {
   $("app").dataset.playing = playing ? "1" : ""; ajustarRuido(); estadoNativo();
   $("b-play").innerHTML = ico(playing ? "pause" : "play", 30); $("b-play").setAttribute("aria-label", playing ? T("Pausar") : T("Tocar"));
   $("mini-play").innerHTML = ico(playing ? "pause" : "play");
+  marcarFerramentas();
   { const ip = document.querySelector("[data-ini-tocar]"); if (ip) { ip.innerHTML = ico(playing ? "pause" : "play", 26); ip.setAttribute("aria-label", playing ? T("Pausar") : T("Tocar")); } } $("mini-play").setAttribute("aria-label", playing ? T("Pausar") : T("Tocar"));
   $("b-shuf").classList.toggle("act", shuffle); $("b-shuf").setAttribute("aria-pressed", shuffle);
   $("b-rep").classList.toggle("act", repeat !== "off"); $("b-rep").setAttribute("aria-pressed", repeat !== "off");
@@ -1282,6 +1285,7 @@ function abrirFolha(o) {
 function fecharFolha() {
   if (!folha) return;
   folha = null;
+  marcarFerramentas(); // o EQ ou o temporizador podem ter mudado dentro da folha
   $("scrim").classList.remove("on"); $("sheet").classList.remove("on");
   setTimeout(() => { if (!folha) { $("scrim").hidden = true; $("sheet").hidden = true; $("sheet-b").innerHTML = ""; } }, 260);
   if (focoAntes && focoAntes.isConnected) focoAntes.focus();
@@ -1670,9 +1674,8 @@ $("tm").addEventListener("click", (e) => {
   if (t.closest("[data-pastasesc]")) return menuPastasEscolhidas();
   const lc = t.closest("[data-ledcor]"); if (lc) { cfg.ledCor = lc.dataset.ledcor; salvarCfg(); ledId = null; prepararLed(cur()); return renderTemas(); }
   const fo = t.closest("[data-forma]"); if (fo) { cfg.formaCapa = fo.dataset.forma; salvarCfg(); aplicarVisual(); return renderTemas(); }
-  const vi = t.closest("[data-vis]"); if (vi) { cfg.visual = vi.dataset.vis; salvarCfg(); aplicarVisual(); if (cfg.visual === "led") prepararLed(cur()); return renderTemas(); }
-  const ep = t.closest("[data-epoca]");
-  if (ep) { cfg.era = ep.dataset.epoca; cfg.visual = ERAS[cfg.era][1]; salvarCfg(); aplicarVisual(); if (ctx) montarEra(); return renderTemas(); }
+  const vi = t.closest("[data-vis]"); if (vi) { escolherVisual(vi.dataset.vis); return renderTemas(); }
+  const ep = t.closest("[data-epoca]"); if (ep) { escolherEpoca(ep.dataset.epoca); return renderTemas(); }
   if (t.closest("[data-abrireq]")) return abrirEQ();
   if (t.closest("[data-bkp]")) return salvarBackup();
   if (t.closest("[data-rst]")) return $("backup-file").click();
@@ -1953,6 +1956,7 @@ function abrirSono() {
   });
 }
 function paintSono() {
+  marcarFerramentas();
   const b = $("b-timer"); if (!b) return;
   const txt = textoSono();
   b.innerHTML = ico("timer", 18) + (txt ? `<span>${txt}</span>` : "");
@@ -2014,6 +2018,36 @@ function saudacao(hora, nome) {
   return nome ? T("{0}, {1}", s, nome) : s;
 }
 let recIni = [];
+function escolherVisual(k) { cfg.visual = k; salvarCfg(); aplicarVisual(); if (cfg.visual === "led") prepararLed(cur()); marcarFerramentas(); }
+function escolherEpoca(k) { cfg.era = k; cfg.visual = ERAS[cfg.era][1]; salvarCfg(); aplicarVisual(); if (ctx) montarEra(); marcarFerramentas(); }
+/* Ferramentas a um toque no Início. A 1.19 e a 1.20 acrescentam itens só aqui. */
+const FERRAMENTAS = [
+  { id: "eq", nome: T("Equalizador"), ic: "sliders", abrir: () => abrirEQ(), ativo: () => !!cfg.eq.on },
+  { id: "sono", nome: T("Temporizador"), ic: "timer", abrir: () => abrirSono(), ativo: () => !!(sono.fim || sono.aoFim) },
+  { id: "visual", nome: T("Visual"), ic: "dial", abrir: () => abrirFolhaVisual() },
+  { id: "epoca", nome: T("Época do som"), ic: "radio", abrir: () => abrirFolhaEpoca(), ativo: () => String(cfg.era) !== "off" },
+  { id: "vel", nome: T("Velocidade"), ic: "", abrir: () => { $("b-vel").click(); marcarFerramentas(); }, ativo: () => (+cfg.vel || 1) !== 1 },
+  { id: "palco", nome: T("Tela cheia"), ic: "expand", abrir: () => { ir("tocando"); alternarPalco(true); } },
+];
+function renderFerramentas() {
+  const g = $("ini-ferr"); if (!g) return;
+  g.innerHTML = FERRAMENTAS.map((f) => `<button class="ini-f" data-ferr="${f.id}">${f.ic ? ico(f.ic, 22) : `<b class="ini-vel"></b>`}<span>${f.nome}</span></button>`).join("");
+  marcarFerramentas();
+}
+function marcarFerramentas() {
+  const g = $("ini-ferr"); if (!g || !g.firstChild) return;
+  for (const f of FERRAMENTAS) { const b = g.querySelector(`[data-ferr="${f.id}"]`); if (b) { const on = !!(f.ativo && f.ativo()); b.classList.toggle("act", on); b.setAttribute("aria-pressed", on); } }
+  const v = g.querySelector(".ini-vel"); if (v) v.textContent = decimal(String(+cfg.vel || 1)) + "×";
+}
+const chipsDe = (lista, sel, attr) => `<div class="chips" role="group">${lista.map(([k, n]) => `<button ${attr}="${k}" aria-pressed="${sel === k}" class="${sel === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
+function abrirFolhaVisual() {
+  const html = () => chipsDe(Object.entries(VISUAIS), cfg.visual, "data-vis") + `<p class="note">${T("Mais opções do mostrador em Ajustes › Aparência.")}</p>`;
+  abrirFolha({ titulo: T("Visual do mostrador"), html: html(), clique(e) { const b = e.target.closest("[data-vis]"); if (b) { escolherVisual(b.dataset.vis); $("sheet-b").innerHTML = html(); } } });
+}
+function abrirFolhaEpoca() {
+  const html = () => chipsDe(Object.entries(ERAS).map(([k, [n]]) => [k, n]), String(cfg.era), "data-epoca") + `<p class="note">${ERA_DESC[cfg.era] || ERA_DESC.off} ${T("Cada época também troca o visual, e você pode escolher outro depois.")}</p>`;
+  abrirFolha({ titulo: T("Época do som"), html: html(), clique(e) { const b = e.target.closest("[data-epoca]"); if (b) { escolherEpoca(b.dataset.epoca); $("sheet-b").innerHTML = html(); } } });
+}
 function renderInicio() {
   const I0 = $("ini"); if (!I0 || $("app").dataset.view !== "inicio") return;
   const vis = faixas.filter(visivel), x = cur();
@@ -2027,7 +2061,7 @@ function renderInicio() {
   let cont = "";
   if (x) {
     const d = x.d || 0, p = Math.min(d, posAtual() || 0), falta = Math.max(0, d - p);
-    cont = `<div class="card ini-cont" id="ini-cont"><button class="tp row grow" data-abrir>${capa(x, "thumb ini-capa")}<span class="grow"><span class="sub">${T("Continuar de onde parou")}</span><span class="t clip">${esc(x.t)}</span><span class="sub clip">${esc(x.a)}${d ? " · " + T("faltam {0}", fmt(falta)) : ""}</span><span class="ini-barra"><i style="width:${d ? ((p / d) * 100).toFixed(1) : 0}%"></i></span></span></button><button class="ic big ini-play" data-ini-tocar aria-label="${playing ? T("Pausar") : T("Tocar")}">${ico(playing ? "pause" : "play", 26)}</button></div>`;
+    cont = `<div class="card ini-cont" id="ini-cont"><button class="tp row grow" data-abrir>${capa(x, "thumb ini-capa")}<span class="grow"><span class="sub clip">${T("Continuar de onde parou")}</span><span class="t clip">${esc(x.t)}</span><span class="sub clip">${esc(x.a)}${d ? " · " + T("faltam {0}", fmt(falta)) : ""}</span><span class="ini-barra"><i style="width:${d ? ((p / d) * 100).toFixed(1) : 0}%"></i></span></span></button><button class="ic big ini-play" data-ini-tocar aria-label="${playing ? T("Pausar") : T("Tocar")}">${ico(playing ? "pause" : "play", 26)}</button></div>`;
   }
   const recA = AUTO.find((a) => a.id === "auto:recentes");
   recIni = (recA ? recA.ids() : []).filter((id) => visivel(porId.get(id))).slice(0, 10);
@@ -2039,6 +2073,7 @@ function renderInicio() {
 }
 $("ini").addEventListener("click", (e) => {
   const t = e.target;
+  const f = t.closest("[data-ferr]"); if (f) { const it = FERRAMENTAS.find((x) => x.id === f.dataset.ferr); if (it) it.abrir(); return; }
   if (t.closest("[data-ini-tocar]")) return alternar();
   if (t.closest("[data-abrir]")) return ir("tocando");
   if (t.closest("[data-ini-importar]")) return menuImportar();
