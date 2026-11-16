@@ -1,5 +1,17 @@
 # Histórico de versões
 
+## 1.18.0
+- **Nova aba Início**, que é onde o app abre: saudação, **Continuar de onde parou** (com quanto falta e um botão para tocar), **Ferramentas** a um toque (Equalizador, Temporizador, Visual, Época do som, Velocidade e Tela cheia), **Tocadas há pouco** e atalho para as Favoritas. Com a biblioteca vazia, mostra um convite para trazer as músicas.
+- O **Tocando agora** saiu da barra de baixo: abre pelo mini player, pelo Continuar do Início ou ao tocar uma lista. A barra fica Início · Biblioteca · Playlists · Você · Ajustes.
+- **Ajustes em quatro partes:** Aparência, Som, Reprodução e biblioteca e Sobre. O idioma fica sempre no topo. O voltar sai de uma parte antes de sair de Ajustes.
+- **Músicas sem capa seguem as cores do tema**, com uma variação leve para cada música. Trocar de tema ou de cor muda todas na hora, e a luz de fundo e os visuais acompanham. Músicas com capa continuam com a própria capa.
+- Acabamentos:
+  - Os botões da Biblioteca cabem numa linha só.
+  - Os quadrinhos do Você mostram "0 min" em vez de quebrar a linha.
+  - Músicas sem artista na etiqueta mostram o nome da pasta.
+  - Os botões do Tocando agora ganharam nomes curtos (Fila, Timer, EQ, Letra, Mais, Volume).
+- Por dentro: testes automáticos que abrem o app num Chrome sem janela, em tamanhos de celular e PC (`node testes/rodar.mjs`).
+
 ## 1.17.3
 - Músicas sem capa mostram o símbolo do Orolon (o mostrador do ícone) sobre o degradê de cores de cada música, em vez da primeira letra do título. Vale nas listas, álbuns, artistas, mini player e no centro do Relógio e do Vinil.
 
