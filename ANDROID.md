@@ -35,7 +35,7 @@ O mesmo plugin avisa o app quando um fone entra ou sai (com fio, Bluetooth ou US
 ## Backup (1.21)
 
 - **Enviar backup:** o plugin grava o arquivo na pasta temporária do app e abre o compartilhamento do Android pelo `FileProvider` que o Capacitor já traz. Quem envia é o app escolhido pela pessoa; o Orolon continua sem acessar a internet.
-- **Backup automático:** a pessoa escolhe uma pasta no seletor do Android, que libera só aquela pasta (sem permissão de armazenamento). O app grava uma cópia por dia (`orolon-backup-AAAA-MM-DD.json`) e mantém as 5 mais novas. No celular novo, basta escolher a mesma pasta e tocar em "Restaurar o mais recente da pasta".
+- **Backup automático:** a pessoa escolhe uma pasta no seletor do Android, que libera só aquela pasta (sem permissão de armazenamento). O app grava uma cópia por dia (`orolon-backup-AAAA-MM-DD-xxxx.json`, em que `xxxx` é a marca do aparelho) e mantém as 5 mais novas **daquele aparelho**; cópias de outro aparelho nunca são apagadas nem trocadas. No celular novo, ao escolher a mesma pasta, o app mostra as cópias que já existem e pergunta se é para restaurar uma delas antes de gravar qualquer coisa.
 
 ## Política de privacidade
 

@@ -467,6 +467,7 @@ public class MusicasPlugin extends Plugin {
         final String nome = call.getString("nome");
         final String texto = call.getString("texto");
         final int manter = Math.max(1, call.getInt("manter", 5));
+        final String grupo = call.getString("grupo"); // final do nome das cópias deste aparelho: só elas entram na limpeza
         if (uriTxt == null || texto == null || !ehBackup(nome)) { call.reject("dados-invalidos"); return; }
         new Thread(() -> {
             try {
@@ -480,8 +481,9 @@ public class MusicasPlugin extends Plugin {
                     if (o == null) { call.reject("sem-acesso"); return; }
                     o.write(texto.getBytes(StandardCharsets.UTF_8));
                 }
-                ArrayList<String[]> todos = backupsDa(arvore);
-                Collections.sort(todos, (a, b) -> b[1].compareTo(a[1])); // o nome traz a data: o mais novo vem primeiro
+                ArrayList<String[]> todos = new ArrayList<>();
+                for (String[] b : backupsDa(arvore)) if (grupo == null || b[1].endsWith(grupo)) todos.add(b); // nunca apaga cópia de outro aparelho
+                Collections.sort(todos, (x, y) -> y[1].compareTo(x[1])); // o nome traz a data: o mais novo vem primeiro
                 for (int n = manter; n < todos.size(); n++) apagarDocumento(arvore, todos.get(n)[0]);
                 call.resolve();
             } catch (Exception e) {

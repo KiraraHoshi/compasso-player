@@ -107,6 +107,66 @@ export default [
     },
   },
   {
+    nome: "trocar a capa da música que está tocando atualiza a luz de fundo e a notificação na hora",
+    rodar: async (p) => {
+      await semear(p);
+      const r = await p.avaliar(async () => {
+        tocarLista(["tc2"], 0, "teste"); pausar();
+        const vistos = []; const l0 = luz, m0 = metaSessao;
+        luz = function (c) { vistos.push("luz:" + JSON.stringify(c)); return l0(c); }; metaSessao = function (x) { vistos.push("meta:" + x.id); return m0(x); };
+        await definirCapaFaixa(porId.get("tc2"), await imagemTeste("#e74c3c"));
+        luz = l0; metaSessao = m0;
+        return { vistos, cores: JSON.stringify(coresDe(porId.get("tc2"))) };
+      });
+      assert.ok(r.vistos.includes("luz:" + r.cores), "a luz de fundo não recebeu as cores da capa nova: " + r.vistos.join(" "));
+      assert.ok(r.vistos.includes("meta:tc2"), "a notificação não foi atualizada");
+    },
+  },
+  {
+    nome: "remover uma música não apaga a capa das outras do álbum",
+    rodar: async (p) => {
+      await semear(p);
+      const ok = await p.avaliar(async () => {
+        const x = { id: "tc3", sig: "tc3|1|1", em: 1, arq: new Blob(["x"], { type: "audio/mpeg" }), capaBlob: null, t: "Terceira", a: "Artista T", al: "Álbum T", n: 0, d: 10, c: ["#111", "#222"], letra: "" };
+        montar(x); adicionarFaixa(x);
+        await definirCapaAlbum("Álbum T", await imagemTeste("#3498db"));
+        const u = porId.get("tc2").cover;
+        removerFaixa("tc3");
+        return new Promise((fim) => { const i = new Image(); i.onload = () => fim(porId.get("tc2").cover === u); i.onerror = () => fim(false); i.src = u; });
+      });
+      assert.equal(ok, true, "a capa do álbum deixou de carregar depois de remover uma música");
+    },
+  },
+  {
+    nome: "mudar o álbum em Editar informações troca a capa na hora",
+    rodar: async (p) => {
+      await semear(p);
+      await p.avaliar(async () => { await definirCapaAlbum("Álbum T", await imagemTeste("#3498db")); editarInfo(porId.get("tc2")); });
+      assert.equal(await p.avaliar(() => !!porId.get("tc2").cover), true);
+      await p.avaliar(() => { const f = document.querySelector("#sheet form"); f.querySelector("[name=al]").value = "Outro álbum"; f.requestSubmit(); });
+      await p.esperar(() => porId.get("tc2").al === "Outro álbum", 2000);
+      assert.equal(await p.avaliar(() => temCapa(porId.get("tc2"))), false, "a música saiu do álbum mas ficou com a capa dele");
+    },
+  },
+  {
+    nome: "restaurar capas redesenha uma vez só e não troca uma capa que já existe",
+    rodar: async (p) => {
+      await semear(p);
+      const r = await p.avaliar(async () => {
+        await definirCapaFaixa(porId.get("tc1"), await imagemTeste("#e74c3c")); await definirCapaAlbum("Álbum T", await imagemTeste("#3498db"));
+        const b = JSON.parse(JSON.stringify(await gerarBackupCompleto()));
+        const atual = porId.get("tc1").capaUser;
+        await definirCapaFaixa(porId.get("tc2"), null); // tc2 fica sem capa própria, e o backup traz uma para ela
+        b.capas.faixas.push({ chave: chaveDe(porId.get("tc2")), img: b.capas.faixas[0].img });
+        let n = 0; const r0 = redesenharCapas; redesenharCapas = function () { n++; return r0(); };
+        await restaurarCapas(b.capas);
+        redesenharCapas = r0;
+        return { n, mesma: porId.get("tc1").capaUser === atual, nova: !!porId.get("tc2").capaUser };
+      });
+      assert.deepEqual(r, { n: 1, mesma: true, nova: true });
+    },
+  },
+  {
     nome: "trocar capa pelo menu da música (com recorte)",
     rodar: async (p) => {
       await semear(p);
