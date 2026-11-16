@@ -262,7 +262,8 @@ const MARCA = (() => {
 })();
 const capa = (x, cls = "thumb") => `<span class="${cls}" style="background:${fundoDe(x)}">${x.cover ? "" : MARCA}</span>`;
 const semArtista = (a) => desconhecido(a) || a === T("Artista desconhecido") || a === "Artista desconhecido";
-const linha2 = (x) => (semArtista(x.a) && x.pasta ? ultimaPasta(x.pasta) : x.a) + (x.al ? " · " + x.al : "");
+const artistaDe = (x) => (semArtista(x.a) && x.pasta ? ultimaPasta(x.pasta) : desconhecido(x.a) ? T("Artista desconhecido") : x.a);
+const linha2 = (x) => artistaDe(x) + (x.al ? " · " + x.al : "");
 /* Formato sem perdas (FLAC, WAV, AIFF): ganha a etiqueta no app */
 function semPerdas(x) {
   if (!x || x.demo) return "";
@@ -2072,6 +2073,7 @@ function saudacao(hora, nome) {
   return nome ? T("{0}, {1}", s, nome) : s;
 }
 let recIni = [];
+let carregado = false; // vira true quando a biblioteca termina de carregar do IndexedDB
 function escolherVisual(k) { cfg.visual = k; salvarCfg(); aplicarVisual(); if (cfg.visual === "led") prepararLed(cur()); marcarFerramentas(); }
 function escolherEpoca(k) { cfg.era = k; cfg.visual = ERAS[cfg.era][1]; salvarCfg(); aplicarVisual(); if (ctx) montarEra(); marcarFerramentas(); }
 /* Ferramentas a um toque no Início. A 1.19 e a 1.20 acrescentam itens só aqui. */
@@ -2107,6 +2109,7 @@ function renderInicio() {
   const vis = faixas.filter(visivel), x = cur();
   const cab = `<div><h1 class="clip">${esc(saudacao(new Date().getHours(), perfil.nome))}</h1><p class="sub">${plural(vis.length, "música", "músicas")}</p></div>`;
   const ferr = `<div class="ini-ferr" id="ini-ferr"></div>`;
+  if (!carregado) { I0.innerHTML = `<div><h1 class="clip">${esc(saudacao(new Date().getHours(), perfil.nome))}</h1></div>` + ferr; renderFerramentas(); return; } // sem piscar o convite enquanto carrega
   if (!vis.length) {
     I0.innerHTML = cab + `<div class="card stack" id="ini-vazio"><h2>${T("Traga suas músicas")}</h2><p class="note">${T("Elas ficam guardadas só neste aparelho. Servem MP3, FLAC, M4A, OGG e Opus.")}</p><div class="btns"><button class="btn sm" data-ini-importar>${ico("note", 18)}${T("Importar músicas")}</button></div></div>` + ferr;
     if (typeof renderFerramentas === "function") renderFerramentas();
@@ -2115,11 +2118,11 @@ function renderInicio() {
   let cont = "";
   if (x) {
     const d = x.d || 0, p = Math.min(d, posAtual() || 0), falta = Math.max(0, d - p);
-    cont = `<div class="card ini-cont" id="ini-cont"><button class="tp row grow" data-abrir>${capa(x, "thumb ini-capa")}<span class="grow"><span class="sub clip">${T("Continuar de onde parou")}</span><span class="t clip">${esc(x.t)}</span><span class="sub clip">${esc(x.a)}${d ? " · " + T("faltam {0}", fmt(falta)) : ""}</span><span class="ini-barra"><i style="width:${d ? ((p / d) * 100).toFixed(1) : 0}%"></i></span></span></button><button class="ic big ini-play" data-ini-tocar aria-label="${playing ? T("Pausar") : T("Tocar")}">${ico(playing ? "pause" : "play", 26)}</button></div>`;
+    cont = `<div class="card ini-cont" id="ini-cont"><button class="tp row grow" data-abrir>${capa(x, "thumb ini-capa")}<span class="grow"><span class="sub clip">${T("Continuar de onde parou")}</span><span class="t clip">${esc(x.t)}</span><span class="sub clip">${esc(artistaDe(x))}${d ? " · " + T("faltam {0}", fmt(falta)) : ""}</span><span class="ini-barra"><i style="width:${d ? ((p / d) * 100).toFixed(1) : 0}%"></i></span></span></button><button class="ic big ini-play" data-ini-tocar aria-label="${playing ? T("Pausar") : T("Tocar")}">${ico(playing ? "pause" : "play", 26)}</button></div>`;
   }
   const recA = AUTO.find((a) => a.id === "auto:recentes");
   recIni = (recA ? recA.ids() : []).filter((id) => visivel(porId.get(id))).slice(0, 10);
-  const rec = recIni.length ? `<div class="stack" id="ini-rec"><p class="sec-t">${T("Tocadas há pouco")}</p><div class="ini-fileira">${recIni.map((id, i) => { const y = porId.get(id); return `<button class="alb ini-alb" data-ini-rec="${i}">${capa(y, "cover")}<span class="t clip">${esc(y.t)}</span><span class="sub clip">${esc(y.a)}</span></button>`; }).join("")}</div></div>` : "";
+  const rec = recIni.length ? `<div class="stack" id="ini-rec"><p class="sec-t">${T("Tocadas há pouco")}</p><div class="ini-fileira">${recIni.map((id, i) => { const y = porId.get(id); return `<button class="alb ini-alb" data-ini-rec="${i}">${capa(y, "cover")}<span class="t clip">${esc(y.t)}</span><span class="sub clip">${esc(artistaDe(y))}</span></button>`; }).join("")}</div></div>` : "";
   const nFav = AUTO.find((a) => a.id === "auto:fav").ids().length;
   const fav = nFav ? `<button class="card row ini-fav" id="ini-fav" data-ini-fav><span class="thumb ini-favic">${ico("heartOn", 22)}</span><span class="grow"><span class="t">${T("Favoritas")}</span><span class="sub">${plural(nFav, "música", "músicas")}</span></span><span class="chev">${ico("chev", 18)}</span></button>` : "";
   I0.innerHTML = cab + cont + ferr + rec + fav;
@@ -3255,6 +3258,7 @@ requestAnimationFrame(quadro);
   }
   guardado.set("compasso.semente", true);
   restaurarSessao();
+  carregado = true;
   renderBib(); renderPl(); renderTemas(); paint();
   if (cfg.tagsVer !== 2) setTimeout(relerLetras, 1500);
   if (cfg.capasVer !== 1) setTimeout(acertarCapas, 2500);
