@@ -35,6 +35,7 @@ const I = {
   shuf: tr("M3 7h3.5c5 0 5.5 10 10.5 10H20M3 17h3.5c2 0 3.2-1.6 4.3-3.5M20 7h-3c-1.4 0-2.5.8-3.4 1.9M17.5 4.5L20 7l-2.5 2.5M17.5 14.5L20 17l-2.5 2.5"),
   rep: tr("M5 12V9.5A2.5 2.5 0 017.5 7H18M19 12v2.5a2.5 2.5 0 01-2.5 2.5H6M15.5 4.5L18 7l-2.5 2.5M8.5 14.5L6 17l2.5 2.5"),
   ondas: tr("M2.5 12c1.6-3.2 3.2-3.2 4.8 0s3.2 3.2 4.8 0 3.2-3.2 4.8 0 3.2 3.2 4.8 0") + tr("M6 5.8a9 9 0 0 1 12 0M6 18.2a9 9 0 0 0 12 0"),
+  carro: tr("M5 11.5l1.5-4.3A2 2 0 0 1 8.4 5.8h7.2a2 2 0 0 1 1.9 1.4l1.5 4.3M4 11.5h16v6H4zM6.5 17.5v1.7M17.5 17.5v1.7M7 14.5h.5M16.5 14.5h.5"),
   dial: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/>',
   radio: tr("M4 9.5h16v10H4zM8 9.5l9-5") + '<circle cx="15" cy="14.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M6.5 13h3M6.5 16h3"),
   info: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M12 11v5.5") + '<circle cx="12" cy="7.8" r="1.2" fill="currentColor"/>',
@@ -1119,7 +1120,7 @@ function paint() {
   $("app").dataset.playing = playing ? "1" : ""; ajustarRuido(); estadoNativo();
   $("b-play").innerHTML = ico(playing ? "pause" : "play", 30); $("b-play").setAttribute("aria-label", playing ? T("Pausar") : T("Tocar"));
   $("mini-play").innerHTML = ico(playing ? "pause" : "play");
-  marcarFerramentas();
+  marcarFerramentas(); pintarCarro();
   { const ip = document.querySelector("[data-ini-tocar]"); if (ip) { ip.innerHTML = ico(playing ? "pause" : "play", 26); ip.setAttribute("aria-label", playing ? T("Pausar") : T("Tocar")); } } $("mini-play").setAttribute("aria-label", playing ? T("Pausar") : T("Tocar"));
   $("b-shuf").classList.toggle("act", shuffle); $("b-shuf").setAttribute("aria-pressed", shuffle);
   $("b-rep").classList.toggle("act", repeat !== "off"); $("b-rep").setAttribute("aria-pressed", repeat !== "off");
@@ -2124,10 +2125,32 @@ function paintSono() {
   if (folha && folha.modo === "timer") { const s = $("sono-st"); if (s && sono.fim) s.textContent = T("Pausa em {0}.", fmt((sono.fim - Date.now()) / 1000)); }
 }
 
+/* ===================== Modo carro: tela cheia com botões enormes ===================== */
+const CARRO = $("carro");
+const emCarro = () => !CARRO.hidden;
+function pintarCarro() {
+  if (!emCarro()) return;
+  const x = cur(), rep = { off: T("Repetir: desligado"), all: T("Repetir: fila"), one: T("Repetir: esta música") }[repeat];
+  CARRO.setAttribute("aria-label", T("Modo carro"));
+  CARRO.innerHTML = `<button class="carro-sair" data-carro="sair">${ico("x", 22)}<span>${T("Sair")}</span></button>
+    <div class="carro-info">${x ? capa(x, "cover carro-capa") : ""}<div class="carro-txt"><p class="carro-t">${esc(x ? x.t : T("Nada tocando"))}</p><p class="carro-a">${esc(x ? artistaDe(x) : "")}</p></div></div>
+    <div class="carro-ctl"><button data-carro="prev" aria-label="${T("Anterior")}">${ico("prev", 44)}</button><button class="carro-play" data-carro="play" aria-label="${playing ? T("Pausar") : T("Tocar")}">${ico(playing ? "pause" : "play", 60)}</button><button data-carro="next" aria-label="${T("Próxima")}">${ico("next", 44)}</button></div>
+    <div class="carro-extra"><button data-carro="shuf" class="${shuffle ? "act" : ""}" aria-pressed="${shuffle}">${ico("shuf", 26)}<span>${T("Aleatório")}</span></button><button data-carro="rep" class="${repeat !== "off" ? "act" : ""}" aria-pressed="${repeat !== "off"}" aria-label="${rep}">${ico("rep", 26)}${repeat === "one" ? "<b>1</b>" : ""}<span>${T("Repetir")}</span></button></div>`;
+}
+function abrirCarro() { CARRO.hidden = false; pintarCarro(); atualizarTela(); const b = CARRO.querySelector("[data-carro=play]"); if (b) b.focus(); }
+function fecharCarro() { CARRO.hidden = true; CARRO.innerHTML = ""; atualizarTela(); }
+CARRO.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-carro]"); if (!b) return;
+  const a = { prev: anterior, play: alternar, next: proxima, shuf: alternarAleatorio, rep: alternarRepetir, sair: fecharCarro }[b.dataset.carro];
+  if (a) a();
+  if (emCarro()) { pintarCarro(); const n = CARRO.querySelector(`[data-carro="${b.dataset.carro}"]`); if (n) n.focus(); }
+});
+
 /* ===================== Tela ligada ===================== */
 let trava = null, pedindoTrava = false;
+const querTela = () => document.visibilityState === "visible" && (emCarro() || ($("app").dataset.view === "tocando" && (emPalco() || !!(cfg.tela && playing))));
 async function atualizarTela() {
-  const quer = $("app").dataset.view === "tocando" && document.visibilityState === "visible" && (emPalco() || (cfg.tela && playing));
+  const quer = querTela();
   try {
     if (quer && !trava && !pedindoTrava && navigator.wakeLock) {
       pedindoTrava = true; trava = await navigator.wakeLock.request("screen"); pedindoTrava = false;
@@ -2189,6 +2212,7 @@ const FERRAMENTAS = [
   { id: "visual", nome: T("Visual"), ic: "dial", abrir: () => abrirFolhaVisual() },
   { id: "epoca", nome: T("Época do som"), ic: "radio", abrir: () => abrirFolhaEpoca(), ativo: () => String(cfg.era) !== "off" },
   { id: "vel", nome: T("Velocidade"), ic: "", abrir: () => { $("b-vel").click(); marcarFerramentas(); }, ativo: () => (+cfg.vel || 1) !== 1 },
+  { id: "carro", nome: T("Modo carro"), ic: "carro", abrir: () => abrirCarro() },
   { id: "palco", nome: T("Tela cheia"), ic: "expand", abrir: () => { ir("tocando"); alternarPalco(true); } },
 ];
 function renderFerramentas() {
@@ -3312,6 +3336,7 @@ document.addEventListener("wheel", (e) => { if (e.ctrlKey) e.preventDefault(); }
 /* Botão voltar do Android: desfaz um passo de cada vez, como nos outros apps; na tela inicial, só minimiza (a música continua) */
 function voltarUmPasso() {
   if (folha) { fecharFolha(); return true; }
+  if (emCarro()) { fecharCarro(); return true; }
   if (emPalco()) { alternarPalco(false); return true; }
   if (modoLetra && APP.dataset.view === "tocando") { $("b-letra").click(); return true; }
   const v = APP.dataset.view;
@@ -3328,6 +3353,7 @@ if (PLUG.App) nat(() => PLUG.App.addListener("backButton", () => { if (!voltarUm
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && folha) return fecharFolha();
+  if (e.key === "Escape" && emCarro()) return fecharCarro();
   if (e.key === "Escape" && emPalco()) return alternarPalco(false);
   if (e.key === "Escape" && APP.dataset.view === "temas" && porta && !editando) return abrirPorta(null);
   const alvo = e.target, tag = alvo.tagName;

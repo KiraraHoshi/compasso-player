@@ -68,6 +68,8 @@ const EN = {
  "Velocidade {0}×. Toque para mudar": "Speed {0}×. Tap to change",
  "Volume acima de 100% pode cansar os ouvidos. Use com moderação.": "Volume above 100% can tire your ears. Use it in moderation.",
  "Volume +": "Volume +",
+ "Modo carro": "Car mode",
+ "Sair": "Exit",
  "Efeitos 3D": "3D effects",
  "Amplificador": "Amplifier",
  "Reverb": "Reverb",

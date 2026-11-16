@@ -9,8 +9,8 @@ const semRolarDeLado = async (p) => {
 
 export default [
   {
-    nome: "oito ferramentas na ordem nova",
-    rodar: async (p) => assert.deepEqual(await p.avaliar(() => [...document.querySelectorAll("#ini-ferr [data-ferr]")].map((b) => b.dataset.ferr)), ["eq", "sono", "volmais", "efeitos", "visual", "epoca", "vel", "palco"]),
+    nome: "nove ferramentas na ordem",
+    rodar: async (p) => assert.deepEqual(await p.avaliar(() => [...document.querySelectorAll("#ini-ferr [data-ferr]")].map((b) => b.dataset.ferr)), ["eq", "sono", "volmais", "efeitos", "visual", "epoca", "vel", "carro", "palco"]),
   },
   {
     nome: "Volume + pela folha muda o amplificador",
@@ -80,7 +80,7 @@ export default [
     largura: 320,
     rodar: async (p) => {
       assert.ok(await p.avaliar(() => { const g = document.getElementById("ini-ferr"); return g.scrollWidth <= g.clientWidth; }));
-      assert.equal(await p.avaliar(() => new Set([...document.querySelectorAll("#ini-ferr .ini-f")].map((b) => b.offsetTop)).size), 2, "as 8 ferramentas deviam caber em 2 linhas de 4");
+      assert.equal(await p.avaliar(() => new Set([...document.querySelectorAll("#ini-ferr .ini-f")].map((b) => b.offsetTop)).size), 3, "as 9 ferramentas deviam ficar em 3 linhas de 3");
     },
   },
   {
