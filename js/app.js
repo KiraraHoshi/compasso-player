@@ -1094,11 +1094,16 @@ const ritmoViz = criarRitmo(), ritmoSvg = criarRitmo();
 const alvoQuadro = () => (cfg.fluido && !cfg.leve ? 6 : 16.67);
 /* Com o app escondido (tela apagada, outro app na frente) ninguém vê os desenhos: o ramo deles é desligado do som,
    para o aparelho não processar o que não aparece. O som em si não muda. */
-let ramoVizLigado = true;
+let ramoVizLigado = true, surdoAte = 0;
 function ligarRamoViz(on) {
-  if (!saidaEra || !atrasoViz || on === ramoVizLigado) return;
-  try { if (on) saidaEra.connect(atrasoViz); else saidaEra.disconnect(atrasoViz); ramoVizLigado = on; } catch (e) { /* fica como estava */ }
+  if (!atrasoViz || !an || on === ramoVizLigado) return;
+  try { // mexe só na ponta do ramo dos desenhos (atraso → analisador): o caminho do som nem é tocado
+    if (on) { atrasoViz.connect(an); surdoAte = performance.now() + atrasoViz.delayTime.value * 1000 + 150; } // o som leva esse tempo para atravessar o atraso de novo
+    else atrasoViz.disconnect();
+    ramoVizLigado = on;
+  } catch (e) { /* fica como estava */ }
 }
+const SEM_GOLPE = { bumbo: 0, caixa: 0, prato: 0 };
 let tsQ = 0, fqAcc = 0, ultAtivoViz = 0, movViz = 1; // movViz: 1 = giro e poeira andando; 0 = parados (pausado há mais de 1,5 s)
 function acordarViz() { ultAtivoViz = performance.now(); ritmoViz.zerar(); } // trocou a música ou o mostrador: desenha já, e liso por um instante
 const passoT = (agora, ult) => (ult ? Math.min(4, Math.max(0.25, (agora - ult) / 16.667)) : 1);
@@ -1201,6 +1206,7 @@ function acertarAtrasoViz() { // a confirmar no Android: se o aparelho não info
   if (Math.abs(l - atrasoViz.delayTime.value) > 0.01 || (!l && atrasoViz.delayTime.value)) atrasoViz.delayTime.value = l;
 }
 function ouvirBatidas(agora) {
+  if (agora < surdoAte) { escuta.zerar(); return SEM_GOLPE; } // acabou de religar: a chegada do som não é golpe
   if (!binsBat) { binsBat = {}; for (const k in FAIXAS) binsBat[k] = faixaEmBins(FAIXAS[k].lo, FAIXAS[k].hi, ctx.sampleRate, anD.fftSize); }
   anD.getByteFrequencyData(binsD);
   return escuta.passo(agora, { bumbo: energiaFaixa(binsD, ...binsBat.bumbo), caixa: energiaFaixa(binsD, ...binsBat.caixa), prato: energiaFaixa(binsD, ...binsBat.prato) }, fqQ);
@@ -1273,7 +1279,7 @@ function quadro(ts) {
     }
   }
   let alvo = 0.4;
-  const naTela = APP.dataset.view === "tocando";
+  const naTela = APP.dataset.view === "tocando" && !emCarro(); // o modo carro cobre o Tocando agora
   const ativo = playing && an && cfg.reage && !calmo && naTela; // fora do Tocando agora ninguém vê os mostradores: o som não é analisado
   if (ativo) {
     lerBins();
@@ -3470,7 +3476,7 @@ function aplicarVisual() {
   capaQuad = cfg.formaCapa !== "redonda" && ["aura", "espectro", "anel"].includes(a.dataset.visual); // no Relógio a capa é sempre redonda: ponteiro não combina com capa quadrada
   a.dataset.capa = capaQuad ? "quadrada" : "";
   zerarPicosRelogio(); acordarViz();
-  try { ajustarDial(); } catch (e) { /* ainda carregando */ } // o LED do celular estica o mostrador: ao sair dele pelo pincel, volta ao quadrado na hora
+  ajustarDial(); // o LED do celular estica o mostrador: ao sair dele pelo pincel, volta ao quadrado na hora
   a.dataset.era = cfg.era && cfg.era !== "off" ? cfg.era : "";
   pintarCena();
 }

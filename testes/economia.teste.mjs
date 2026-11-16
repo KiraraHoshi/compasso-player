@@ -46,16 +46,41 @@ export default [
     },
   },
   {
-    nome: "com o app escondido, o ramo dos desenhos é desligado do som e volta quando o app aparece",
+    nome: "com o app escondido, o ramo dos desenhos é desligado sem encostar no caminho do som, e volta quando o app aparece",
     rodar: async (p) => {
       const r = await p.avaliar(() => {
-        prepararAudio(); const lig = [], o1 = saidaEra.connect, o2 = saidaEra.disconnect;
-        saidaEra.connect = function (d, ...x) { if (d === atrasoViz) lig.push("liga"); return o1.call(this, d, ...x); };
-        saidaEra.disconnect = function (d, ...x) { if (d === atrasoViz) lig.push("desliga"); return o2.call(this, d, ...x); };
-        ligarRamoViz(false); ligarRamoViz(false); ligarRamoViz(true); ligarRamoViz(true);
-        return lig;
+        prepararAudio(); const lig = [];
+        for (const [no, nome] of [[atrasoViz, "ramo"], [saidaEra, "SOM"]]) for (const m of ["connect", "disconnect"]) { const o = no[m]; no[m] = function (...x) { lig.push(nome + ":" + m); return o.apply(this, x); }; }
+        const esconder = (v) => { Object.defineProperty(document, "visibilityState", { configurable: true, get: () => v }); dispatchEvent(new Event("visibilitychange")); };
+        esconder("hidden"); const escondido = ramoVizLigado; esconder("hidden"); esconder("visible"); const visivel = ramoVizLigado; esconder("visible");
+        return { lig, escondido, visivel };
       });
-      assert.deepEqual(r, ["desliga", "liga"], "desliga uma vez e religa uma vez (repetir o pedido não faz nada)");
+      assert.deepEqual(r, { lig: ["ramo:disconnect", "ramo:connect"], escondido: false, visivel: true }, "desliga e religa uma vez cada, só no ramo dos desenhos");
+    },
+  },
+  {
+    nome: "ao voltar para o app, a escuta espera o som chegar ao ramo dos desenhos (sem soco falso na capa)",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        prepararAudio(); ligarRamoViz(false); ligarRamoViz(true);
+        let n = 0; const o = anD.getByteFrequencyData; anD.getByteFrequencyData = function (...x) { n++; return o.apply(this, x); };
+        const agora = performance.now(), g = ouvirBatidas(agora), cedo = n, g2 = ouvirBatidas(agora + 2000);
+        return { golpes: g.bumbo + g.caixa + g.prato, cedo, depois: n };
+      });
+      assert.deepEqual(r, { golpes: 0, cedo: 0, depois: 1 }, "logo depois de religar não lê nem conta golpe; 2 s depois volta a ouvir");
+    },
+  },
+  {
+    nome: "com o modo carro por cima do Tocando agora, o som também não é analisado",
+    hash: "tocando",
+    rodar: async (p) => {
+      const r = await p.avaliar(async () => {
+        const quadros = (n) => new Promise((ok) => { const f = () => (n-- > 0 ? requestAnimationFrame(f) : ok()); f(); });
+        tocar(); await quadros(6); abrirCarro(); await quadros(2);
+        let n = 0; for (const a of [an, anD]) { const o = a.getByteFrequencyData; a.getByteFrequencyData = function (...x) { n++; return o.apply(this, x); }; }
+        await quadros(8); fecharCarro(); pausar(); return n;
+      });
+      assert.equal(r, 0);
     },
   },
 ];
