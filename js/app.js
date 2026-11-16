@@ -89,7 +89,7 @@ const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i>
 
 /* ===================== Ajustes e temas ===================== */
 const cfg = Object.assign(
-  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false, corCapa: true, formaCapa: "quadrada", ledCor: "arte" },
+  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, amp: 1, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false, corCapa: true, formaCapa: "quadrada", ledCor: "arte" },
   guardado.get("compasso.cfg", {})
 );
 const salvarCfg = () => guardado.set("compasso.cfg", cfg);
@@ -707,7 +707,7 @@ function prepararAudio() {
   const AC = window.AudioContext || window.webkitAudioContext;
   try { ctx = new AC({ latencyHint: "balanced" }); } catch (e) { ctx = new AC(); }
   an = ctx.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.55; an.minDecibels = -95; an.maxDecibels = -16; // mais folga em cima: os graves das músicas altas não batem no teto
-  volNo = ctx.createGain(); an.connect(volNo); volNo.connect(ctx.destination); aplicarVolume(true);
+  volNo = ctx.createGain(); an.connect(volNo); volNo.connect(montarLimitador(ctx)).connect(ctx.destination); aplicarVolume(true); // o analisador fica antes do volume: os visuais não mudam com o amplificador
   bins = new Uint8Array(an.frequencyBinCount); ondas = new Uint8Array(an.fftSize);
   entrada = ctx.createGain(); eraIn = ctx.createGain();
   mestre = ctx.createGain(); mestre.gain.value = 0.5; mestre.connect(entrada);
@@ -937,8 +937,21 @@ if (sessao) {
 
 /* ---- Volume próprio (soma com o volume do aparelho) ---- */
 const ganhoVol = () => (cfg.mudo ? 0 : Math.pow(Math.max(0, Math.min(1, +cfg.vol)), 2)); // curva quadrática: soa mais natural
+/* ---- Amplificador (acima de 100%) com limitador no fim: a saída nunca passa de 0 dBFS ---- */
+const AMPS = [1, 1.25, 1.5, 1.75, 2];
+const ganhoAmp = () => Math.max(1, Math.min(2, +cfg.amp || 1));
+function montarLimitador(c) {
+  const l = c.createDynamicsCompressor();
+  l.threshold.value = -3; l.knee.value = 0; // −3 e não −1: o compressor do navegador soma um ganho de compensação, e com −1 o pico passava de 0 dBFS l.ratio.value = 20; l.attack.value = 0.002; l.release.value = 0.12;
+  return l;
+}
+function escolherAmp(v) {
+  cfg.amp = Math.max(1, Math.min(2, +v || 1));
+  if (cfg.amp > 1 && !cfg.avisoAmp) { cfg.avisoAmp = true; toast(T("Volume acima de 100% pode cansar os ouvidos. Use com moderação.")); }
+  salvarCfg(); aplicarVolume(); marcarFerramentas();
+}
 function aplicarVolume(agora) {
-  if (volNo) volNo.gain.setTargetAtTime(ganhoVol(), ctx.currentTime, agora ? 0 : 0.03);
+  if (volNo) volNo.gain.setTargetAtTime(ganhoVol() * ganhoAmp(), ctx.currentTime, agora ? 0 : 0.03);
   const v = cfg.mudo ? 0 : Math.round(cfg.vol * 100), b = $("b-vol"), r = $("vol");
   b.innerHTML = ico(v === 0 ? "vol0" : v < 50 ? "vol1" : "vol", 20);
   const bp = $("b-volpill"); if (bp) bp.innerHTML = ico(v === 0 ? "vol0" : v < 50 ? "vol1" : "vol", 18) + `<span class="pill-t">${T("Volume")}</span>`;

@@ -66,6 +66,7 @@ const EN = {
  "Neon": "Neon",
  "Aura": "Aura",
  "Velocidade {0}×. Toque para mudar": "Speed {0}×. Tap to change",
+ "Volume acima de 100% pode cansar os ouvidos. Use com moderação.": "Volume above 100% can tire your ears. Use it in moderation.",
  "Continuando de {0}": "Resuming from {0}",
  "Do início": "From the start",
  "Sem perda de qualidade": "Lossless quality",
