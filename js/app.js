@@ -166,9 +166,9 @@ async function paletaDaCapa(x, t) {
       res = { h1, h2 };
     }
   } catch (e) { res = null; }
-  if (!res) { // sem capa: usa as cores geradas pelo nome
-    const cs = (x.c || []).map(paraRgb).filter(Boolean).map(rgbHsl);
-    res = cs.length ? { h1: cs[0], h2: cs[1] || cs[0] } : { neutro: true };
+  if (!res) { // sem capa: usa as cores do tema (capa padrão); não guarda, porque muda junto com o tema
+    const cs = coresDe(x).map(paraRgb).filter(Boolean).map(rgbHsl);
+    return cs.length ? { h1: cs[0], h2: cs[1] || cs[0] } : { neutro: true };
   }
   x._paleta = res; return res;
 }
@@ -203,7 +203,16 @@ function aplicarEfeitos() {
   r.setProperty("--ambk", cfg.amb ? cfg.ambF : 0);
   r.setProperty("--beatk", cfg.reage ? cfg.batF : 0);
 }
-const aplicarTema = () => { aplicar(temaAtual()); salvarCfg(); };
+let coresAplicadas = "";
+const aplicarTema = () => {
+  const t = temaAtual(); aplicar(t); salvarCfg();
+  const chave = t.destaque + t.secundaria + t.fundo;
+  if (chave === coresAplicadas) return; // só os cantos ou a fonte mudaram: as capas continuam iguais
+  coresAplicadas = chave;
+  if (typeof renderBib !== "function" || !faixas.length) return; // ainda carregando
+  renderBib(); renderPl(); paint();
+  const x = cur(); if (x && !temCapa(x)) { luz(coresDe(x)); ledId = null; if (cfg.visual === "led") prepararLed(x); }
+};
 
 /* ===================== Biblioteca ===================== */
 const NOTAS = [220, 246.94, 261.63, 293.66, 329.63, 349.23, 392];
@@ -226,7 +235,23 @@ const importadas = () => faixas.filter((x) => !x.demo);
 function adicionarFaixa(x) { faixas.push(x); porId.set(x.id, x); }
 
 const grad = (c) => `linear-gradient(140deg,${c[0]},${c[1]})`;
-const fundoDe = (x) => (x.cover ? `url('${x.cover}') center/cover` : grad(x.c));
+/* Capa padrão (música sem capa): degradê nas cores do tema em uso, com uma variação pequena e fixa por música.
+   Calculada na hora de desenhar; o x.c salvo não muda, então trocar de tema não mexe nos dados. */
+function coresPadrao(chave) {
+  const t = temaAtual(); let h = 0;
+  for (const ch of String(chave || "")) h = (h * 31 + ch.charCodeAt(0)) % 100003;
+  const dh = ((h % 25) - 12) / 360, dl = ((Math.floor(h / 25) % 13) - 6) / 100; // até ±12° de matiz e ±6% de luz
+  const tom = (cor, mais) => {
+    const [H, S, L] = rgbHsl(paraRgb(cor) || [128, 128, 128]);
+    let l = Math.min(0.6, Math.max(0.3, L + dl + mais)), c = hex(hslRgb((H + dh + 1) % 1, Math.max(0.35, S), l));
+    while (lum(c) > 0.55 && l > 0.1) { l -= 0.04; c = hex(hslRgb((H + dh + 1) % 1, Math.max(0.35, S), l)); } // o símbolo branco precisa aparecer
+    return c;
+  };
+  return [tom(t.destaque, 0), tom(t.secundaria, 0.04)];
+}
+const temCapa = (x) => !!(x && (x.cover || x.capaBlob));
+const coresDe = (x) => (temCapa(x) ? x.c : coresPadrao((x.a || "") + (x.al || "") + (x.t || "")));
+const fundoDe = (x) => (x.cover ? `url('${x.cover}') center/cover` : grad(coresDe(x)));
 const inicial = (s) => esc((String(s || "?").trim()[0] || "?").toUpperCase());
 /* Símbolo do Orolon (o mostrador do ícone), em branco por cima do degradê de cada música: usado quando a música não tem capa */
 const MARCA = (() => {
@@ -760,7 +785,7 @@ function posAtual() {
   if (!x.demo) return el && el.dataset.id === x.id ? el.currentTime : pos;
   return playing && ctx ? posBase + (ctx.currentTime - inicioT) : pos;
 }
-function aoTrocar(x) { renderInicio(); luz(x.c); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
+function aoTrocar(x) { renderInicio(); luz(coresDe(x)); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
 function carregar(auto) {
   const x = cur();
   if (!x) { playing = false; paint(); return; }
@@ -1444,7 +1469,7 @@ function mosaico(p, cls = "thumb") {
   if (fx.length >= 4) return `<span class="${cls} mosaic">${fx.slice(0, 4).map((x) => `<span style="background:${fundoDe(x)}"></span>`).join("")}</span>`;
   if (fx.length) return capa({ ...fx[0], t: p.nome }, cls);
   if (p.auto) return `<span class="${cls} auto-ic">${ico(p.ic, cls === "thumb" ? 22 : 44)}</span>`;
-  return `<span class="${cls}" style="background:${grad(coresDoNome(p.nome))}">${inicial(p.nome)}</span>`;
+  return `<span class="${cls}" style="background:${grad(coresPadrao(p.nome))}">${inicial(p.nome)}</span>`;
 }
 function renderPl() {
   renderInicio(); // o Início mostra recentes e favoritas: acompanha toda mudança na biblioteca
@@ -2027,7 +2052,7 @@ let perfil = Object.assign({ nome: "", foto: "" }, guardado.get("compasso.perfil
 function avatar(cls = "avatar") {
   const nome = perfil.nome || T("Você");
   return perfil.foto ? `<span class="${cls}" style="background-image:url('${perfil.foto}')" role="img" aria-label="${T("Foto de {0}", esc(nome))}"></span>`
-    : `<span class="${cls}" style="background:${grad(coresDoNome(nome))}" aria-hidden="true">${inicial(nome)}</span>`;
+    : `<span class="${cls}" style="background:${grad(coresPadrao(nome))}" aria-hidden="true">${inicial(nome)}</span>`;
 }
 function rankFaixas(chave, ano) {
   return Object.entries(stats.fx).map(([id, f]) => [porId.get(id), f]).filter(([x]) => visivel(x))
@@ -2500,7 +2525,7 @@ async function acertarCapas() {
     await new Promise((ok) => setTimeout(ok, 30));
   }
   cfg.capasVer = 1; salvarCfg();
-  if (n) { renderBib(); renderPl(); paint(); const x = cur(); if (x) { luz(x.c); atualizarCorViz(); } }
+  if (n) { renderBib(); renderPl(); paint(); const x = cur(); if (x) { luz(coresDe(x)); atualizarCorViz(); } }
 }
 async function procurarLetra(x) {
   if (!x || !x.arq) return;
