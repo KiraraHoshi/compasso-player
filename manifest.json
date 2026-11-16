@@ -3,7 +3,7 @@
   "short_name": "Orolon",
   "description": "Player de música offline com temas customizáveis.",
   "lang": "pt-BR",
-  "start_url": "./#biblioteca",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

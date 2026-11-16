@@ -409,7 +409,47 @@ nav{padding-bottom:calc(8px + var(--base))}
 #v-tocando .volpill{-webkit-touch-callout:none;user-select:none;touch-action:manipulation}
 @media (max-width:400px){#v-tocando .np-bar .pill{padding:7px 9px}}
 @media (max-width:360px){#v-tocando .np-bar{gap:4px}#v-tocando .np-bar .pill{padding:6px 7px}}
-@media (max-width:340px){#v-tocando #b-fila .pill-t{display:none}}
 .app[data-palco="1"] #v-tocando .np-meta{margin-top:0} /* tela cheia mantém o espaçamento uniforme */
 .marca{width:76%;height:76%;display:block}
 .selo .marca{position:absolute;left:18%;top:18%;width:64%;height:64%}
+
+/* ===== Início (1.18) ===== */
+.ini-cont{display:flex;align-items:center;gap:8px;padding:10px 12px}
+.ini-cont .tp{gap:12px}
+.ini-capa{width:64px;height:64px;font-size:22px}
+.ini-barra{display:block;height:4px;border-radius:2px;background:var(--line);margin-top:8px;overflow:hidden}
+.ini-barra i{display:block;height:100%;background:var(--accent);border-radius:2px}
+#ini .ini-play{width:48px;height:48px}
+.ini-fileira{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:4px;scrollbar-width:none;overscroll-behavior-x:contain}
+.ini-fileira::-webkit-scrollbar{display:none}
+.ini-alb{flex:0 0 112px;scroll-snap-align:start}
+.ini-alb .cover{font-size:28px}
+.ini-fav{width:100%;text-align:left;gap:12px}
+.ini-favic{background:var(--accent);color:var(--on-accent)}
+.ini-ferr:empty{display:none}
+.ini-ferr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (min-width:600px){.ini-ferr{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.ini-f{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:76px;padding:10px 4px;border-radius:var(--radius);background:var(--card);border:1px solid var(--line);color:var(--text);font-size:12px;line-height:1.2;text-align:center;min-width:0}
+.ini-f svg{color:var(--accent)}
+.ini-f span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ini-f:hover{background:var(--hover)}
+.ini-f.act{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--card))}
+.ini-vel{font-family:var(--display);font-size:18px;line-height:22px;color:var(--accent)}
+/* Ajustes em portas */
+.portas{gap:8px}
+.porta{width:100%;text-align:left;gap:14px;padding:14px}
+.porta:hover{background:var(--hover)}
+.porta-ic{width:40px;height:40px;flex:none;border-radius:calc(var(--radius) * .75);display:grid;place-items:center;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.porta-h{gap:6px;margin-left:-6px}
+.chev{color:var(--muted);display:grid;place-items:center}
+/* Biblioteca: ações numa linha só */
+.bib-acoes{gap:6px;flex-wrap:nowrap}
+.bib-acoes .btns{flex-wrap:nowrap;gap:6px}
+.bib-acoes .so-ic{padding:6px 9px}
+.bib-acoes select{min-width:0;max-width:128px;flex:0 1 auto;text-overflow:ellipsis}
+@media (max-width:399px){.bib-acoes [data-aleatorio] .rot{display:none}.bib-acoes [data-aleatorio]{padding:6px 9px}}
+/* Tocando: botões com nome curto embaixo do ícone, em colunas iguais */
+#v-tocando .np-bar{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;flex-wrap:nowrap}
+#v-tocando .np-bar .pill{flex-direction:column;justify-content:center;gap:3px;padding:7px 2px;border-radius:calc(var(--radius) * .8);min-width:0;font-size:10.5px;line-height:1.15}
+#v-tocando .np-bar .pill-t{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#v-tocando .np-bar .volpill{margin-left:0}
