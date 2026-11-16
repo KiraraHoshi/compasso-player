@@ -152,8 +152,8 @@ const NEUTRO = (t) => (escuro(t) ? ["#E4E4EA", "#8E8E9A"] : ["#2C2C33", "#74747E
 async function paletaDaCapa(x, t) {
   if (x._paleta) return x._paleta;
   let res = null;
-  if (x.capaBlob) try {
-    const bm = await createImageBitmap(x.capaBlob), cv = document.createElement("canvas"); cv.width = cv.height = 32;
+  if (blobCapa(x)) try {
+    const bm = await createImageBitmap(blobCapa(x)), cv = document.createElement("canvas"); cv.width = cv.height = 32;
     const g = cv.getContext("2d"); g.drawImage(bm, 0, 0, 32, 32);
     const d = g.getImageData(0, 0, 32, 32).data, baldes = Array.from({ length: 12 }, () => ({ p: 0, r: 0, g: 0, b: 0, n: 0 }));
     for (let i = 0; i < d.length; i += 4) {
@@ -251,8 +251,20 @@ function coresPadrao(chave) {
   };
   return [tom(t.destaque, 0), tom(t.secundaria, 0.04)];
 }
-const temCapa = (x) => !!(x && (x.cover || x.capaBlob));
-const coresDe = (x) => (temCapa(x) ? x.c : coresPadrao((x.a || "") + (x.al || "") + (x.t || "")));
+/* Capa que vale para cada música: a personalizada da música, senão a do arquivo, senão a personalizada do álbum.
+   Nenhuma delas altera o arquivo da música. */
+const capasAlbum = new Map(); // nome do álbum → { blob, url, c }
+const urls = new WeakMap();
+const urlDe = (blob) => { if (!urls.has(blob)) urls.set(blob, URL.createObjectURL(blob)); return urls.get(blob); };
+const capaAlbumDe = (x) => (x && !x.capaUser && !x.capaBlob && capasAlbum.get(x.al || T("Sem álbum"))) || null;
+const blobCapa = (x) => (x && (x.capaUser || x.capaBlob || (capaAlbumDe(x) || {}).blob)) || null;
+function acertarCover(x) { const b = blobCapa(x); x.cover = b ? urlDe(b) : null; x._paleta = null; }
+const temCapa = (x) => !!(x && (x.cover || blobCapa(x)));
+const coresDe = (x) => {
+  if (x.capaUser && x.cUser) return x.cUser;
+  const al = capaAlbumDe(x); if (al) return al.c || x.c;
+  return temCapa(x) ? x.c : coresPadrao((x.a || "") + (x.al || "") + (x.t || ""));
+};
 const fundoDe = (x) => (x.cover ? `url('${x.cover}') center/cover` : grad(coresDe(x)));
 const inicial = (s) => esc((String(s || "?").trim()[0] || "?").toUpperCase());
 /* Símbolo do Orolon ("O tocando": anel que é barra de progresso, com equalizador no centro), em branco por cima
@@ -326,11 +338,12 @@ let db = null;
 function abrirDB() {
   return new Promise((ok, erro) => {
     try {
-      const r = indexedDB.open("compasso", 2);
+      const r = indexedDB.open("compasso", 3);
       r.onupgradeneeded = () => {
         const d = r.result;
         if (!d.objectStoreNames.contains("faixas")) d.createObjectStore("faixas", { keyPath: "id" });
         if (!d.objectStoreNames.contains("playlists")) d.createObjectStore("playlists", { keyPath: "id" });
+        if (!d.objectStoreNames.contains("capas")) d.createObjectStore("capas", { keyPath: "id" }); // capas personalizadas de álbum (1.21)
       };
       r.onsuccess = () => ok(r.result);
       r.onerror = () => erro(r.error);
@@ -346,8 +359,8 @@ function dbTodos(nome) {
     try { const r = loja(nome).getAll(); r.onsuccess = () => ok(r.result || []); r.onerror = () => ok([]); } catch (e) { ok([]); }
   });
 }
-const salvarFaixa = (x) => dbPut("faixas", { id: x.id, t: x.t, a: x.a, al: x.al, n: x.n, d: x.d, c: x.c, arq: x.arq, uri: x.uri, mid: x.mid, orig: x.orig, doc: x.doc, alId: x.alId, tipo: x.tipo, capaBlob: x.capaBlob, sig: x.sig, em: x.em, letra: x.letra || "", pasta: x.pasta || "", oculta: !!x.oculta });
-function montar(x) { x.url = x.uri ? window.Capacitor.convertFileSrc(x.uri) : URL.createObjectURL(x.arq); if (x.capaBlob) x.cover = URL.createObjectURL(x.capaBlob); }
+const salvarFaixa = (x) => dbPut("faixas", { id: x.id, t: x.t, a: x.a, al: x.al, n: x.n, d: x.d, c: x.c, arq: x.arq, uri: x.uri, mid: x.mid, orig: x.orig, doc: x.doc, alId: x.alId, tipo: x.tipo, capaBlob: x.capaBlob, capaUser: x.capaUser || null, cUser: x.cUser || null, sig: x.sig, em: x.em, letra: x.letra || "", pasta: x.pasta || "", oculta: !!x.oculta });
+function montar(x) { x.url = x.uri ? window.Capacitor.convertFileSrc(x.uri) : URL.createObjectURL(x.arq); acertarCover(x); }
 
 /* ---- Importar ---- */
 const EXT = /\.(mp3|flac|m4a|aac|ogg|oga|opus|wav|aif|aiff|webm|mp4|m4v|mov)$/i;
@@ -489,7 +502,7 @@ async function procurarNoAparelho(manual) {
   let refazer = novasFaixas;
   if (cfg.apVer !== 2) { // 1.17.0 dava a mesma capa a músicas sem álbum da mesma pasta: corrige uma vez
     cfg.apVer = 2; salvarCfg();
-    for (const x of doAparelho.values()) if (porId.has(x.id)) { const al = albumDe(x.al, x.pasta); if (al !== x.al) { x.al = al; } x.capaBlob = null; x.cover = null; x.c = coresDoNome(x.a + x.al + x.t); salvarFaixa(x); }
+    for (const x of doAparelho.values()) if (porId.has(x.id)) { const al = albumDe(x.al, x.pasta); if (al !== x.al) { x.al = al; } x.capaBlob = null; acertarCover(x); x.c = coresDoNome(x.a + x.al + x.t); salvarFaixa(x); }
     refazer = [...doAparelho.values()].filter((x) => porId.has(x.id)).concat(novasFaixas);
     renderBib();
   }
@@ -506,7 +519,7 @@ async function capasDoAparelho(lista) {
     if (!b64) continue;
     try {
       const bruto = b64Blob(b64), capaBlob = (await cortarCapa(bruto)) || bruto, c = await coresDaCapa(capaBlob);
-      for (const x of g) { if (!porId.has(x.id)) continue; x.capaBlob = capaBlob; x.cover = URL.createObjectURL(capaBlob); if (c) x.c = c; salvarFaixa(x); }
+      for (const x of g) { if (!porId.has(x.id)) continue; x.capaBlob = capaBlob; acertarCover(x); if (c) x.c = c; salvarFaixa(x); }
     } catch (e) { /* capa ilegível */ }
     if (++n % 12 === 0) { renderBib(); paint(); }
   }
@@ -898,10 +911,10 @@ const sessao = "mediaSession" in navigator ? navigator.mediaSession : null;
 const MS = PLUG.MediaSession || null;
 const capaPequena = new Map();
 async function capaParaNotificacao(x) {
-  if (!x.capaBlob) return null;
+  const bl = blobCapa(x); if (!bl) return null;
   if (capaPequena.has(x.id)) return capaPequena.get(x.id);
   try {
-    const bm = await createImageBitmap(x.capaBlob), cv = document.createElement("canvas"); cv.width = cv.height = 384;
+    const bm = await createImageBitmap(bl), cv = document.createElement("canvas"); cv.width = cv.height = 384;
     cv.getContext("2d").drawImage(bm, 0, 0, 384, 384);
     const url = cv.toDataURL("image/jpeg", 0.85); capaPequena.set(x.id, url); return url;
   } catch (e) { return null; }
@@ -924,7 +937,7 @@ function metaSessao(x) {
   try {
     sessao.metadata = new MediaMetadata({
       title: x.t, artist: x.a, album: x.al || "",
-      artwork: x.cover ? [{ src: x.cover, sizes: "512x512", type: (x.capaBlob && x.capaBlob.type) || "image/jpeg" }]
+      artwork: x.cover ? [{ src: x.cover, sizes: "512x512", type: (blobCapa(x) || {}).type || "image/jpeg" }]
         : [{ src: "icons/icon-512.png", sizes: "512x512", type: "image/png" }],
     });
   } catch (e) { /* sem suporte */ }
@@ -1182,7 +1195,7 @@ function albuns(lista = vis()) {
   for (const x of lista) { const k = nomeAlbum(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); }
   return [...m].map(([n, fx]) => {
     fx.sort(porFaixa);
-    return { n, fx, a: new Set(fx.map((x) => x.a)).size > 1 ? T("Vários artistas") : fx[0].a, capa: fx.find((x) => x.cover) || fx[0] };
+    return { n, fx, a: new Set(fx.map((x) => x.a)).size > 1 ? T("Vários artistas") : fx[0].a, capa: capasAlbum.has(n) ? { cover: capasAlbum.get(n).url, c: capasAlbum.get(n).c } : fx.find((x) => x.cover) || fx[0] };
   }).sort((a, b) => comparar(a.n, b.n));
 }
 function artistas() {
@@ -1219,7 +1232,7 @@ function renderBib() {
     if (!al) { aberto = null; return renderBib(); }
     listaBib = { ids: al.fx.map((x) => x.id), ctx: T("álbum {0}", al.n) };
     L.innerHTML = `<button class="back" data-voltar>${ico("back", 18)}${T("Voltar")}</button>
-      <div class="hero">${capaGrupo(al)}<div class="grow stack"><div><h1>${esc(al.n)}</h1><p class="sub">${esc(al.a)} · ${plural(al.fx.length, "música", "músicas")} · ${fmt(duracaoTotal(al.fx))}</p></div></div></div>
+      <div class="hero">${capaGrupo(al)}<div class="grow stack"><div><h1>${esc(al.n)}</h1><p class="sub">${esc(al.a)} · ${plural(al.fx.length, "música", "músicas")} · ${fmt(duracaoTotal(al.fx))}</p></div>${al.fx.some((x) => x.al) ? `<div class="btns"><button class="btn ghost sm" data-capa-album>${ico("edit", 16)}${T("Trocar capa")}</button></div>` : ""}</div></div>
       ${botoesTocar()}<div class="list">${al.fx.map((x) => linhaFaixa(x, { num: x.n, sub: (y) => y.a })).join("")}</div>`;
     return;
   }
@@ -1287,6 +1300,7 @@ $("q").addEventListener("input", renderBib);
 $("seg").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) { aba = b.dataset.tab; sel = null; renderBib(); } });
 $("lib").addEventListener("change", (e) => { if (e.target.id === "ord") { cfg.ord = e.target.value; salvarCfg(); renderBib(); } });
 $("lib").addEventListener("click", (e) => {
+  if (e.target.closest("[data-capa-album]") && aberto && aberto.tipo === "album") return trocarCapa({ album: aberto.nome });
   const t = e.target;
   if (t.closest("[data-importar]")) return menuImportar();
   if (t.closest("[data-selecionar]")) { sel = new Set(); return renderBib(); }
@@ -1373,6 +1387,7 @@ function menuFaixa(id, deLista) {
   if (x.al) itens.push(["album", T("Ver álbum"), "album"]);
   itens.push(["artist", T("Ver artista"), "artista"]);
   if (deLista) itens.push(["x", T("Tirar desta playlist"), "tirarpl"]);
+  if (!x.demo) itens.push(["edit", T("Trocar capa"), "capa"]);
   if (!x.demo) itens.push(["lyrics", x.letra ? T("Ver ou editar letra") : T("Adicionar letra"), "letra"], ["edit", T("Editar informações"), "editar"], ["eyeoff", T("Ocultar da biblioteca"), "ocultar"], ["trash", T("Remover da biblioteca"), "apagar", true]);
   abrirFolha({
     titulo: x.t,
@@ -1387,6 +1402,7 @@ function menuFaixa(id, deLista) {
       else if (a === "album") { fecharFolha(); abrirNaBib("album", nomeAlbum(x)); }
       else if (a === "artista") { fecharFolha(); abrirNaBib("artista", x.a); }
       else if (a === "tirarpl") { fecharFolha(); const p = pls.find((y) => y.id === deLista); if (p) { p.ids = p.ids.filter((q) => q !== id); salvarPl(p); renderPl(); toast(T("Tirada da playlist")); } }
+      else if (a === "capa") trocarCapa({ faixa: x });
       else if (a === "letra") editarLetra(x);
       else if (a === "editar") editarInfo(x);
       else if (a === "ocultar") { fecharFolha(); ocultar(id, true); }
@@ -2413,6 +2429,52 @@ function criarRecorte(V = 240) { // V: tamanho do quadro de recorte, em px
     fechar() { if (corte && corte.bm.close) corte.bm.close(); corte = null; },
   };
 }
+/* ---- Capa personalizada (1.21) ---- */
+function redesenharCapas() {
+  capaPequena.clear();
+  renderBib(); renderPl(); renderInicio(); aplicarTema(); paint(); pintarCena();
+  if (cfg.visual === "led") { ledId = null; prepararLed(cur()); }
+}
+async function definirCapaFaixa(x, blob) {
+  x.capaUser = blob || null; x.cUser = blob ? await coresDaCapa(blob) : null;
+  acertarCover(x); if (!x.demo) salvarFaixa(x);
+  redesenharCapas();
+}
+async function definirCapaAlbum(nome, blob) {
+  if (blob) { const c = await coresDaCapa(blob); capasAlbum.set(nome, { blob, c, url: urlDe(blob) }); dbPut("capas", { id: "al:" + nome, blob, c }); }
+  else { capasAlbum.delete(nome); dbDel("capas", "al:" + nome); }
+  for (const x of faixas) if (nomeAlbum(x) === nome) acertarCover(x);
+  redesenharCapas();
+}
+function trocarCapa(alvo) { // alvo: { faixa: x } ou { album: nome }
+  const rec = criarRecorte();
+  const tem = () => (alvo.faixa ? !!alvo.faixa.capaUser : capasAlbum.has(alvo.album));
+  const definir = (blob) => (alvo.faixa ? definirCapaFaixa(alvo.faixa, blob) : definirCapaAlbum(alvo.album, blob));
+  const html = () => rec.ativo() ? rec.html(T("Usar esta capa"), true) : `<div class="menu"><button data-capa-escolher>${ico("plus")}${T("Escolher imagem")}</button>${tem() ? `<button data-capa-tirar class="danger">${ico("x")}${T("Tirar a capa personalizada")}</button>` : ""}</div>
+    <p class="note">${alvo.faixa ? T("Vale só para esta música. O arquivo da música não é alterado.") : T("Vale para o álbum e para as músicas dele que não têm capa própria. Os arquivos não são alterados.")}</p>`;
+  abrirFolha({
+    titulo: T("Trocar capa"), html: html(),
+    async clique(e) {
+      if (e.target.closest("[data-capa-tirar]")) { fecharFolha(); await definir(null); return toast(T("Capa personalizada retirada")); }
+      if (e.target.closest("[data-corte-x]")) { rec.fechar(); $("sheet-b").innerHTML = html(); return; }
+      if (e.target.closest("[data-corte-ok]")) {
+        const cv = rec.usar(512); fecharFolha();
+        const blob = await new Promise((ok) => cv.toBlob(ok, "image/jpeg", 0.88));
+        if (blob) { await definir(blob); toast(T("Capa trocada")); }
+        return;
+      }
+      if (e.target.closest("[data-capa-escolher]")) {
+        const inp = $("capa-file");
+        inp.onchange = async () => {
+          const f = inp.files[0]; inp.value = ""; if (!f) return;
+          try { rec.abrir(await abrirImagem(f)); $("sheet-b").innerHTML = html(); rec.ligar(); } catch (err) { toast(T("Não deu para abrir essa imagem")); }
+        };
+        inp.click();
+      }
+    },
+    entrada(e) { if (e.target.id === "corte-z" && rec.ativo()) rec.zoom(+e.target.value); },
+  });
+}
 function editarPerfil() {
   let foto = perfil.foto;
   const rec = criarRecorte();
@@ -2557,8 +2619,35 @@ function gerarBackup() {
     perfil, temas: meusTemas, ajustes: cfg,
   };
 }
-function salvarBackup() {
-  const json = JSON.stringify(gerarBackup());
+async function miniCapa(blob) { // capa reduzida para caber no backup
+  try {
+    const bm = await createImageBitmap(blob), cv = document.createElement("canvas"); cv.width = cv.height = 256;
+    cv.getContext("2d").drawImage(bm, 0, 0, 256, 256); if (bm.close) bm.close();
+    return cv.toDataURL("image/jpeg", 0.8);
+  } catch (e) { return null; }
+}
+async function gerarBackupCompleto() { // o backup de sempre mais as capas personalizadas
+  const o = gerarBackup(), fx = [], al = [];
+  for (const x of importadas()) if (x.capaUser) { const img = await miniCapa(x.capaUser); if (img) fx.push({ chave: chaveDe(x), img }); }
+  for (const [nome, r] of capasAlbum) { const img = await miniCapa(r.blob); if (img) al.push({ nome, img }); }
+  o.capas = { faixas: fx, albuns: al };
+  return o;
+}
+function dataBlob(u) { // "data:image/jpeg;base64,..." → Blob (sem usar a rede)
+  const m = /^data:([^;,]+);base64,(.*)$/.exec(String(u || "")); if (!m) return null;
+  const bin = atob(m[2]), b = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+  return new Blob([b], { type: m[1] });
+}
+async function restaurarCapas(c) { // só para músicas e álbuns que existem neste aparelho
+  if (!c) return;
+  const porChave = new Map(faixas.map((x) => [chaveDe(x), x])), nomes = new Set(faixas.map(nomeAlbum));
+  try {
+    for (const f of c.faixas || []) { const x = porChave.get(f.chave), b = x && !x.demo && dataBlob(f.img); if (b) await definirCapaFaixa(x, b); }
+    for (const a of c.albuns || []) { const b = nomes.has(a.nome) && dataBlob(a.img); if (b) await definirCapaAlbum(a.nome, b); }
+  } catch (e) { /* capa com defeito: o resto do backup já entrou */ }
+}
+async function salvarBackup() {
+  const json = JSON.stringify(await gerarBackupCompleto());
   baixar(new Blob([json], { type: "application/json" }), `compasso-backup-${hojeStr()}.json`);
 }
 function restaurarBackup(o) {
@@ -2598,7 +2687,7 @@ function restaurarBackup(o) {
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
   if (aj.ajustes) cfg.ajustes = aj.ajustes;
   salvarCfg(); aplicarTema(); aplicarFundo(); aplicarVisual(); aplicarVel(); aplicarVolume(); if (ctx) montarFiltros();
-  mudouExemplos(); marcarFerramentas(); renderBib(); renderPl(); renderTemas(); paint();
+  mudouExemplos(); marcarFerramentas(); restaurarCapas(o.capas); renderBib(); renderPl(); renderTemas(); paint();
   return { achadas, total, nPl };
 }
 
@@ -2707,7 +2796,7 @@ async function acertarCapas() {
     if (!x.capaBlob) continue;
     const nova = await cortarCapa(x.capaBlob); if (!nova) continue;
     if (x.cover) URL.revokeObjectURL(x.cover);
-    x.capaBlob = nova; x.cover = URL.createObjectURL(nova); x._paleta = null;
+    x.capaBlob = nova; acertarCover(x);
     x.c = (await coresDaCapa(nova)) || x.c; salvarFaixa(x); n++;
     await new Promise((ok) => setTimeout(ok, 30));
   }
@@ -3009,8 +3098,8 @@ async function prepararLed(x) {
   // degradê na diagonal, como o da Aura: cor principal em cima à esquerda, a segunda embaixo à direita
   ledGrad = new Array(LED_N * LED_S);
   for (let j = 0; j < LED_S; j++) for (let i = 0; i < LED_N; i++) ledGrad[j * LED_N + i] = mistura(ledPal[1], ledPal[0], Math.min(1, Math.max(0, ((i / (LED_N - 1)) + (1 - j / (LED_S - 1))) / 2 * 1.4 - 0.2)));
-  if (x.capaBlob) try {
-    const bm = await createImageBitmap(x.capaBlob), cv = document.createElement("canvas"); cv.width = LED_N; cv.height = LED_S;
+  if (blobCapa(x)) try {
+    const bm = await createImageBitmap(blobCapa(x)), cv = document.createElement("canvas"); cv.width = LED_N; cv.height = LED_S;
     const g = cv.getContext("2d"), alvo = LED_N / LED_S, w = bm.width, h = bm.height;
     let sw = w, sh = w / alvo; if (sh > h) { sh = h; sw = h * alvo; } // recorte do meio da capa no formato do painel
     g.drawImage(bm, (w - sw) / 2, (h - sh) / 2, sw, sh, 0, 0, LED_N, LED_S);
@@ -3434,6 +3523,7 @@ requestAnimationFrame(quadro);
 
 (async function iniciar() {
   try { db = await abrirDB(); } catch (e) { db = null; }
+  try { for (const r of db ? await dbTodos("capas") : []) if (r && r.blob) capasAlbum.set(String(r.id).slice(3), { blob: r.blob, c: r.c, url: urlDe(r.blob) }); } catch (e) { /* sem capas guardadas */ }
   for (const x of await dbTodos("faixas")) {
     try { if (!x.arq && !(x.uri && NATIVO)) continue; montar(x); adicionarFaixa(x); } catch (e) { /* registro com defeito: ignora */ }
   }
