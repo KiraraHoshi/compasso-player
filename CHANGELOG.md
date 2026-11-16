@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.18.1
+- **Ícone novo:** um O que também é uma barra de progresso, com a cabeça de leitura na ponta e um equalizador no centro. Vale no ícone do app, na tela de abertura, no app instalado pelo navegador e na loja.
+- As músicas sem capa usam o mesmo símbolo, em branco, sobre as cores do tema.
+
 ## 1.18.0
 - **Nova aba Início**, que é onde o app abre: saudação, **Continuar de onde parou** (com quanto falta e um botão para tocar), **Ferramentas** a um toque (Equalizador, Temporizador, Visual, Época do som, Velocidade e Tela cheia), **Tocadas há pouco** e atalho para as Favoritas. Com a biblioteca vazia, mostra um convite para trazer as músicas.
 - O **Tocando agora** saiu da barra de baixo: abre pelo mini player, pelo Continuar do Início ou ao tocar uma lista. A barra fica Início · Biblioteca · Playlists · Você · Ajustes.
