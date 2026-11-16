@@ -349,7 +349,8 @@ function abrirDB() {
         if (!d.objectStoreNames.contains("playlists")) d.createObjectStore("playlists", { keyPath: "id" });
         if (!d.objectStoreNames.contains("capas")) d.createObjectStore("capas", { keyPath: "id" }); // capas personalizadas de álbum (1.21)
       };
-      r.onsuccess = () => ok(r.result);
+      r.onsuccess = () => { r.result.onversionchange = () => r.result.close(); ok(r.result); }; // outra aba com versão mais nova: solta o banco para ela atualizar
+      r.onblocked = () => toast(T("Feche as outras abas do Orolon para terminar a atualização"));
       r.onerror = () => erro(r.error);
     } catch (e) { erro(e); }
   });
@@ -647,7 +648,7 @@ function removerFaixa(id, sumiu) {
   if (i >= 0) { queue.splice(i, 1); if (i < qi) qi--; }
   if (origem) origem = origem.filter((q) => q !== id);
   for (const p of pls) if (p.ids.includes(id)) { p.ids = p.ids.filter((q) => q !== id); salvarPl(p); }
-  if (!x.uri) URL.revokeObjectURL(x.url); if (x.cover) URL.revokeObjectURL(x.cover);
+  if (!x.uri) URL.revokeObjectURL(x.url); // o endereço da capa pode ser de outras músicas (capa do álbum): não é liberado aqui
   dbDel("faixas", id);
   if (!queue.length) filaPadrao();
   else if (eraAtual) { qi = Math.min(qi, queue.length - 1); carregar(false); }
@@ -1702,7 +1703,7 @@ function renderTemas() {
       <div class="btns"><button class="btn ghost sm" data-bkp>${T("Salvar backup")}</button>${podeEnviarBackup() ? `<button class="btn ghost sm" data-bkp-enviar>${T("Enviar backup")}</button>` : ""}<button class="btn ghost sm" data-rst>${T("Restaurar backup")}</button></div>
       <p class="note" id="bkp-ultimo">${textoUltimoBackup()}</p>
       ${temBackupAutomatico() ? `<p class="t">${T("Backup automático")}</p>` + (cfg.bkpPasta
-        ? `<p class="note">${T("Uma cópia por dia na pasta \"{0}\", guardando as 5 mais novas.", esc(cfg.bkpPasta.nome))}${cfg.bkpFalha ? " " + T("A última tentativa falhou: confira se a pasta ainda existe.") : ""}</p><div class="btns"><button class="btn ghost sm" data-bkp-pasta>${T("Trocar pasta")}</button><button class="btn ghost sm" data-bkp-dapasta>${T("Restaurar o mais recente da pasta")}</button><button class="btn ghost sm" data-bkp-desligar>${T("Desligar")}</button></div>`
+        ? `<p class="note">${cfg.bkpPendente ? T("A pasta \"{0}\" já tem backups. Escolha se quer restaurar um deles; até lá nada é gravado nela.", esc(cfg.bkpPasta.nome)) : T("Uma cópia por dia na pasta \"{0}\", guardando as 5 mais novas deste aparelho.", esc(cfg.bkpPasta.nome))}${cfg.bkpFalha ? " " + T("A última tentativa falhou: confira se a pasta ainda existe.") : ""}</p><div class="btns"><button class="btn ghost sm" data-bkp-pasta>${T("Trocar pasta")}</button><button class="btn ghost sm" data-bkp-dapasta>${T("Restaurar da pasta")}</button><button class="btn ghost sm" data-bkp-desligar>${T("Desligar")}</button></div>`
         : `<p class="note">${T("Escolha uma pasta e o Orolon guarda uma cópia nela todo dia, sem conta e sem internet. No celular novo, escolha a mesma pasta e restaure.")}</p><div class="btns"><button class="btn ghost sm" data-bkp-pasta>${T("Escolher a pasta do backup")}</button></div>`) : ""}</div>
     <div class="card stack"><h2>${T("Sobre")}</h2><p class="note">${NATIVO ? T("Orolon Player {0}. Sem anúncios, sem conta e sem coleta de dados: tudo o que você guarda fica neste aparelho.", VERSAO) : T("Orolon Player {0}. Código aberto, sem anúncios e sem conta. Se o app te ajuda, apoiar o projeto mantém ele assim.", VERSAO)}</p>
       ${NATIVO ? "" : `<div class="btns"><a class="btn sm" href="https://github.com/sponsors/KiraraHoshi" target="_blank" rel="noopener">${ico("heartOn", 18)}${T("Apoiar o projeto")}</a><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player" target="_blank" rel="noopener">${T("Código no GitHub")}</a></div>`}
@@ -1799,8 +1800,8 @@ $("tm").addEventListener("click", (e) => {
   if (t.closest("[data-bkp]")) return salvarBackup().then(renderTemas);
   if (t.closest("[data-bkp-enviar]")) return enviarBackup().then(renderTemas);
   if (t.closest("[data-bkp-pasta]")) return escolherPastaBackup().then(renderTemas);
-  if (t.closest("[data-bkp-desligar]")) { delete cfg.bkpPasta; cfg.bkpFalha = false; salvarCfg(); return renderTemas(); }
-  if (t.closest("[data-bkp-dapasta]")) return restaurarDaPasta().then((r) => { if (r) avisarRestauro(r); }).catch((err) => toast(err && err.message ? err.message : T("Não deu para ler o backup da pasta")));
+  if (t.closest("[data-bkp-desligar]")) { delete cfg.bkpPasta; cfg.bkpFalha = false; cfg.bkpPendente = false; salvarCfg(); return renderTemas(); }
+  if (t.closest("[data-bkp-dapasta]")) return copiasDaPasta().then((l) => (l.length ? abrirCopiasDaPasta(MUS, l) : toast(T("Não há backup nessa pasta.")))).catch(() => toast(T("Não deu para ler o backup da pasta")));
   if (t.closest("[data-rst]")) return $("backup-file").click();
   if (t.closest("[data-fundo]")) return escolherFundo();
   if (t.closest("[data-semfundo]")) { try { localStorage.removeItem("compasso.fundo"); } catch (err) { /* ignora */ } aplicarFundo(); renderTemas(); return toast(T("Imagem de fundo removida")); }
@@ -2614,18 +2615,19 @@ function criarRecorte(V = 240) { // V: tamanho do quadro de recorte, em px
 function redesenharCapas() {
   capaPequena.clear();
   renderBib(); renderPl(); renderInicio(); aplicarTema(); paint(); pintarCena();
+  const x = cur(); if (x) { luz(coresDe(x)); atualizarCorViz(); metaSessao(x); } // luz de fundo, cores do visual e notificação da música que está tocando
   if (cfg.visual === "led") { ledId = null; prepararLed(cur()); }
 }
-async function definirCapaFaixa(x, blob) {
+async function definirCapaFaixa(x, blob, semDesenhar) {
   x.capaUser = blob || null; x.cUser = blob ? await coresDaCapa(blob) : null;
   acertarCover(x); if (!x.demo) salvarFaixa(x);
-  redesenharCapas();
+  if (!semDesenhar) redesenharCapas();
 }
-async function definirCapaAlbum(nome, blob) {
+async function definirCapaAlbum(nome, blob, semDesenhar) {
   if (blob) { const c = await coresDaCapa(blob); capasAlbum.set(nome, { blob, c, url: urlDe(blob) }); dbPut("capas", { id: "al:" + nome, blob, c }); }
   else { capasAlbum.delete(nome); dbDel("capas", "al:" + nome); }
   for (const x of faixas) if (nomeAlbum(x) === nome) acertarCover(x);
-  redesenharCapas();
+  if (!semDesenhar) redesenharCapas();
 }
 function trocarCapa(alvo) { // alvo: { faixa: x } ou { album: nome }
   const rec = criarRecorte();
@@ -2814,7 +2816,7 @@ async function gerarBackupCompleto() { // o backup de sempre mais as capas perso
   for (const x of importadas()) if (x.capaUser) { const img = await miniCapa(x.capaUser); if (img) fx.push({ chave: chaveDe(x), img }); }
   for (const [nome, r] of capasAlbum) { const img = await miniCapa(r.blob); if (img) al.push({ nome, img }); }
   o.capas = { faixas: fx, albuns: al };
-  o.ajustes = { ...cfg }; for (const k of ["bkpPasta", "bkpAutoEm", "bkpFalha", "bkpAvisoEm", "bkpDesde"]) delete o.ajustes[k]; // a pasta só vale neste aparelho
+  o.ajustes = { ...cfg }; for (const k of ["bkpPasta", "bkpAutoEm", "bkpFalha", "bkpAvisoEm", "bkpDesde", "bkpId", "bkpPendente", "bkpTentouEm"]) delete o.ajustes[k]; // a pasta só vale neste aparelho
   return o;
 }
 function dataBlob(u) { // "data:image/jpeg;base64,..." → Blob (sem usar a rede)
@@ -2825,10 +2827,12 @@ function dataBlob(u) { // "data:image/jpeg;base64,..." → Blob (sem usar a rede
 async function restaurarCapas(c) { // só para músicas e álbuns que existem neste aparelho
   if (!c) return;
   const porChave = new Map(faixas.map((x) => [chaveDe(x), x])), nomes = new Set(faixas.map(nomeAlbum));
-  try {
-    for (const f of c.faixas || []) { const x = porChave.get(f.chave), b = x && !x.demo && dataBlob(f.img); if (b) await definirCapaFaixa(x, b); }
-    for (const a of c.albuns || []) { const b = nomes.has(a.nome) && dataBlob(a.img); if (b) await definirCapaAlbum(a.nome, b); }
+  let mudou = false;
+  try { // quem já tem capa aqui fica com a sua (a do backup é menor); tudo é aplicado e a tela é redesenhada uma vez só
+    for (const f of c.faixas || []) { const x = porChave.get(f.chave), b = x && !x.demo && !x.capaUser && dataBlob(f.img); if (b) { await definirCapaFaixa(x, b, true); mudou = true; } }
+    for (const a of c.albuns || []) { const b = nomes.has(a.nome) && !capasAlbum.has(a.nome) && dataBlob(a.img); if (b) { await definirCapaAlbum(a.nome, b, true); mudou = true; } }
   } catch (e) { /* capa com defeito: o resto do backup já entrou */ }
+  if (mudou) redesenharCapas();
 }
 /* ---- Backup mais fácil (1.21): salvar, enviar pelo compartilhamento e cópia automática numa pasta. Sem conta e sem internet. ---- */
 const DIA_MS = 86400000;
@@ -2840,7 +2844,10 @@ function avisarRestauro(r) {
   if (r.total > r.achadas) setTimeout(() => toast(T("Importe as músicas que faltam e restaure de novo para completar")), 2600);
 }
 async function salvarBackup() {
-  entregarTexto(nomeBackup(), await textoBackup(), "application/json");
+  let texto; try { texto = await textoBackup(); } catch (e) { return toast(T("Não deu para montar o backup")); }
+  if (NATIVO && MUS && MUS.compartilhar) { // dentro do app Android o download direto não grava nada: entrega pelo compartilhamento
+    try { await MUS.compartilhar({ nome: nomeBackup(), texto, tipo: "application/json", titulo: T("Salvar backup") }); } catch (e) { return toast(T("Não deu para enviar o backup")); }
+  } else baixar(new Blob([texto], { type: "application/json" }), nomeBackup());
   marcarBackupFeito();
 }
 const arquivoParaEnviar = (texto) => new File([texto], nomeBackup(), { type: "application/json" });
@@ -2849,7 +2856,7 @@ function podeEnviarBackup(plug = MUS) {
   try { return !!(navigator.canShare && navigator.canShare({ files: [arquivoParaEnviar("{}")] })); } catch (e) { return false; }
 }
 async function enviarBackup(plug = MUS) { // quem envia é o app que a pessoa escolher (Drive, WhatsApp, e-mail...), não o Orolon
-  const texto = await textoBackup();
+  let texto; try { texto = await textoBackup(); } catch (e) { return toast(T("Não deu para montar o backup")); }
   try {
     if (plug && plug.compartilhar && (NATIVO || plug !== MUS)) await plug.compartilhar({ nome: nomeBackup(), texto, titulo: T("Enviar backup") });
     else await navigator.share({ files: [arquivoParaEnviar(texto)], title: T("Backup do Orolon") });
@@ -2857,41 +2864,87 @@ async function enviarBackup(plug = MUS) { // quem envia é o app que a pessoa es
   } catch (e) { if (!e || e.name !== "AbortError") toast(T("Não deu para enviar o backup")); }
 }
 const temBackupAutomatico = (plug = MUS) => !!(plug && plug.gravarBackup && (NATIVO || plug !== MUS));
+/* Cada aparelho grava com a sua marca no nome (orolon-backup-AAAA-MM-DD-xxxx.json) e só apaga as cópias dele:
+   o celular novo nunca passa por cima dos backups do antigo. */
+const nomeBackupAuto = (d = new Date()) => { if (!cfg.bkpId) { cfg.bkpId = Math.random().toString(36).slice(2, 6).padEnd(4, "0"); salvarCfg(); } return `orolon-backup-${hojeStr(d)}-${cfg.bkpId}.json`; };
+let bkpRodando = false;
 async function backupAutomatico(plug = MUS, agora = Date.now(), forcar = false) {
   if (!temBackupAutomatico(plug) || !cfg.bkpPasta || !cfg.bkpPasta.uri) return "sem-pasta";
-  if (!forcar && agora - (+cfg.bkpAutoEm || 0) < DIA_MS) return "cedo";
+  if (cfg.bkpPendente) return "pendente"; // a pasta já tinha backups e a pessoa ainda não decidiu se restaura
+  if (bkpRodando) return "cedo";
+  if (!forcar && (agora - (+cfg.bkpAutoEm || 0) < DIA_MS || agora - (+cfg.bkpTentouEm || 0) < 3600000)) return "cedo"; // depois de uma falha, só tenta de novo em 1 hora
+  bkpRodando = true;
   try {
-    await plug.gravarBackup({ uri: cfg.bkpPasta.uri, nome: nomeBackup(new Date(agora)), texto: await textoBackup(), manter: 5 });
-    cfg.bkpAutoEm = agora; marcarBackupFeito(agora);
+    const nome = nomeBackupAuto(new Date(agora));
+    await plug.gravarBackup({ uri: cfg.bkpPasta.uri, nome, grupo: "-" + cfg.bkpId + ".json", texto: await textoBackup(), manter: 5 });
+    cfg.bkpAutoEm = agora; cfg.bkpTentouEm = 0; marcarBackupFeito(agora);
     return "feito";
-  } catch (e) { cfg.bkpFalha = true; salvarCfg(); return "falhou"; } // sem aviso na tela: a linha em Ajustes › Sobre conta o que houve
+  } catch (e) { cfg.bkpFalha = true; cfg.bkpTentouEm = agora; salvarCfg(); return "falhou"; } // sem aviso na tela a cada vez: a linha em Ajustes › Sobre conta o que houve
+  finally { bkpRodando = false; }
+}
+const dataDoBackup = (nome) => (/orolon-backup-(\d{4}-\d{2}-\d{2})/.exec(String(nome)) || [])[1] || "";
+async function copiasDaPasta(plug = MUS) { // as cópias da pasta, da mais nova para a mais antiga
+  if (!plug || !plug.listarBackups || !cfg.bkpPasta) return [];
+  return (((await plug.listarBackups({ uri: cfg.bkpPasta.uri })) || {}).backups || []).slice()
+    .sort((x, y) => dataDoBackup(y.nome).localeCompare(dataDoBackup(x.nome)) || (y.modificado || 0) - (x.modificado || 0));
+}
+async function restaurarCopia(plug, doc) { const r = await plug.lerBackup({ doc }); return restaurarBackup(JSON.parse((r || {}).texto || "")); }
+function liberarBackupDaPasta() { if (cfg.bkpPendente) { cfg.bkpPendente = false; salvarCfg(); } }
+async function restaurarDaPasta(plug = MUS) { // tenta da mais nova para a mais antiga: uma cópia cortada no meio não impede a restauração
+  const lista = await copiasDaPasta(plug);
+  if (!lista.length) throw new Error(T("Não há backup nessa pasta."));
+  for (const c of lista) { try { const r = await restaurarCopia(plug, c.doc); liberarBackupDaPasta(); return r; } catch (e) { /* cópia com defeito: tenta a anterior */ } }
+  throw new Error(T("Nenhum backup dessa pasta pôde ser lido."));
+}
+function abrirCopiasDaPasta(plug, lista) {
+  const dataBonita = (n) => { const d = dataDoBackup(n); return d ? d.split("-").reverse().join("/") : n; };
+  const daqui = (n) => !!cfg.bkpId && String(n).endsWith("-" + cfg.bkpId + ".json");
+  abrirFolha({
+    titulo: T("Backups da pasta"),
+    html: `<p class="note">${cfg.bkpPendente ? T("Esta pasta já tem backups. Quer restaurar um deles neste aparelho? Nada é gravado nem apagado antes de você escolher.") : T("Escolha a cópia para restaurar. As músicas não entram no backup: importe as músicas antes.")}</p>
+      <div class="menu">${lista.map((c) => `<button data-bkp-doc="${esc(c.doc)}">${ico("lib")}<span class="grow">${T("Backup de {0}", dataBonita(c.nome))}</span><span class="sub">${daqui(c.nome) ? T("deste aparelho") : T("de outro aparelho")}</span></button>`).join("")}
+      ${cfg.bkpPendente ? `<button data-bkp-semrestaurar>${ico("x")}${T("Não restaurar: guardar os dados deste aparelho")}</button>` : ""}</div>`,
+    async clique(e) {
+      const b = e.target.closest("[data-bkp-doc]");
+      if (b) {
+        try { const r = await restaurarCopia(plug, b.dataset.bkpDoc); liberarBackupDaPasta(); fecharFolha(); avisarRestauro(r); renderTemas(); }
+        catch (err) { toast(T("Não deu para ler essa cópia. Tente outra.")); }
+        return;
+      }
+      if (e.target.closest("[data-bkp-semrestaurar]")) { liberarBackupDaPasta(); fecharFolha(); await primeiroBackup(plug); renderTemas(); }
+    },
+  });
+}
+async function primeiroBackup(plug) {
+  const st = await backupAutomatico(plug, Date.now(), true);
+  toast(st === "feito" ? T("Backup automático ligado. A primeira cópia já foi guardada.") : T("Não deu para gravar nessa pasta. Escolha outra."));
 }
 async function escolherPastaBackup(plug = MUS) {
   if (!plug || !plug.escolherPastaBackup) return;
   let r; try { r = await plug.escolherPastaBackup(); } catch (e) { toast(T("Não deu para abrir as pastas do aparelho")); return; }
   if (!r || r.cancelado || !r.uri) return;
-  cfg.bkpPasta = { uri: r.uri, nome: r.nome || T("Pasta") }; salvarCfg();
-  const st = await backupAutomatico(plug, Date.now(), true);
-  toast(st === "feito" ? T("Backup automático ligado. A primeira cópia já foi guardada.") : T("Não deu para gravar nessa pasta. Escolha outra."));
-}
-async function restaurarDaPasta(plug = MUS) {
-  if (!plug || !plug.listarBackups || !cfg.bkpPasta) return null;
-  const lista = (((await plug.listarBackups({ uri: cfg.bkpPasta.uri })) || {}).backups || []).slice().sort((a, b) => String(b.nome).localeCompare(String(a.nome)) || (b.modificado || 0) - (a.modificado || 0));
-  if (!lista.length) throw new Error(T("Não há backup nessa pasta."));
-  const r = await plug.lerBackup({ doc: lista[0].doc });
-  return restaurarBackup(JSON.parse((r || {}).texto || ""));
+  cfg.bkpPasta = { uri: r.uri, nome: r.nome || T("Pasta") }; cfg.bkpFalha = false; cfg.bkpPendente = false; salvarCfg();
+  let ja = []; try { ja = await copiasDaPasta(plug); } catch (e) { /* pasta sem leitura: a gravação vai avisar */ }
+  if (ja.length) { cfg.bkpPendente = true; salvarCfg(); return abrirCopiasDaPasta(plug, ja); } // pasta com backups (celular novo?): pergunta antes de gravar qualquer coisa
+  await primeiroBackup(plug);
 }
 function textoUltimoBackup(agora = Date.now()) {
   if (!cfg.bkpUltimo) return T("Último backup: nunca");
   const dias = Math.floor((agora - cfg.bkpUltimo) / DIA_MS);
   return dias <= 0 ? T("Último backup: hoje") : dias === 1 ? T("Último backup: ontem") : T("Último backup: há {0} dias", dias);
 }
-function avisoBackup(agora = Date.now()) { // um lembrete discreto, no máximo uma vez a cada 30 dias, só para quem tem o que perder
+function avisoBackup(agora = Date.now()) { // um lembrete discreto, só para quem tem o que perder
   if (!cfg.bkpDesde) { cfg.bkpDesde = agora; salvarCfg(); }
-  if (cfg.bkpPasta || !importadas().length) return false;
-  if (agora - Math.max(+cfg.bkpUltimo || 0, +cfg.bkpDesde || 0) < 30 * DIA_MS || agora - (+cfg.bkpAvisoEm || 0) < 30 * DIA_MS) return false;
-  cfg.bkpAvisoEm = agora; salvarCfg();
-  toast(T("Faz tempo que você não salva um backup"), [T("Abrir"), () => { ir("temas"); abrirPorta("sobre"); }]);
+  if (!importadas().length) return false;
+  const sem = agora - Math.max(+cfg.bkpUltimo || 0, +cfg.bkpDesde || 0), desdeAviso = agora - (+cfg.bkpAvisoEm || 0);
+  const abrir = [T("Abrir"), () => { ir("temas"); abrirPorta("sobre"); }];
+  if (cfg.bkpPasta) { // com backup automático só avisa se ele está falhando há dias (no máximo uma vez por semana)
+    if (!cfg.bkpFalha || sem < 3 * DIA_MS || desdeAviso < 7 * DIA_MS) return false;
+    cfg.bkpAvisoEm = agora; salvarCfg(); toast(T("O backup automático não está conseguindo gravar"), abrir);
+    return true;
+  }
+  if (sem < 30 * DIA_MS || desdeAviso < 30 * DIA_MS) return false; // sem backup automático: no máximo uma vez a cada 30 dias
+  cfg.bkpAvisoEm = agora; salvarCfg(); toast(T("Faz tempo que você não salva um backup"), abrir);
   return true;
 }
 function restaurarBackup(o) {
@@ -3044,7 +3097,6 @@ async function acertarCapas() {
   for (const x of importadas()) {
     if (!x.capaBlob) continue;
     const nova = await cortarCapa(x.capaBlob); if (!nova) continue;
-    if (x.cover) URL.revokeObjectURL(x.cover);
     x.capaBlob = nova; acertarCover(x);
     x.c = (await coresDaCapa(nova)) || x.c; salvarFaixa(x); n++;
     await new Promise((ok) => setTimeout(ok, 30));
@@ -3090,8 +3142,9 @@ function editarInfo(x) {
       x.a = String(d.get("a") || "").trim() || T("Artista desconhecido");
       x.al = String(d.get("al") || "").trim();
       x.n = Math.max(0, Math.min(999, parseInt(d.get("n")) || 0));
+      acertarCover(x); capaPequena.delete(x.id); // mudou de álbum: a capa personalizada do álbum pode entrar ou sair
       salvarFaixa(x); fecharFolha();
-      renderBib(); renderPl(); marcarAtual(); if (cur() === x) metaSessao(x);
+      renderBib(); renderPl(); marcarAtual(); if (cur() === x) { luz(coresDe(x)); atualizarCorViz(); metaSessao(x); paint(); }
       toast(T("Informações salvas"));
     },
   });
