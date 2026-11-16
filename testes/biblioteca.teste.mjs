@@ -203,4 +203,81 @@ export default [
       assert.equal(await p.avaliar(() => trecho), null);
     },
   },
+  /* ---- acertos da revisão ---- */
+  {
+    nome: "A-B continua valendo com a tela apagada (a checagem não depende do desenho da tela)",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        prepararAudio();
+        buscarSeg(10); marcarA(); buscarSeg(20); marcarB();
+        const semTrecho = (() => { const t = trecho; trecho = null; const v = vigiarTrecho(); trecho = t; return v; })();
+        pos = 25; // como se a música tivesse passado de B sem nenhum quadro desenhado
+        const voltou = vigiarTrecho();
+        return { semTrecho, voltou, pos: Math.round(posAtual()), tempo: els.every((a) => typeof a.ontimeupdate === "function") };
+      });
+      assert.deepEqual(r, { semTrecho: false, voltou: true, pos: 10, tempo: true });
+    },
+  },
+  {
+    nome: "A-B com o temporizador 'ao fim da música': pausa no fim do trecho em vez de tocar a noite toda",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        tocar(); buscarSeg(10); marcarA(); buscarSeg(20); marcarB();
+        sono.aoFim = true; pos = 25; posBase = 25; inicioT = ctx.currentTime;
+        vigiarTrecho();
+        return [playing, sono.aoFim, trecho !== null];
+      });
+      assert.deepEqual(r, [false, false, true]);
+    },
+  },
+  {
+    nome: ".m3u antigo do Windows (sem UTF-8) mantém os acentos",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        const latin = (t) => Uint8Array.from([...t].map((c) => c.charCodeAt(0))).buffer; // cada letra em 1 byte, como o Winamp grava
+        return [decodificarTexto(latin("#EXTM3U\r\nCoração.mp3\r\n")), decodificarTexto(new TextEncoder().encode("Coração ✓.mp3").buffer)];
+      });
+      assert.deepEqual(r, ["#EXTM3U\r\nCoração.mp3\r\n", "Coração ✓.mp3"]);
+    },
+  },
+  {
+    nome: ".m3u com nomes de arquivo repetidos escolhe a música certa pelo artista, pela pasta ou pela duração",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        const mk = (id, t, a, d, pasta) => ({ id, sig: "01 - Intro.mp3|100|" + id.length, em: 1, arq: new Blob(["x"]), capaBlob: null, t, a, al: "", n: 1, d, c: ["#111", "#222"], letra: "", pasta });
+        for (const x of [mk("d1", "Intro", "Banda Um", 60, "Musicas/Disco Um/"), mk("d2", "Intro", "Banda Dois", 90, "Musicas/Disco Dois/"), mk("d3", "Abertura", "Banda Três", 120, "Musicas/Disco Tres/")]) { montar(x); adicionarFaixa(x); }
+        const um = (txt) => { const i = importarM3U("#EXTM3U\n" + txt + "\n", "T"); return i.p ? i.p.ids.join(",") : ""; };
+        return [
+          um("#EXTINF:90,Banda Dois - Intro\n01 - Intro.mp3"),            // pelo artista e título
+          um("D:\\Musicas\\Disco Tres\\01 - Intro.mp3"),                // pela pasta
+          um("#EXTINF:61,Outro nome qualquer\n01 - Intro.mp3"),            // pela duração
+        ];
+      });
+      assert.deepEqual(r, ["d2", "d3", "d1"]);
+    },
+  },
+  {
+    nome: "exportar .m3u: quebra de linha no título não parte o arquivo, # no começo do nome não vira comentário, exemplo não entra",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        const x = { id: "e1", sig: "#1 Crush.mp3|1|1", em: 1, arq: new Blob(["x"]), capaBlob: null, t: "Linha um\nlinha dois", a: "Ar\r\ntista", al: "", n: 0, d: 5, c: ["#111", "#222"], letra: "" };
+        montar(x); adicionarFaixa(x);
+        const pl = novaPlaylist("Mista", ["ex0", "e1"]), txt = gerarM3U(pl), imp = importarM3U(txt, "x");
+        return { linhas: txt.trim().split("\n"), ids: imp.p.ids };
+      });
+      assert.deepEqual(r.linhas, ["#EXTM3U", "#PLAYLIST:Mista", "#EXTINF:5,Ar tista - Linha um linha dois", "./#1 Crush.mp3"]);
+      assert.deepEqual(r.ids, ["e1"]);
+    },
+  },
+  {
+    nome: "marcador: com a folha aberta e a música trocada, não grava na música errada",
+    rodar: async (p) => {
+      await p.avaliar(() => { buscarSeg(15); abrirMarcadores(); });
+      const antiga = await p.avaliar(() => cur().id);
+      await p.avaliar(() => proxima());
+      await p.clicar("#sheet [data-marca-nova]");
+      assert.deepEqual(await p.avaliar((id) => [marcasDe(id).length, marcasDe(cur().id).length], antiga), [0, 0]);
+      await p.esperar(() => document.getElementById("sheet").hidden, 1500);
+    },
+  },
 ];

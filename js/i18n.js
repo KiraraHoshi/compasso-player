@@ -76,6 +76,7 @@ const EN = {
  "Marcadores": "Bookmarks",
  "e {0} automáticas": "and {0} automatic",
  "Importar .m3u": "Import .m3u",
+ "Esse arquivo é grande demais para ser uma playlist": "This file is too big to be a playlist",
  "Exportar .m3u": "Export .m3u",
  "Sua nota": "Your rating",
  "Marcar este ponto": "Bookmark this point",

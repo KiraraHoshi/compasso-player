@@ -739,6 +739,7 @@ function prepararAudio() {
     ctx.createMediaElementSource(a).connect(g); g.connect(entrada);
     a.onended = () => { if (a === el) fimDaFaixa(); };
     a.onplaying = () => { if (a === el) erros = 0; };
+    a.ontimeupdate = () => { if (a === el) vigiarTrecho(); }; // roda mesmo com a tela apagada, quando o desenho da tela para
     a.onloadedmetadata = () => { const x = cur(); if (a === el && x && !x.demo && a.dataset.id === x.id && isFinite(a.duration)) { x.d = a.duration; paint(); } };
     a.onerror = () => {
       const x = cur(); if (a !== el || !x || x.demo || a.dataset.id !== x.id || !playing) return;
@@ -838,7 +839,7 @@ function proximoIdx() {
   return repeat === "all" && queue.length > 1 ? 0 : -1;
 }
 function vigiarTroca(x, p) {
-  if (!playing || !x || x.demo || !ctx || trocando || sono.aoFim) return;
+  if (!playing || !x || x.demo || !ctx || trocando || sono.aoFim || (trecho && trecho.b != null && trecho.id === x.id)) return;
   const ni = proximoIdx(); if (ni < 0) return;
   const nx = porId.get(queue[ni]); if (!nx || nx.demo) return;
   const resta = (x.d || 0) - p, o = els[1 - elAtivo];
@@ -1075,7 +1076,7 @@ function quadro() {
   const x = cur();
   if (x) {
     const p = posAtual();
-    if (trecho && trecho.b != null && trecho.id === x.id && p >= trecho.b) buscarSeg(trecho.a); // repetir trecho (A-B)
+    vigiarTrecho(); // repetir trecho (A-B)
     if (x.demo && playing && p >= x.d) fimDaFaixa();
     else {
       const fr = x.d ? Math.min(1, p / x.d) : 0;
@@ -2136,6 +2137,7 @@ function abrirMarcadores() {
     titulo: T("Marcadores"), html: html(),
     clique(e) {
       const t = e.target;
+      if (!cur() || cur().id !== x.id || !porId.has(x.id)) return fecharFolha(); // a música mudou com a folha aberta: não marca na música errada
       if (t.closest("[data-marca-nova]")) { if (!adicionarMarca(x.id, posAtual(), "")) toast(T("Esta música já tem o máximo de marcadores")); return refazer(); }
       const ir_ = t.closest("[data-marca-ir]"); if (ir_) { const m = marcasDe(x.id)[+ir_.dataset.marcaIr]; if (m && cur() && cur().id === x.id) buscarSeg(m.t); return; }
       const ap = t.closest("[data-marca-x]"); if (ap) { apagarMarca(x.id, +ap.dataset.marcaX); return refazer(); }
@@ -2153,6 +2155,16 @@ function marcarB() {
   trecho.b = p; pintarTrecho(); return true;
 }
 function limparTrecho() { trecho = null; pintarTrecho(); }
+function vigiarTrecho() { // passou do fim (B)? volta para o início (A). Chamada pelo desenho da tela, pelo tocador e pelo relógio de 1 s.
+  const x = cur();
+  if (!x || !trecho || trecho.b == null || trecho.id !== x.id || posAtual() < trecho.b) return false;
+  if (sono.aoFim) { // temporizador "ao fim da música": o fim do trecho conta como fim, senão a música nunca acabaria
+    sono.aoFim = false; pausar(); paintSono(); toast(T("Temporizador: música pausada"));
+    return true;
+  }
+  buscarSeg(trecho.a);
+  return true;
+}
 function abrirTrecho() {
   const x = cur(); if (!x) return;
   const meu = () => (trecho && trecho.id === x.id ? trecho : null);
@@ -2174,27 +2186,51 @@ function abrirTrecho() {
 const nomeArq = (x) => String(x.sig || "").split("|")[0] || x.t;
 const dataArq = (x) => +String(x.sig || "").split("|")[2] || x.em || 0;
 function gerarM3U(p) {
-  const l = ["#EXTM3U", "#PLAYLIST:" + p.nome];
-  for (const id of idsDe(p)) { const x = porId.get(id); if (x) l.push(`#EXTINF:${Math.round(x.d || 0)},${x.a} - ${x.t}`, nomeArq(x)); }
+  const umaLinha = (s) => String(s || "").replace(/[\r\n]+/g, " ").trim(); // quebra de linha no título partiria o arquivo
+  const l = ["#EXTM3U", "#PLAYLIST:" + umaLinha(p.nome)];
+  for (const id of idsDe(p)) {
+    const x = porId.get(id); if (!x || x.demo) continue; // as músicas de exemplo não têm arquivo
+    const arq = umaLinha(nomeArq(x));
+    l.push(`#EXTINF:${Math.round(x.d || 0)},${umaLinha(x.a)} - ${umaLinha(x.t)}`, arq[0] === "#" ? "./" + arq : arq); // "#" no começo seria lido como comentário
+  }
   return l.join("\n") + "\n";
 }
+function decodificarTexto(buf) { // players antigos do Windows gravam o .m3u sem UTF-8: tenta UTF-8 e, se não for, lê como Windows-1252
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch (e) { return new TextDecoder("windows-1252").decode(buf); }
+}
 function lerM3U(texto) {
-  let nome = "", inf = null; const itens = [];
-  for (const bruta of String(texto || "").replace(/^\uFEFF/, "").split(/\r?\n/)) {
+  let nome = "", inf = null, dur = 0; const itens = [];
+  for (const bruta of String(texto || "").replace(/^\uFEFF/, "").split(/\r\n|\r|\n/)) {
     const li = bruta.trim(); if (!li) continue;
     if (/^#PLAYLIST:/i.test(li)) nome = li.slice(10).trim();
-    else if (/^#EXTINF:/i.test(li)) { const k = li.indexOf(","); inf = k >= 0 ? li.slice(k + 1).trim() : null; }
-    else if (li[0] !== "#") { itens.push({ arq: li, inf }); inf = null; }
+    else if (/^#EXTINF:/i.test(li)) { const k = li.indexOf(","); inf = k >= 0 ? li.slice(k + 1).trim() : null; dur = parseFloat(li.slice(8)) || 0; }
+    else if (li[0] !== "#") { itens.push({ arq: li, inf, dur }); inf = null; dur = 0; }
   }
   return { nome, itens };
 }
 function importarM3U(texto, nomePadrao) {
   const { nome, itens } = lerM3U(texto);
-  const base = (s) => { let b = String(s).replace(/\\/g, "/").split("/").pop(); if (b.includes("%")) try { b = decodeURIComponent(b); } catch (e) { /* nome com % de verdade */ } return b.normalize("NFC").toLowerCase(); };
+  const igual = (s) => String(s || "").normalize("NFC").toLowerCase();
+  const partes = (s) => { const p = String(s).replace(/\\/g, "/").split("/").filter(Boolean).map((b) => { if (b.includes("%")) try { return decodeURIComponent(b); } catch (e) { /* nome com % de verdade */ } return b; }); return { base: igual(p.pop() || ""), pasta: igual(p.pop() || "") }; };
   const porArq = new Map(), porInf = new Map();
-  for (const x of faixas) { if (!visivel(x)) continue; porArq.set(base(nomeArq(x)), x.id); porInf.set((x.a + " - " + x.t).normalize("NFC").toLowerCase(), x.id); }
-  const ids = [];
-  for (const it of itens) { const id = porArq.get(base(it.arq)) || (it.inf && porInf.get(it.inf.normalize("NFC").toLowerCase())); if (id && !ids.includes(id)) ids.push(id); }
+  for (const x of faixas) {
+    if (!visivel(x)) continue;
+    const b = partes(nomeArq(x)).base; if (!porArq.has(b)) porArq.set(b, []); porArq.get(b).push(x);
+    porInf.set(igual(x.a + " - " + x.t), x.id);
+  }
+  const escolher = (it) => { // nome de arquivo repetido em vários álbuns: desempata pelo artista e título, pela pasta e pela duração
+    const pt = partes(it.arq), cand = porArq.get(pt.base) || [];
+    if (cand.length === 1) return cand[0].id;
+    if (cand.length > 1) {
+      const porTexto = it.inf && cand.find((x) => igual(x.a + " - " + x.t) === igual(it.inf)); if (porTexto) return porTexto.id;
+      const porPasta = pt.pasta && cand.find((x) => igual(String(x.pasta || "").split("/").filter(Boolean).pop()) === pt.pasta); if (porPasta) return porPasta.id;
+      if (it.dur > 0) return cand.slice().sort((x, y) => Math.abs((x.d || 0) - it.dur) - Math.abs((y.d || 0) - it.dur))[0].id;
+      return cand[0].id;
+    }
+    return (it.inf && porInf.get(igual(it.inf))) || null;
+  };
+  const ids = [], vistos = new Set();
+  for (const it of itens) { const id = escolher(it); if (id && !vistos.has(id)) { vistos.add(id); ids.push(id); } }
   if (!ids.length) return { p: null, achadas: 0, total: itens.length };
   return { p: novaPlaylist(String(nome || nomePadrao || "Playlist").slice(0, 60), ids), achadas: ids.length, total: itens.length };
 }
@@ -2205,7 +2241,8 @@ function entregarTexto(nome, texto, tipo) { // no app Android o download direto 
 $("m3u-file").addEventListener("change", async (e) => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   try {
-    const r = importarM3U(await f.text(), f.name.replace(/\.m3u8?$/i, ""));
+    if (f.size > 2000000) return toast(T("Esse arquivo é grande demais para ser uma playlist"));
+    const r = importarM3U(decodificarTexto(await f.arrayBuffer()), f.name.replace(/\.m3u8?$/i, ""));
     if (!r.p) return toast(r.total ? T("Nenhuma música dessa playlist foi encontrada na biblioteca") : T("Esse arquivo não tem músicas"));
     plAberta = r.p.id; renderPl();
     toast(T("Playlist importada: {0} de {1} músicas encontradas", r.achadas, r.total));
@@ -2356,7 +2393,7 @@ setInterval(() => {
   const agora = Date.now(), x = cur();
   if (playing && x && ultimoTick) registrarEscuta(x, Math.min(65, (agora - ultimoTick) / 1000));
   ultimoTick = playing ? agora : 0;
-  verificarSono(); paintSono(); atualizarHora();
+  verificarSono(); paintSono(); atualizarHora(); vigiarTrecho();
   if (playing && x) vigiarTroca(x, posAtual());
   if (statsSujo && agora - statsSalvo > 10000) salvarStats();
 }, 1000);
