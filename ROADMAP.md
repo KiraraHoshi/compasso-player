@@ -53,6 +53,37 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - "Mais aplicativos (AD)" e itens de propaganda no menu.
 - Esconder predefinições básicas do equalizador atrás do pago.
 
+## Em andamento (16/11/2026)
+
+- ✅ **1.18.0:** aba Início, Ajustes em quatro partes, capa padrão nas cores do tema e testes automáticos.
+- **1.18.1:** ícone novo (o Jo-ah escolhe entre propostas).
+- **1.19 Som:** amplificador até 200% com limitador, reverb, efeito 3D e aprimorador (graves, agudos e intensidade).
+- **1.20 Uso:** modo carro, "já começar tocando" ao abrir, tocar ao conectar o fone e notificação abrindo o Tocando.
+- Depois: prints novos da loja e do README.
+
+## Sugestões para versões futuras (anotadas em 16/11/2026)
+
+**Efeitos de som** (todos grátis, com a Web Audio que o app já usa)
+- **Predefinições de efeito com um toque:** "Slowed + reverb" (0,85× com reverb de sala), "Nightcore" (1,25× com o tom junto), "Noite" (compressor que segura os picos para ouvir baixo) e "Vocal à frente".
+- **Áudio 8D:** o som gira em volta da cabeça, com velocidade ajustável. É popular entre quem ouve de fone.
+- **Modo karaokê:** tira a voz do centro (cancelamento de fase). Combina com as letras sincronizadas que o app já tem.
+- **Mudar o tom sem mudar a velocidade** (meio tom acima ou abaixo), para cantar junto.
+- **Crossfeed para fone:** mistura um pouco dos lados, para cansar menos em músicas antigas com estéreo muito separado.
+- **Balanço esquerda/direita e áudio mono:** são recursos de acessibilidade, para quem ouve melhor de um lado ou usa um fone só.
+- **Equalizador por música ou por gênero:** lembra o ajuste de cada música ou escolhe pela etiqueta de gênero.
+- **Pular silêncio** no começo e no fim das faixas (comum em MP3 do YouTube e em podcasts).
+
+**O que quase todo player grátis tem e ainda falta no Orolon**
+- **Pausar ao tirar o fone** (fio ou Bluetooth). Precisa conferir no Android: se a WebView não faz isso sozinha, é a primeira da lista, porque o som sair alto no viva-voz é a reclamação mais comum.
+- **Importar e exportar playlists .m3u.** É o formato que os outros players usam, então ajuda quem está trocando de app.
+- **Repetir um trecho (A-B)**, bom para estudar música ou idioma.
+- **Mais ordens na Biblioteca:** álbum, duração, mais tocadas, data do arquivo e número da faixa.
+- **Favoritar ou avaliar com estrelas**, com playlists automáticas "5 estrelas".
+- **Marcadores e retomar por arquivo** em áudios longos (audiolivros e podcasts). Hoje só as músicas longas lembram a posição.
+- **Widgets e Android Auto** (já no plano da versão Android).
+- **Compartilhar o arquivo da música** pelo menu do Android.
+- **Achar músicas repetidas** na biblioteca.
+
 ## Versão Android
 
 - Encontrar as músicas do aparelho sozinho, sem importar.
@@ -74,7 +105,7 @@ Cada época muda o visual e o som juntos. Tudo funciona offline, com o processam
 | Anos 80 | Fita cassete com os carretéis girando | Oscilação leve de velocidade, agudos cortados |
 | Anos 90 | CD player e visualizador de barras | Som limpo com realce de graves |
 
-Também podem entrar no pacote: temas premium, efeito de som 3D e widgets premium.
+Também podem entrar no pacote: temas premium e estilos extras de widget. **Regra (16/11/2026): o pago é só visual.** Funções como efeito 3D, reverb, amplificador e modo carro são grátis (veja `docs/superpowers/specs/2026-11-16-orolon-navegacao-e-ferramentas-design.md`).
 
 Observação: vender pela Google Play numa conta pessoal deixa o endereço do desenvolvedor público. Liberar o pacote para quem apoia pelo GitHub Sponsors evita isso.
 
