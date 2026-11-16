@@ -37,6 +37,9 @@ const I = {
   ondas: tr("M2.5 12c1.6-3.2 3.2-3.2 4.8 0s3.2 3.2 4.8 0 3.2-3.2 4.8 0 3.2 3.2 4.8 0") + tr("M6 5.8a9 9 0 0 1 12 0M6 18.2a9 9 0 0 0 12 0"),
   carro: tr("M5 11.5l1.5-4.3A2 2 0 0 1 8.4 5.8h7.2a2 2 0 0 1 1.9 1.4l1.5 4.3M4 11.5h16v6H4zM6.5 17.5v1.7M17.5 17.5v1.7M7 14.5h.5M16.5 14.5h.5"),
   pincel: tr("M19.6 4.4a2 2 0 0 0-2.9 0L9.2 11.9l2.9 2.9 7.5-7.5a2 2 0 0 0 0-2.9zM8 13.4c-1.9.3-3 1.7-3 3.3 0 1-.6 1.9-1.5 2.3 2.7.6 6.6-.3 6.6-3.6"),
+  star: tr("M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"),
+  starOn: '<path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+  marca: tr("M7 4h10v16l-5-3.6L7 20z"),
   dial: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/>',
   radio: tr("M4 9.5h16v10H4zM8 9.5l9-5") + '<circle cx="15" cy="14.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M6.5 13h3M6.5 16h3"),
   info: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M12 11v5.5") + '<circle cx="12" cy="7.8" r="1.2" fill="currentColor"/>',
@@ -638,6 +641,8 @@ function removerFaixa(id, sumiu) {
   if (eraAtual && playing) pausar();
   const atualId = cur() && cur().id;
   faixas = faixas.filter((t) => t.id !== id); porId.delete(id);
+  if (notas[id]) { delete notas[id]; guardado.set("compasso.notas", notas); }
+  if (marcas[id]) { delete marcas[id]; guardado.set("compasso.marcas", marcas); }
   const i = queue.indexOf(id);
   if (i >= 0) { queue.splice(i, 1); if (i < qi) qi--; }
   if (origem) origem = origem.filter((q) => q !== id);
@@ -659,7 +664,7 @@ function tocarLista(ids, i, ctx) {
   if (!ids.length) return;
   i = Math.max(0, Math.min(i || 0, ids.length - 1));
   contexto = ctx || T("Biblioteca"); origem = ids.slice();
-  if (shuffle) { const alvo = ids[i], resto = ids.filter((_, j) => j !== i); queue = [alvo, ...embaralhar(resto)]; qi = 0; }
+  if (shuffle) { const alvo = ids[i], resto = ids.filter((_, j) => j !== i); queue = [alvo, ...sortear(resto)]; qi = 0; }
   else { queue = ids.slice(); qi = i; }
   carregar(true);
 }
@@ -670,7 +675,7 @@ function tocarAleatorio(ids, ctx) {
 function alternarAleatorio() {
   shuffle = !shuffle;
   const id = queue[qi];
-  if (shuffle) { origem = queue.slice(); queue = [id, ...embaralhar(queue.filter((_, i) => i !== qi))]; qi = 0; }
+  if (shuffle) { origem = queue.slice(); queue = [id, ...sortear(queue.filter((_, i) => i !== qi))]; qi = 0; }
   else if (origem) {
     const na = new Set(queue), base = origem.filter((x) => na.has(x)), bs = new Set(base);
     queue = [...base, ...queue.filter((x) => !bs.has(x))]; qi = Math.max(0, queue.indexOf(id));
@@ -802,7 +807,7 @@ function posAtual() {
   if (!x.demo) return el && el.dataset.id === x.id ? el.currentTime : pos;
   return playing && ctx ? posBase + (ctx.currentTime - inicioT) : pos;
 }
-function aoTrocar(x) { renderInicio(); luz(coresDe(x)); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
+function aoTrocar(x) { if (trecho && (!x || trecho.id !== x.id)) limparTrecho(); renderInicio(); luz(coresDe(x)); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
 function carregar(auto) {
   const x = cur();
   if (!x) { playing = false; paint(); return; }
@@ -1069,6 +1074,7 @@ function quadro() {
   const x = cur();
   if (x) {
     const p = posAtual();
+    if (trecho && trecho.b != null && trecho.id === x.id && p >= trecho.b) buscarSeg(trecho.a); // repetir trecho (A-B)
     if (x.demo && playing && p >= x.d) fimDaFaixa();
     else {
       const fr = x.d ? Math.min(1, p / x.d) : 0;
@@ -1180,12 +1186,18 @@ function marcarAtual() {
 
 /* ===================== Tela: Biblioteca ===================== */
 let aba = "musicas", aberto = null, listaBib = { ids: [], ctx: T("Biblioteca") };
-const ORDENS = { recentes: T("Recentes"), titulo: T("Título"), artista: T("Artista") };
+const ORDENS = { recentes: T("Recentes"), titulo: T("Título"), artista: T("Artista"), album: T("Álbum"), faixa: T("Número da faixa"), duracao: T("Duração"), tocadas: T("Mais tocadas"), arquivo: T("Data do arquivo"), nota: T("Nota") };
 const comparar = (a, b) => a.localeCompare(b, LOCALE(), { sensitivity: "base", numeric: true });
 function ordenar(lista) {
   const l = lista.slice();
   if (cfg.ord === "titulo") l.sort((a, b) => comparar(a.t, b.t));
   else if (cfg.ord === "artista") l.sort((a, b) => comparar(a.a, b.a) || comparar(a.al || "", b.al || "") || (a.n || 999) - (b.n || 999));
+  else if (cfg.ord === "album") l.sort((a, b) => comparar(a.al || "", b.al || "") || porFaixa(a, b));
+  else if (cfg.ord === "faixa") l.sort(porFaixa);
+  else if (cfg.ord === "duracao") l.sort((a, b) => (b.d || 0) - (a.d || 0) || comparar(a.t, b.t));
+  else if (cfg.ord === "tocadas") { const n = (x) => (stats.fx[x.id] || {}).n || 0; l.sort((a, b) => n(b) - n(a) || comparar(a.t, b.t)); }
+  else if (cfg.ord === "arquivo") l.sort((a, b) => dataArq(b) - dataArq(a) || comparar(a.t, b.t));
+  else if (cfg.ord === "nota") l.sort((a, b) => notaDe(b.id) - notaDe(a.id) || comparar(a.t, b.t));
   else l.sort((a, b) => (b.em || 0) - (a.em || 0));
   return l;
 }
@@ -1389,14 +1401,19 @@ function menuFaixa(id, deLista) {
   if (x.al) itens.push(["album", T("Ver álbum"), "album"]);
   itens.push(["artist", T("Ver artista"), "artista"]);
   if (deLista) itens.push(["x", T("Tirar desta playlist"), "tirarpl"]);
+  if (cur() && cur().id === id) itens.push(["rep", T("Repetir trecho (A-B)"), "trecho"], ["marca", T("Marcadores"), "marcas"]);
   if (!x.demo) itens.push(["edit", T("Trocar capa"), "capa"]);
   if (!x.demo) itens.push(["lyrics", x.letra ? T("Ver ou editar letra") : T("Adicionar letra"), "letra"], ["edit", T("Editar informações"), "editar"], ["eyeoff", T("Ocultar da biblioteca"), "ocultar"], ["trash", T("Remover da biblioteca"), "apagar", true]);
   abrirFolha({
     titulo: x.t,
-    html: `<p class="sub" style="padding:0 8px;margin-top:-6px">${esc(linha2(x))}</p><div class="menu">${itens.map(([i, n, a, perigo]) => `<button data-a="${a}"${perigo ? ' class="danger"' : ""}>${ico(i)}${n}</button>`).join("")}</div>`,
+    html: `<p class="sub" style="padding:0 8px;margin-top:-6px">${esc(linha2(x))}</p>${htmlEstrelas(id)}<div class="menu">${itens.map(([i, n, a, perigo]) => `<button data-a="${a}"${perigo ? ' class="danger"' : ""}>${ico(i)}${n}</button>`).join("")}</div>`,
     clique(e) {
+      const est = e.target.closest("[data-nota]");
+      if (est) { darNota(id, +est.dataset.nota); const n = est.dataset.nota; $("sheet-b").querySelector(".estrelas").outerHTML = htmlEstrelas(id); const f = $("sheet-b").querySelector(`[data-nota="${n}"]`); if (f) f.focus(); return; }
       const b = e.target.closest("[data-a]"); if (!b) return;
       const a = b.dataset.a;
+      if (a === "trecho") return abrirTrecho();
+      if (a === "marcas") return abrirMarcadores();
       if (a === "fav") { fecharFolha(); alternarFav(id); }
       else if (a === "seguir") { fecharFolha(); tocarASeguir(id); }
       else if (a === "fila") { fecharFolha(); adicionarFila(id); }
@@ -1514,9 +1531,9 @@ function renderPl() {
   if (!p) {
     plAberta = null;
     const lista = pls.slice().sort((a, b) => (b.mod || 0) - (a.mod || 0));
-    L.innerHTML = `<div><h1>${T("Playlists")}</h1><p class="sub">${plural(pls.length, "playlist sua", "playlists suas")} ${T("e 4 automáticas")}</p></div>
-      <div class="autos">${AUTO.map((a) => { const n = idsDe(a).length; return `<button class="auto" data-abrir="${a.id}"><span class="auto-ic">${ico(a.ic, 20)}</span><span class="t">${a.nome}</span><span class="sub">${plural(n, "música", "músicas")}</span></button>`; }).join("")}</div>
-      <div class="row"><p class="sec-t grow">${T("Suas playlists")}</p><button class="btn sm" data-nova>${ico("plus", 18)}${T("Nova")}</button></div>` +
+    L.innerHTML = `<div><h1>${T("Playlists")}</h1><p class="sub">${plural(pls.length, "playlist sua", "playlists suas")} ${T("e {0} automáticas", autosVisiveis().length)}</p></div>
+      <div class="autos">${autosVisiveis().map((a) => { const n = idsDe(a).length; return `<button class="auto" data-abrir="${a.id}"><span class="auto-ic">${ico(a.ic, 20)}</span><span class="t">${a.nome}</span><span class="sub">${plural(n, "música", "músicas")}</span></button>`; }).join("")}</div>
+      <div class="row"><p class="sec-t grow">${T("Suas playlists")}</p><button class="btn ghost sm" data-m3u>${T("Importar .m3u")}</button><button class="btn sm" data-nova>${ico("plus", 18)}${T("Nova")}</button></div>` +
       (lista.length ? lista.map((y) => { const fx = idsDe(y).map((id) => porId.get(id)); return `<div class="card row"><button class="tp" data-abrir="${y.id}">${mosaico(y)}<span class="grow"><span class="t clip">${esc(y.nome)}</span><span class="sub clip">${plural(fx.length, "música", "músicas")} · ${fmt(duracaoTotal(fx))}</span></span></button><button class="ic act" data-tocarpl="${y.id}" aria-label="${T("Tocar {0}", esc(y.nome))}">${ico("play")}</button></div>`; }).join("")
         : vazio(T("Crie uma playlist e adicione músicas pelo botão ⋯ de cada uma."), `<button class="btn" data-nova>${ico("plus", 18)}${T("Criar playlist")}</button>`));
     return;
@@ -1532,6 +1549,7 @@ function renderPl() {
 $("pl").addEventListener("click", (e) => {
   const t = e.target, p = plPorId(plAberta);
   if (t.closest("[data-nova]")) return perguntar(T("Nova playlist"), T("Nome da playlist"), "", T("Criar"), (n) => { const np = novaPlaylist(n); plAberta = np.id; renderPl(); });
+  if (t.closest("[data-m3u]")) return $("m3u-file").click();
   const ab = t.closest("[data-abrir]"); if (ab) { plAberta = ab.dataset.abrir; renderPl(); $("main").scrollTop = 0; return; }
   const tp = t.closest("[data-tocarpl]"); if (tp) { const y = plPorId(tp.dataset.tocarpl); if (y && idsDe(y).length) { tocarLista(idsDe(y), 0, T("playlist {0}", y.nome)); ir("tocando"); } else toast(T("Essa playlist está vazia")); return; }
   if (t.closest("[data-voltar]")) { plAberta = null; renderPl(); return; }
@@ -1546,7 +1564,7 @@ $("pl").addEventListener("click", (e) => {
 function menuPlaylist(p) {
   abrirFolha({
     titulo: p.nome,
-    html: `<div class="menu"><button data-a="seguir">${ico("seguir")}${T("Tocar a seguir")}</button><button data-a="renomear">${ico("edit")}${T("Renomear")}</button><button data-a="apagar" class="danger">${ico("trash")}${T("Apagar playlist")}</button></div>`,
+    html: `<div class="menu"><button data-a="seguir">${ico("seguir")}${T("Tocar a seguir")}</button><button data-a="renomear">${ico("edit")}${T("Renomear")}</button><button data-a="m3u">${ico("pls")}${T("Exportar .m3u")}</button><button data-a="apagar" class="danger">${ico("trash")}${T("Apagar playlist")}</button></div>`,
     clique(e) {
       const b = e.target.closest("[data-a]"); if (!b) return;
       if (b.dataset.a === "renomear") perguntar(T("Renomear playlist"), T("Nome da playlist"), p.nome, T("Salvar"), (n) => { p.nome = n.slice(0, 60); salvarPl(p); renderPl(); });
@@ -1556,7 +1574,8 @@ function menuPlaylist(p) {
         if (!queue.length) return tocarLista(idsDe(p), 0, T("playlist {0}", p.nome));
         queue = queue.filter((id, i) => i === qi || !ids.includes(id)); qi = queue.indexOf(cur() ? cur().id : queue[0]);
         queue.splice(qi + 1, 0, ...ids); paint(); renderFilaAberta(); salvarSessao(); toast(T("A playlist toca em seguida"));
-      } else confirmar(T("Apagar playlist?"), T('"{0}" será apagada. As músicas continuam na biblioteca.', p.nome), T("Apagar"), () => { apagarPl(p); plAberta = null; renderPl(); toast(T("Playlist apagada")); });
+      } else if (b.dataset.a === "m3u") { fecharFolha(); entregarTexto(p.nome.replace(/[\\/:*?"<>|]/g, "_") + ".m3u8", gerarM3U(p), "audio/x-mpegurl"); }
+      else confirmar(T("Apagar playlist?"), T('"{0}" será apagada. As músicas continuam na biblioteca.', p.nome), T("Apagar"), () => { apagarPl(p); plAberta = null; renderPl(); toast(T("Playlist apagada")); });
     },
   });
 }
@@ -2071,6 +2090,127 @@ function abrirEQ() {
 }
 
 /* ===================== Favoritas e estatísticas ===================== */
+/* ---- Estrelas (1.22): nota de 1 a 5 por música, guardada só neste aparelho. O favorito (❤) continua separado. ---- */
+let notas = guardado.get("compasso.notas", {});
+if (!notas || typeof notas !== "object" || Array.isArray(notas)) notas = {};
+const notaDe = (id) => { const n = +notas[id]; return n >= 1 && n <= 5 ? Math.round(n) : 0; };
+function darNota(id, n) {
+  n = Math.max(0, Math.min(5, Math.round(+n || 0)));
+  if (!n || n === notaDe(id)) delete notas[id]; else notas[id] = n; // tocar na mesma nota tira a nota
+  guardado.set("compasso.notas", notas);
+  renderPl(); if (cfg.ord === "nota") renderBib();
+}
+const htmlEstrelas = (id) => `<div class="estrelas" role="group" aria-label="${T("Sua nota")}">${[1, 2, 3, 4, 5].map((n) => `<button data-nota="${n}" aria-pressed="${n <= notaDe(id)}" aria-label="${plural(n, "estrela", "estrelas")}">${ico(n <= notaDe(id) ? "starOn" : "star", 26)}</button>`).join("")}</div>`;
+const PESO_NOTA = [1, 0.3, 0.6, 1, 1.8, 3]; // sem nota vale o mesmo que 3 estrelas
+function sortear(ids) { // aleatório: todas tocam uma vez, mas as bem avaliadas têm mais chance de vir antes
+  if (!ids.some((id) => notaDe(id))) return embaralhar(ids.slice());
+  return ids.map((id) => [id, Math.pow(Math.random(), 1 / PESO_NOTA[notaDe(id)])]).sort((a, b) => b[1] - a[1]).map((p) => p[0]);
+}
+const autosVisiveis = () => AUTO.filter((a) => !a.seTem || idsDe(a).length);
+
+/* ---- Marcadores (1.22): pontos guardados numa música, para voltar depois (bom para áudios longos) ---- */
+let marcas = guardado.get("compasso.marcas", {});
+if (!marcas || typeof marcas !== "object" || Array.isArray(marcas)) marcas = {};
+const marcasDe = (id) => marcas[id] || [];
+function adicionarMarca(id, t, nome) {
+  t = +t; if (!(t >= 0)) return false;
+  const l = marcasDe(id).filter((m) => Math.floor(m.t) !== Math.floor(t)); // um marcador por segundo: o novo troca o antigo
+  if (l.length >= 50) return false;
+  l.push({ t, n: String(nome || "").slice(0, 40) }); l.sort((a, b) => a.t - b.t);
+  marcas[id] = l; guardado.set("compasso.marcas", marcas);
+  return true;
+}
+function apagarMarca(id, i) {
+  const l = marcasDe(id).slice(); if (i < 0 || i >= l.length) return;
+  l.splice(i, 1); if (l.length) marcas[id] = l; else delete marcas[id];
+  guardado.set("compasso.marcas", marcas);
+}
+function abrirMarcadores() {
+  const x = cur(); if (!x) return;
+  const html = () => `<div class="menu"><button data-marca-nova>${ico("plus")}${T("Marcar este ponto")}</button></div>
+    ${marcasDe(x.id).length ? `<div class="list">${marcasDe(x.id).map((m, i) => `<div class="row"><button class="tp row grow" data-marca-ir="${i}"><span class="dur">${fmt(m.t)}</span><span class="t clip grow">${esc(m.n || T("Marcador {0}", i + 1))}</span></button><button class="ic sm" data-marca-x="${i}" aria-label="${T("Apagar marcador de {0}", fmt(m.t))}">${ico("x", 18)}</button></div>`).join("")}</div>` : ""}
+    <p class="note">${T("Os marcadores ficam guardados nesta música. Toque em um para pular até ele.")}</p>`;
+  const refazer = () => { $("sheet-b").innerHTML = html(); };
+  abrirFolha({
+    titulo: T("Marcadores"), html: html(),
+    clique(e) {
+      const t = e.target;
+      if (t.closest("[data-marca-nova]")) { if (!adicionarMarca(x.id, posAtual(), "")) toast(T("Esta música já tem o máximo de marcadores")); return refazer(); }
+      const ir_ = t.closest("[data-marca-ir]"); if (ir_) { const m = marcasDe(x.id)[+ir_.dataset.marcaIr]; if (m && cur() && cur().id === x.id) buscarSeg(m.t); return; }
+      const ap = t.closest("[data-marca-x]"); if (ap) { apagarMarca(x.id, +ap.dataset.marcaX); return refazer(); }
+    },
+  });
+}
+
+/* ---- Repetir trecho (A-B, 1.22): marca o início e o fim, e a música fica voltando do fim para o início ---- */
+let trecho = null; // { id, a, b } em segundos; b fica null até marcar o fim
+const pintarTrecho = () => { const b = $("b-npmais"); if (b) b.classList.toggle("act", !!(trecho && trecho.b != null)); };
+function marcarA() { const x = cur(); if (!x) return false; trecho = { id: x.id, a: posAtual(), b: null }; pintarTrecho(); return true; }
+function marcarB() {
+  const x = cur(), p = posAtual();
+  if (!x || !trecho || trecho.id !== x.id || p < trecho.a + 1) return false; // o fim fica pelo menos 1 s depois do início
+  trecho.b = p; pintarTrecho(); return true;
+}
+function limparTrecho() { trecho = null; pintarTrecho(); }
+function abrirTrecho() {
+  const x = cur(); if (!x) return;
+  const meu = () => (trecho && trecho.id === x.id ? trecho : null);
+  const html = () => { const t = meu(); return `<p class="note">${!t ? T("Toque em \"Marcar o início\" no ponto onde o trecho começa.") : t.b == null ? T("Início em {0}. Agora deixe tocar até o fim do trecho e marque o fim.", fmt(t.a)) : T("Repetindo de {0} a {1}.", fmt(t.a), fmt(t.b))}</p>
+    <div class="menu"><button data-ab="a">${ico("rep")}${T("Marcar o início (A)")}</button><button data-ab="b">${ico("rep")}${T("Marcar o fim (B)")}</button>${t ? `<button data-ab="limpar" class="danger">${ico("x")}${T("Parar de repetir o trecho")}</button>` : ""}</div>`; };
+  abrirFolha({
+    titulo: T("Repetir trecho (A-B)"), html: html(),
+    clique(e) {
+      const b = e.target.closest("[data-ab]"); if (!b) return;
+      if (b.dataset.ab === "a") marcarA();
+      else if (b.dataset.ab === "b") { if (!marcarB()) toast(meu() ? T("O fim precisa ficar pelo menos 1 segundo depois do início") : T("Marque o início primeiro")); }
+      else limparTrecho();
+      $("sheet-b").innerHTML = html();
+    },
+  });
+}
+
+/* ---- Playlists .m3u (1.22): o formato que os outros players usam. Casa as músicas pelo nome do arquivo. ---- */
+const nomeArq = (x) => String(x.sig || "").split("|")[0] || x.t;
+const dataArq = (x) => +String(x.sig || "").split("|")[2] || x.em || 0;
+function gerarM3U(p) {
+  const l = ["#EXTM3U", "#PLAYLIST:" + p.nome];
+  for (const id of idsDe(p)) { const x = porId.get(id); if (x) l.push(`#EXTINF:${Math.round(x.d || 0)},${x.a} - ${x.t}`, nomeArq(x)); }
+  return l.join("\n") + "\n";
+}
+function lerM3U(texto) {
+  let nome = "", inf = null; const itens = [];
+  for (const bruta of String(texto || "").replace(/^\uFEFF/, "").split(/\r?\n/)) {
+    const li = bruta.trim(); if (!li) continue;
+    if (/^#PLAYLIST:/i.test(li)) nome = li.slice(10).trim();
+    else if (/^#EXTINF:/i.test(li)) { const k = li.indexOf(","); inf = k >= 0 ? li.slice(k + 1).trim() : null; }
+    else if (li[0] !== "#") { itens.push({ arq: li, inf }); inf = null; }
+  }
+  return { nome, itens };
+}
+function importarM3U(texto, nomePadrao) {
+  const { nome, itens } = lerM3U(texto);
+  const base = (s) => { let b = String(s).replace(/\\/g, "/").split("/").pop(); if (b.includes("%")) try { b = decodeURIComponent(b); } catch (e) { /* nome com % de verdade */ } return b.normalize("NFC").toLowerCase(); };
+  const porArq = new Map(), porInf = new Map();
+  for (const x of faixas) { if (!visivel(x)) continue; porArq.set(base(nomeArq(x)), x.id); porInf.set((x.a + " - " + x.t).normalize("NFC").toLowerCase(), x.id); }
+  const ids = [];
+  for (const it of itens) { const id = porArq.get(base(it.arq)) || (it.inf && porInf.get(it.inf.normalize("NFC").toLowerCase())); if (id && !ids.includes(id)) ids.push(id); }
+  if (!ids.length) return { p: null, achadas: 0, total: itens.length };
+  return { p: novaPlaylist(String(nome || nomePadrao || "Playlist").slice(0, 60), ids), achadas: ids.length, total: itens.length };
+}
+function entregarTexto(nome, texto, tipo) { // no app Android o download direto não funciona: usa o compartilhamento
+  if (NATIVO && MUS && MUS.compartilhar) return nat(() => MUS.compartilhar({ nome, texto, tipo, titulo: nome }));
+  baixar(new Blob([texto], { type: tipo }), nome);
+}
+$("m3u-file").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    const r = importarM3U(await f.text(), f.name.replace(/\.m3u8?$/i, ""));
+    if (!r.p) return toast(r.total ? T("Nenhuma música dessa playlist foi encontrada na biblioteca") : T("Esse arquivo não tem músicas"));
+    plAberta = r.p.id; renderPl();
+    toast(T("Playlist importada: {0} de {1} músicas encontradas", r.achadas, r.total));
+  } catch (err) { toast(T("Não deu para ler esse arquivo")); }
+});
+
 let favs = new Set(guardado.get("compasso.fav", []));
 const ehFav = (id) => favs.has(id);
 function alternarFav(id) {
@@ -2655,6 +2795,8 @@ function gerarBackup() {
     formato: "compasso-backup", versao: 1, criado: new Date().toISOString(),
     playlists: pls.map((p) => ({ nome: p.nome, criada: p.criada, faixas: p.ids.map(k).filter(Boolean) })),
     favoritas: [...favs].map(k).filter(Boolean),
+    notas: Object.fromEntries(Object.entries(notas).map(([id, n]) => [k(id), n]).filter(([c]) => c)),
+    marcas: Object.fromEntries(Object.entries(marcas).map(([id, l]) => [k(id), l]).filter(([c]) => c)),
     estatisticas: { desde: stats.desde, dias: stats.dias, fx: Object.fromEntries(Object.entries(stats.fx).map(([id, f]) => [k(id), f]).filter(([c]) => c)) },
     faixas: importadas().map((x) => ({ chave: chaveDe(x), t: x.t, a: x.a, al: x.al || "", n: x.n || 0, letra: x.letra || "", oculta: !!x.oculta })),
     perfil, temas: meusTemas, ajustes: cfg,
@@ -2698,7 +2840,7 @@ function avisarRestauro(r) {
   if (r.total > r.achadas) setTimeout(() => toast(T("Importe as músicas que faltam e restaure de novo para completar")), 2600);
 }
 async function salvarBackup() {
-  baixar(new Blob([await textoBackup()], { type: "application/json" }), nomeBackup());
+  entregarTexto(nomeBackup(), await textoBackup(), "application/json");
   marcarBackupFeito();
 }
 const arquivoParaEnviar = (texto) => new File([texto], nomeBackup(), { type: "application/json" });
@@ -2769,6 +2911,9 @@ function restaurarBackup(o) {
     nPl++;
   }
   (o.favoritas || []).map(id).filter(Boolean).forEach((i) => favs.add(i));
+  for (const [c, n] of Object.entries(o.notas || {})) { const i = id(c); if (i && n >= 1 && n <= 5) notas[i] = Math.round(n); } // só para músicas que existem aqui
+  guardado.set("compasso.notas", notas);
+  for (const [c, l] of Object.entries(o.marcas || {})) { const i = id(c); if (i && Array.isArray(l)) for (const m of l) if (m) adicionarMarca(i, m.t, m.n); }
   guardado.set("compasso.fav", [...favs]);
   const e = o.estatisticas || {};
   for (const [c, f] of Object.entries(e.fx || {})) {
@@ -2799,6 +2944,8 @@ const AUTO = [
   { id: "auto:novas", nome: T("Adicionadas recentemente"), ic: "plus", vazio: T("As músicas que você importar aparecem aqui."), ids: () => importadas().filter(visivel).sort((a, b) => (b.em || 0) - (a.em || 0)).slice(0, 50).map((x) => x.id) },
   { id: "auto:recentes", nome: T("Tocadas recentemente"), ic: "now", vazio: T("Ouça algumas músicas e elas aparecem aqui."), ids: () => rankFaixas("u").slice(0, 50).map((r) => r.x.id) },
   { id: "auto:mais", nome: T("Mais tocadas"), ic: "stats", vazio: T("Ouça algumas músicas e as mais tocadas aparecem aqui."), ids: () => rankFaixas("n").slice(0, 50).map((r) => r.x.id) },
+  { id: "auto:5", nome: T("5 estrelas"), ic: "starOn", seTem: true, vazio: T("Dê 5 estrelas a uma música pelo botão ⋯ e ela aparece aqui."), ids: () => faixas.filter((x) => visivel(x) && notaDe(x.id) === 5).map((x) => x.id) },
+  { id: "auto:4", nome: T("4 ou mais"), ic: "star", seTem: true, vazio: T("Dê 4 ou 5 estrelas a uma música pelo botão ⋯ e ela aparece aqui."), ids: () => faixas.filter((x) => visivel(x) && notaDe(x.id) >= 4).sort((a, b) => notaDe(b.id) - notaDe(a.id)).map((x) => x.id) },
 ].map((a) => ({ ...a, auto: true }));
 
 

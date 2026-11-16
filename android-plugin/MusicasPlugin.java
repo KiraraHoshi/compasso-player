@@ -390,6 +390,7 @@ public class MusicasPlugin extends Plugin {
         final String nome = call.getString("nome", "orolon-backup.json");
         final String texto = call.getString("texto");
         final String titulo = call.getString("titulo", nome);
+        final String tipo = call.getString("tipo", "application/json");
         if (texto == null) { call.reject("sem-texto"); return; }
         new Thread(() -> {
             try {
@@ -397,11 +398,11 @@ public class MusicasPlugin extends Plugin {
                 if (!pasta.exists() && !pasta.mkdirs()) { call.reject("sem-pasta-temporaria"); return; }
                 File[] velhos = pasta.listFiles();
                 if (velhos != null) for (File v : velhos) v.delete();
-                File f = new File(pasta, nome.replaceAll("[^A-Za-z0-9._-]", "_"));
+                File f = new File(pasta, nome.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_"));
                 try (FileOutputStream o = new FileOutputStream(f)) { o.write(texto.getBytes(StandardCharsets.UTF_8)); }
                 Uri u = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", f);
                 Intent i = new Intent(Intent.ACTION_SEND);
-                i.setType("application/json");
+                i.setType(tipo);
                 i.putExtra(Intent.EXTRA_STREAM, u);
                 i.putExtra(Intent.EXTRA_SUBJECT, nome);
                 i.setClipData(ClipData.newRawUri(nome, u));
