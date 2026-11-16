@@ -2170,10 +2170,14 @@ CARRO.addEventListener("click", (e) => {
 });
 
 /* ===================== Tela ligada ===================== */
-let trava = null, pedindoTrava = false;
+let trava = null, pedindoTrava = false, telaNativa = false;
 const querTela = () => document.visibilityState === "visible" && (emCarro() || ($("app").dataset.view === "tocando" && (emPalco() || !!(cfg.tela && playing))));
-async function atualizarTela() {
+async function atualizarTela(plug = MUS) {
   const quer = querTela();
+  if (plug && plug.manterTela) { // no app Android quem segura a tela é o próprio app
+    if (quer !== telaNativa) { telaNativa = quer; try { await plug.manterTela({ ligado: quer }); } catch (e) { /* plugin antigo */ } }
+    return;
+  }
   try {
     if (quer && !trava && !pedindoTrava && navigator.wakeLock) {
       pedindoTrava = true; trava = await navigator.wakeLock.request("screen"); pedindoTrava = false;

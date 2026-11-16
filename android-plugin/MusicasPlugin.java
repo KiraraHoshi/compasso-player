@@ -13,8 +13,12 @@ import androidx.activity.result.ActivityResult;
 import com.getcapacitor.annotation.ActivityCallback;
 import java.util.ArrayDeque;
 import java.util.HashSet;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.IntentFilter;
+import android.view.WindowManager;
+import androidx.core.content.ContextCompat;
 import android.media.AudioDeviceCallback;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
@@ -57,6 +61,7 @@ public class MusicasPlugin extends Plugin {
     // Não pede permissão nova: o Android avisa quando um aparelho de som entra ou sai, enquanto o app está aberto ou em segundo plano.
 
     private AudioDeviceCallback avisoFone;
+    private BroadcastReceiver avisoSaida;
     private long registradoEm = 0;
 
     private static boolean ehFone(AudioDeviceInfo d) {
@@ -92,14 +97,33 @@ public class MusicasPlugin extends Plugin {
                     if (temFone(ds)) avisarFone(true);
                 }
 
-                @Override
-                public void onAudioDevicesRemoved(AudioDeviceInfo[] ds) {
-                    if (temFone(ds)) avisarFone(false);
-                }
             };
             registradoEm = SystemClock.elapsedRealtime();
             am.registerAudioDeviceCallback(avisoFone, new Handler(Looper.getMainLooper()));
-        } catch (Exception e) { avisoFone = null; /* aparelho sem esse aviso: o app segue sem as opções do fone */ }
+        } catch (Exception e) { avisoFone = null; /* aparelho sem esse aviso: o app segue sem a opção de tocar ao conectar */ }
+        try {
+            // "O som vai sair pelo alto-falante": o Android manda este aviso ANTES de trocar a saída, a tempo de pausar sem vazar som.
+            avisoSaida = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context c, Intent i) {
+                    if (i != null && AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(i.getAction())) avisarFone(false);
+                }
+            };
+            ContextCompat.registerReceiver(getContext(), avisoSaida, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY), ContextCompat.RECEIVER_NOT_EXPORTED);
+        } catch (Exception e) { avisoSaida = null; }
+    }
+
+    // Tela ligada (modo carro, tela cheia e a opção de Ajustes): não depende do navegador embutido e não pede permissão.
+    @PluginMethod
+    public void manterTela(PluginCall call) {
+        final boolean ligado = Boolean.TRUE.equals(call.getBoolean("ligado", false));
+        getActivity().runOnUiThread(() -> {
+            try {
+                if (ligado) getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                else getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            } catch (Exception e) { /* janela indisponível */ }
+            call.resolve();
+        });
     }
 
     @Override
@@ -108,6 +132,8 @@ public class MusicasPlugin extends Plugin {
             AudioManager am = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
             if (am != null && avisoFone != null) am.unregisterAudioDeviceCallback(avisoFone);
         } catch (Exception e) { /* já solto */ }
+        try { if (avisoSaida != null) getContext().unregisterReceiver(avisoSaida); } catch (Exception e) { /* já solto */ }
+        avisoSaida = null;
         avisoFone = null;
         super.handleOnDestroy();
     }
