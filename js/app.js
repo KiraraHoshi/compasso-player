@@ -755,7 +755,7 @@ function posAtual() {
   if (!x.demo) return el && el.dataset.id === x.id ? el.currentTime : pos;
   return playing && ctx ? posBase + (ctx.currentTime - inicioT) : pos;
 }
-function aoTrocar(x) { luz(x.c); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
+function aoTrocar(x) { renderInicio(); luz(x.c); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
 function carregar(auto) {
   const x = cur();
   if (!x) { playing = false; paint(); return; }
@@ -1071,7 +1071,8 @@ function paint() {
   const x = cur();
   $("app").dataset.playing = playing ? "1" : ""; ajustarRuido(); estadoNativo();
   $("b-play").innerHTML = ico(playing ? "pause" : "play", 30); $("b-play").setAttribute("aria-label", playing ? T("Pausar") : T("Tocar"));
-  $("mini-play").innerHTML = ico(playing ? "pause" : "play"); $("mini-play").setAttribute("aria-label", playing ? T("Pausar") : T("Tocar"));
+  $("mini-play").innerHTML = ico(playing ? "pause" : "play");
+  { const ip = document.querySelector("[data-ini-tocar]"); if (ip) { ip.innerHTML = ico(playing ? "pause" : "play", 26); ip.setAttribute("aria-label", playing ? T("Pausar") : T("Tocar")); } } $("mini-play").setAttribute("aria-label", playing ? T("Pausar") : T("Tocar"));
   $("b-shuf").classList.toggle("act", shuffle); $("b-shuf").setAttribute("aria-pressed", shuffle);
   $("b-rep").classList.toggle("act", repeat !== "off"); $("b-rep").setAttribute("aria-pressed", repeat !== "off");
   $("b-rep").innerHTML = ico("rep") + (repeat === "one" ? "<b>1</b>" : "");
@@ -1439,6 +1440,7 @@ function mosaico(p, cls = "thumb") {
   return `<span class="${cls}" style="background:${grad(coresDoNome(p.nome))}">${inicial(p.nome)}</span>`;
 }
 function renderPl() {
+  renderInicio(); // o Início mostra recentes e favoritas: acompanha toda mudança na biblioteca
   const L = $("pl");
   const p = plPorId(plAberta);
   if (!p) {
@@ -2006,7 +2008,43 @@ function rankArtistas(ano) {
 }
 let topVoce = [];
 /* ===================== Início ===================== */
-function renderInicio() {}
+/* "Bom dia" das 5h às 11h59, "Boa tarde" até 17h59 e "Boa noite" no resto; com o nome do perfil quando houver */
+function saudacao(hora, nome) {
+  const s = hora >= 5 && hora < 12 ? T("Bom dia") : hora >= 12 && hora < 18 ? T("Boa tarde") : T("Boa noite");
+  return nome ? T("{0}, {1}", s, nome) : s;
+}
+let recIni = [];
+function renderInicio() {
+  const I0 = $("ini"); if (!I0 || $("app").dataset.view !== "inicio") return;
+  const vis = faixas.filter(visivel), x = cur();
+  const cab = `<div><h1 class="clip">${esc(saudacao(new Date().getHours(), perfil.nome))}</h1><p class="sub">${plural(vis.length, "música", "músicas")}</p></div>`;
+  const ferr = `<div class="ini-ferr" id="ini-ferr"></div>`;
+  if (!vis.length) {
+    I0.innerHTML = cab + `<div class="card stack" id="ini-vazio"><h2>${T("Traga suas músicas")}</h2><p class="note">${T("Elas ficam guardadas só neste aparelho. Servem MP3, FLAC, M4A, OGG e Opus.")}</p><div class="btns"><button class="btn sm" data-ini-importar>${ico("note", 18)}${T("Importar músicas")}</button></div></div>` + ferr;
+    if (typeof renderFerramentas === "function") renderFerramentas();
+    return;
+  }
+  let cont = "";
+  if (x) {
+    const d = x.d || 0, p = Math.min(d, posAtual() || 0), falta = Math.max(0, d - p);
+    cont = `<div class="card ini-cont" id="ini-cont"><button class="tp row grow" data-abrir>${capa(x, "thumb ini-capa")}<span class="grow"><span class="sub">${T("Continuar de onde parou")}</span><span class="t clip">${esc(x.t)}</span><span class="sub clip">${esc(x.a)}${d ? " · " + T("faltam {0}", fmt(falta)) : ""}</span><span class="ini-barra"><i style="width:${d ? ((p / d) * 100).toFixed(1) : 0}%"></i></span></span></button><button class="ic big ini-play" data-ini-tocar aria-label="${playing ? T("Pausar") : T("Tocar")}">${ico(playing ? "pause" : "play", 26)}</button></div>`;
+  }
+  const recA = AUTO.find((a) => a.id === "auto:recentes");
+  recIni = (recA ? recA.ids() : []).filter((id) => visivel(porId.get(id))).slice(0, 10);
+  const rec = recIni.length ? `<div class="stack" id="ini-rec"><p class="sec-t">${T("Tocadas há pouco")}</p><div class="ini-fileira">${recIni.map((id, i) => { const y = porId.get(id); return `<button class="alb ini-alb" data-ini-rec="${i}">${capa(y, "cover")}<span class="t clip">${esc(y.t)}</span><span class="sub clip">${esc(y.a)}</span></button>`; }).join("")}</div></div>` : "";
+  const nFav = AUTO.find((a) => a.id === "auto:fav").ids().length;
+  const fav = nFav ? `<button class="card row ini-fav" id="ini-fav" data-ini-fav><span class="thumb ini-favic">${ico("heartOn", 22)}</span><span class="grow"><span class="t">${T("Favoritas")}</span><span class="sub">${plural(nFav, "música", "músicas")}</span></span>${ico("next", 18)}</button>` : "";
+  I0.innerHTML = cab + cont + ferr + rec + fav;
+  if (typeof renderFerramentas === "function") renderFerramentas();
+}
+$("ini").addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.closest("[data-ini-tocar]")) return alternar();
+  if (t.closest("[data-abrir]")) return ir("tocando");
+  if (t.closest("[data-ini-importar]")) return menuImportar();
+  const r = t.closest("[data-ini-rec]"); if (r) { tocarLista(recIni, +r.dataset.iniRec, T("Tocadas recentemente")); return ir("tocando"); }
+  if (t.closest("[data-ini-fav]")) { plAberta = "auto:fav"; ir("playlists"); renderPl(); }
+});
 
 function renderVoce() {
   const V = $("vc"), total = Object.values(stats.fx).reduce((s, f) => s + (f.s || 0), 0);
