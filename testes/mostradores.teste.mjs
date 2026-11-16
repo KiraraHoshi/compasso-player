@@ -139,6 +139,38 @@ export default [
     },
   },
   {
+    nome: "sair do LED pelo pincel devolve o mostrador ao formato quadrado (a capa não fica esticada)",
+    hash: "tocando", largura: 360, altura: 780,
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        const d = document.querySelector(".dial"), o = [];
+        escolherVisual("led"); ajustarDial(); o.push(d.offsetWidth > d.offsetHeight * 1.1 || d.style.aspectRatio === "auto"); // no celular o LED usa a largura toda
+        for (const v of ["vinil", "aura", "relogio"]) { escolherVisual(v); o.push(Math.abs(d.offsetWidth - d.offsetHeight) <= 1); }
+        return o;
+      });
+      assert.deepEqual(r, [true, true, true, true], "LED largo; depois Vinil, Aura e Relógio quadrados");
+    },
+  },
+  {
+    nome: "Personalizar: o formato da capa só aparece nos mostradores em que ele vale (Aura, Espectro e Anel)",
+    hash: "tocando",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        const o = {};
+        for (const v of ["relogio", "vinil", "aura", "espectro", "anel", "neon", "led"]) { escolherVisual(v); abrirPersonalizar(); o[v] = !!document.querySelector("#sheet-b [data-forma]"); fecharFolha(); }
+        escolherVisual("relogio"); return o;
+      });
+      assert.deepEqual(r, { relogio: false, vinil: false, aura: true, espectro: true, anel: true, neon: false, led: false });
+    },
+  },
+  {
+    nome: "Relógio: o ponteiro grande só avança nos graves bem definidos",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => [golpeForte(0.45), golpeForte(0.7), golpeForte(0.8), golpeForte(1)]);
+      assert.deepEqual(r, [0, 0, 0.8, 1], "golpes fracos e médios não mexem o ponteiro");
+    },
+  },
+  {
     nome: "Vinil não mudou: os tracinhos levam o empurrão de sempre; só no Relógio o bumbo corre",
     rodar: async (p) => {
       const r = await p.avaliar(() => { batida = 1; ondasBumbo.length = 0; const o = [reforcoTraco(5, "vinil"), reforcoTraco(5, "relogio")]; batida = 0; return o; });

@@ -53,6 +53,7 @@ export default [
       await p.clicar("#sheet [data-tg=amb]"); await p.clicar("#sheet [data-tg=reage]");
       await p.avaliar(() => { for (const [k, v] of [["ambF", 0.4], ["batF", 0.9]]) { const r = document.querySelector(`#sheet [data-rg=${k}]`); r.value = v; r.dispatchEvent(new Event("input", { bubbles: true })); } });
       assert.deepEqual(await p.avaliar(() => [cfg.ambF, cfg.batF, getComputedStyle(document.documentElement).getPropertyValue("--ambk").trim()]), [0.4, 0.9, "0.4"]);
+      await p.clicar("#sheet [data-vis=aura]"); // o formato da capa só aparece onde vale (Aura, Espectro e Anel)
       await p.clicar("#sheet [data-forma=redonda]");
       assert.equal(await p.avaliar(() => cfg.formaCapa), "redonda");
     },

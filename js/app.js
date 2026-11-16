@@ -1033,7 +1033,7 @@ function luz(c) {
   for (let i = 0; i < 60; i++) h += `<line class="${i % 5 === 0 ? "h" : ""}" x1="100" y1="${i % 5 === 0 ? 3 : 6}" x2="100" y2="12" transform="rotate(${i * 6} 100 100)"/>`;
   // 1.25: pontinhos de pico (um por tracinho) e os dois ponteiros do Relógio
   h += '<g id="picos">'; for (let i = 0; i < 60; i++) h += `<circle class="pk" cx="100" cy="14" r="0.9" visibility="hidden" transform="rotate(${i * 6} 100 100)"/>`; h += "</g>";
-  h += '<g id="ponteiros"><g id="p-tempo"><line x1="100" y1="29" x2="100" y2="17.5"/><circle cx="100" cy="17.5" r="2.3"/></g><g id="p-bate"><line x1="100" y1="29" x2="100" y2="13.5"/><circle cx="100" cy="13.5" r="1.2"/></g></g>';
+  h += '<g id="ponteiros"><g id="p-tempo"><line x1="100" y1="29" x2="100" y2="17.5"/><circle cx="100" cy="17.5" r="2.3"/></g><g id="p-bate"><line x1="100" y1="29" x2="100" y2="13.5"/><circle cx="100" cy="13.5" r="1.7"/></g></g>';
   $("ticks").innerHTML = h;
 })();
 const linhas = [...$("ticks").querySelectorAll(":scope > line")], pontos = [...$("ticks").querySelectorAll(".pk")];
@@ -1089,6 +1089,16 @@ function criarRitmo() {
   };
 }
 const ritmoViz = criarRitmo(), ritmoSvg = criarRitmo();
+/* Intervalo entre desenhos, em ms. O normal é ~60 por segundo. Com "Fluidez máxima" ligada em Ajustes o app usa a taxa
+   inteira da tela (90, 120, 144 Hz): fica mais liso, gasta mais bateria e esquenta mais. O modo leve manda mais. */
+const alvoQuadro = () => (cfg.fluido && !cfg.leve ? 6 : 16.67);
+/* Com o app escondido (tela apagada, outro app na frente) ninguém vê os desenhos: o ramo deles é desligado do som,
+   para o aparelho não processar o que não aparece. O som em si não muda. */
+let ramoVizLigado = true;
+function ligarRamoViz(on) {
+  if (!saidaEra || !atrasoViz || on === ramoVizLigado) return;
+  try { if (on) saidaEra.connect(atrasoViz); else saidaEra.disconnect(atrasoViz); ramoVizLigado = on; } catch (e) { /* fica como estava */ }
+}
 let tsQ = 0, fqAcc = 0, ultAtivoViz = 0, movViz = 1; // movViz: 1 = giro e poeira andando; 0 = parados (pausado há mais de 1,5 s)
 function acordarViz() { ultAtivoViz = performance.now(); ritmoViz.zerar(); } // trocou a música ou o mostrador: desenha já, e liso por um instante
 const passoT = (agora, ult) => (ult ? Math.min(4, Math.max(0.25, (agora - ult) / 16.667)) : 1);
@@ -1198,10 +1208,11 @@ function ouvirBatidas(agora) {
 /* ---- Relógio (1.25): ponteiros e pontinhos de pico ----
    O ponteiro âmbar marca quanto da música já passou. O fino anda um tracinho (6 graus) a cada golpe de bumbo,
    com o tranco de relógio: passa um pouco do ponto e volta. */
+const golpeForte = (g) => (g >= 0.75 ? g : 0); // o ponteiro grande só anda nos graves bem definidos (golpe perto do mais forte dos últimos segundos)
 function criarPonteiro() {
   let a = 0, v = 0, alvo = 0;
   return { passo(golpe, fq) {
-    if (golpe) alvo += 6; v += (alvo - a) * 0.3 * fq; v *= Math.pow(0.6, fq); a += v * fq;
+    if (golpe) alvo += 6; v += (alvo - a) * 0.32 * fq; v *= Math.pow(0.66, fq); a += v * fq; // mola mais solta: o tranco aparece
     if (alvo > 3600) { alvo -= 3600; a -= 3600; } // dez voltas a menos: o ponteiro fica no mesmo lugar e o número não cresce sem fim
     return a;
   } };
@@ -1236,7 +1247,7 @@ const nivel = new Float32Array(60);
 const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function quadro(ts) {
   { const ag = performance.now(); tsQ = ts || ag; fqQ = passoT(ag, ultQ); ultQ = ag; nQuadro++; fqAcc += fqQ; }
-  const svgOk = ritmoSvg.pode(tsQ, 16.67), fqS = fqAcc; if (svgOk) fqAcc = 0; // tracinhos, ponteiros e luz de fundo: no máximo ~60 vezes por segundo
+  const svgOk = ritmoSvg.pode(tsQ, alvoQuadro()), fqS = fqAcc; if (svgOk) fqAcc = 0; // tracinhos, ponteiros e luz de fundo: no máximo ~60 vezes por segundo
   const x = cur();
   if (x) {
     const p = posAtual();
@@ -1262,20 +1273,21 @@ function quadro(ts) {
     }
   }
   let alvo = 0.4;
-  const ativo = playing && an && cfg.reage && !calmo;
+  const naTela = APP.dataset.view === "tocando";
+  const ativo = playing && an && cfg.reage && !calmo && naTela; // fora do Tocando agora ninguém vê os mostradores: o som não é analisado
   if (ativo) {
     lerBins();
     let s = 0; for (let i = 1; i < 19; i++) s += bins[i];
     alvo = Math.min(1, s / 18 / 170);
     const g = (bins[0] + bins[1] + bins[2] + bins[3]) / 4, agora = performance.now();
-    const gq = APP.dataset.view === "tocando" ? ouvirBatidas(agora) : null; // escuta nova: só o que é batida de verdade (e só com o Tocando na tela)
+    const gq = ouvirBatidas(agora); // escuta nova: só o que é batida de verdade
     golpeBumbo = golpesQ.bumbo = gq ? gq.bumbo : 0; golpesQ.caixa = gq ? gq.caixa : 0; golpesQ.prato = gq ? gq.prato : 0;
     if (golpeBumbo) { alvoBatida = Math.max(alvoBatida, golpeBumbo); ultimaBatida = agora; }
     // pulso da capa: segue a força dos graves acima do nível médio da música, para pulsar mesmo em músicas altas
     const gv = g / 255; graveEnv += (gv - graveEnv) * sq(gv > graveEnv ? 0.35 : 0.1); gravePiso += (graveEnv - gravePiso) * sq(0.015);
   } else { golpeBumbo = golpesQ.bumbo = golpesQ.caixa = golpesQ.prato = 0; if (!playing) alvo = 0.25; graveEnv *= Math.pow(0.92, fqQ); }
   alvoBatida *= Math.pow(0.93, fqQ); batida += (alvoBatida - batida) * sq(0.22);
-  const naTela = APP.dataset.view === "tocando", leve = !!cfg.leve;
+  const leve = !!cfg.leve;
   if (naTela && !leve) passoOndas(ondasBumbo, ativo ? golpeBumbo : 0, fqQ); // uma onda por bumbo, para todos os mostradores
   // os tracinhos só se mexem quando o mostrador de relógio está na tela
   // os tracinhos se mexem no Relógio e no Vinil: seguem a frequência de cada lado e ganham um empurrão em cada batida
@@ -1287,7 +1299,7 @@ function quadro(ts) {
       linhas[i].setAttribute("y2", (12 + nivel[i] * 12).toFixed(1));
     }
   }
-  if (naTela && !leve && APP.dataset.visual === "relogio" && APP.dataset.letra !== "1") { const ang = ponteiro.passo(ativo ? golpeBumbo : 0, fqQ); if (svgOk) pintarRelogio(ang, fqS); } // o golpe dura um quadro: a conta roda sempre, a tela só quando é a vez
+  if (naTela && !leve && APP.dataset.visual === "relogio" && APP.dataset.letra !== "1") { const ang = ponteiro.passo(ativo ? golpeForte(golpeBumbo) : 0, fqQ); if (svgOk) pintarRelogio(ang, fqS); } // o golpe dura um quadro: a conta roda sempre, a tela só quando é a vez
   { const b = cfg.reage && !calmo ? "1" : ""; if (b !== ultBate) { ultBate = b; DIAL.dataset.bate = b; } } // sem "reagir à batida" ou com "reduzir movimento", o ponteiro fino some
   pulso += (alvo - pulso) * sq(0.1);
   // As variáveis ficam só nos elementos que as usam (e só mudam quando o valor muda),
@@ -1826,6 +1838,8 @@ function renderTemas() {
     <div class="card stack"><h2>${T("Efeitos")}</h2>
       <div class="opt"><span id="l-leve">${T("Modo leve")}</span><button class="tg" data-alternar-leve role="switch" aria-checked="${!!cfg.leve}" aria-labelledby="l-leve"></button></div>
       <p class="note">${T("Desliga as animações que mais pesam. Bom para celulares mais simples ou se a rolagem estiver travando.")}</p>
+      <div class="opt"><span id="l-fluido">${T("Fluidez máxima (90/120 Hz)")}</span><button class="tg" data-alternar-fluido role="switch" aria-checked="${!!cfg.fluido}" aria-labelledby="l-fluido"></button></div>
+      <p class="note">${T("Usa a taxa inteira da tela nas animações do Tocando agora. Fica mais liso, mas gasta mais bateria e pode esquentar o aparelho. Não muda nada em telas de 60 Hz nem com o modo leve ligado.")}</p>
       ${tg("amb", T("Luz de fundo com as cores da capa"))}${faixaAjuste("ambF", T("Intensidade da luz"), cfg.amb)}
       ${tg("reage", T("Reagir à batida da música"))}${faixaAjuste("batF", T("Força da batida"), cfg.reage)}
       <div class="opt"><span>${T("Imagem de fundo")}</span><div class="btns"><button class="btn ghost sm" data-fundo>${ico("image", 18)}${temFundo() ? T("Trocar") : T("Escolher")}</button>${temFundo() ? `<button class="btn ghost sm" data-semfundo>${T("Tirar")}</button>` : ""}</div></div>
@@ -1953,6 +1967,7 @@ $("tm").addEventListener("click", (e) => {
     renderTemas(); return;
   }
   if (t.closest("[data-alternar-leve]")) return definirLeve(!cfg.leve);
+  if (t.closest("[data-alternar-fluido]")) { cfg.fluido = !cfg.fluido; salvarCfg(); return renderTemas(); }
   const ga = t.closest("[data-galeria]");
   if (ga) { const n = validarTema(GALERIA[+ga.dataset.galeria]); n.id = uid("t"); meusTemas.push(n); salvarTemas(); cfg.tema = n.id; aplicarTema(); renderTemas(); return toast(T('Tema "{0}" adicionado', n.nome)); }
   if (t.closest("[data-instalar]")) return pedirInstalacao();
@@ -2569,6 +2584,7 @@ setInterval(() => {
 addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { if (statsSujo) salvarStats(); if (cur()) salvarSessao(); if (carregado) backupAutomatico(); } // se o Android fechar o app em segundo plano, ele volta de onde parou
   else if (playing && ctx && ctx.state === "suspended") ctx.resume().catch(() => {}); // depois de uma ligação, por exemplo
+  ligarRamoViz(document.visibilityState !== "hidden");
   atualizarTela();
 });
 addEventListener("pagehide", () => { if (statsSujo) salvarStats(); });
@@ -2644,7 +2660,7 @@ function abrirPersonalizar() {
   const faixa = (k, rotulo, ligado) => `<div class="opt sub-opt"${ligado ? "" : " hidden"}><label for="pz-r-${k}">${rotulo}</label><input type="range" id="pz-r-${k}" data-rg="${k}" min="0.15" max="1" step="0.05" value="${cfg[k]}"></div>`;
   const html = () => `<div class="minis" role="group" aria-label="${T("Visual do mostrador")}">${Object.entries(VISUAIS).map(([k, n]) => `<button class="mini-v${cfg.visual === k ? " on" : ""}" data-vis="${k}" aria-pressed="${cfg.visual === k}"><svg viewBox="0 0 24 24" aria-hidden="true">${MINIS[k] || MINIS.relogio}</svg><span>${n}</span></button>`).join("")}</div>
     ${cfg.visual === "led" ? `<p class="t">${T("Cores do LED")}</p>` + chipsDe([["arte", T("Arte da capa")], ["capa", T("Cores da capa")], ["tema", T("Cores do tema")], ["classico", T("Clássico")]], cfg.ledCor, "data-ledcor") : ""}
-    <p class="t">${T("Formato da capa")}</p>${chipsDe([["quadrada", T("Quadrada")], ["redonda", T("Redonda")]], cfg.formaCapa === "redonda" ? "redonda" : "quadrada", "data-forma")}
+    ${["aura", "espectro", "anel"].includes(cfg.visual) ? `<p class="t">${T("Formato da capa")}</p>` + chipsDe([["quadrada", T("Quadrada")], ["redonda", T("Redonda")]], cfg.formaCapa === "redonda" ? "redonda" : "quadrada", "data-forma") : "" /* só onde o formato vale: no Relógio e no Vinil a capa é sempre redonda */}
     ${liga("corCapa", T("Cores do visual seguem a capa da música"))}
     ${liga("amb", T("Luz de fundo com as cores da capa"))}${faixa("ambF", T("Intensidade da luz"), cfg.amb)}
     ${liga("reage", T("Reagir à batida da música"))}${faixa("batF", T("Força da batida"), cfg.reage)}`;
@@ -3188,7 +3204,7 @@ function restaurarBackup(o) {
   for (const t of o.temas || []) { try { const v = validarTema(t); if (!meusTemas.some((m) => m.nome === v.nome)) { v.id = uid("t"); meusTemas.push(v); } } catch (err) { /* tema inválido: pula */ } }
   salvarTemas();
   const aj = o.ajustes || {};
-  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "volRec", "leve", "coracoes", "corCapa", "formaCapa", "ledCor", "amp", "avisoAmp", "reverb", "largura", "apGraves", "apAgudos", "apInt", "autoTocar", "tocarFone", "pausarFone"]) if (k in aj) cfg[k] = aj[k];
+  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "volRec", "leve", "fluido", "coracoes", "corCapa", "formaCapa", "ledCor", "amp", "avisoAmp", "reverb", "largura", "apGraves", "apAgudos", "apInt", "autoTocar", "tocarFone", "pausarFone"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
   if (aj.ajustes) cfg.ajustes = aj.ajustes;
@@ -3454,6 +3470,7 @@ function aplicarVisual() {
   capaQuad = cfg.formaCapa !== "redonda" && ["aura", "espectro", "anel"].includes(a.dataset.visual); // no Relógio a capa é sempre redonda: ponteiro não combina com capa quadrada
   a.dataset.capa = capaQuad ? "quadrada" : "";
   zerarPicosRelogio(); acordarViz();
+  try { ajustarDial(); } catch (e) { /* ainda carregando */ } // o LED do celular estica o mostrador: ao sair dele pelo pincel, volta ao quadrado na hora
   a.dataset.era = cfg.era && cfg.era !== "off" ? cfg.era : "";
   pintarCena();
 }
@@ -3515,7 +3532,7 @@ function desenharViz() {
     if (!aura && !auraLimpa && (v === "relogio" || v === "vinil")) { const cv = $("viz"); cv.getContext("2d").clearRect(0, 0, cv.width, cv.height); auraLimpa = true; }
     return;
   }
-  { const ag = tsQ || performance.now(); if (playing) ultAtivoViz = ag; movViz = ag - ultAtivoViz < 1500 ? 1 : 0; if (!ritmoViz.pode(ag, movViz ? 16.67 : 100)) return; }
+  { const ag = tsQ || performance.now(); if (playing) ultAtivoViz = ag; movViz = ag - ultAtivoViz < 1500 ? 1 : 0; if (!ritmoViz.pode(ag, movViz ? alvoQuadro() : 100)) return; }
   const cv = $("viz"), w = cv.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1); if (!w) return;
   const hc = v === "led" ? cv.clientHeight || w : w;
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(hc * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(hc * dpr); }
@@ -3972,7 +3989,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.25.0";
+const VERSAO = "1.25.1";
 const linkPrivacidade = () => "https://kirarahoshi.github.io/compasso-player/privacidade.html" + (LANG === "en" ? "#en" : "#pt");
 let instalar = null;
 const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;

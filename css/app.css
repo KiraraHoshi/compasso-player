@@ -276,7 +276,7 @@ textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
 .dial .pk{fill:var(--accent);opacity:.85}
 #p-tempo line{stroke:#E3C98A;stroke-width:2.2}
 #p-tempo circle{fill:#E3C98A}
-#p-bate line{stroke:var(--text);stroke-width:1}
+#p-bate line{stroke:var(--text);stroke-width:1.5}
 #p-bate circle{fill:var(--text)}
 .app:not([data-visual="relogio"]) :is(#picos,#ponteiros){display:none}
 .app[data-leve="1"] :is(#picos,#p-bate),.dial:not([data-bate="1"]) #p-bate{display:none}

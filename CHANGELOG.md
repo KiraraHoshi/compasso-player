@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 1.25.1
+- **Correção:** ao sair do LED para outro mostrador pelo pincel, a capa ficava esticada (o quadrado virava retângulo e o redondo virava oval) até sair e voltar ao Tocando agora.
+- **Relógio:** o ponteiro grande agora só avança nos graves bem definidos, com um tranco mais forte.
+- No pincel, o "Formato da capa" só aparece nos mostradores em que ele vale (Aura, Espectro e Anel). No Relógio e no Vinil a capa é sempre redonda.
+- **Menos bateria e menos calor:** fora do Tocando agora o app deixou de analisar o som (só os mostradores precisam disso), e com o app escondido a parte do som que alimenta os desenhos é desligada. O som em si não muda.
+- **Fluidez máxima (90/120 Hz):** opção nova em Ajustes › Aparência, desligada de fábrica. Usa a taxa inteira da tela nas animações; fica mais liso, mas gasta mais bateria e pode esquentar o aparelho.
+
 ## 1.25.0
 - **Relógio com ponteiros:** um ponteiro âmbar mostra quanto da música já passou e um ponteiro fino anda um tracinho a cada batida, com o tranco de relógio. O bumbo agora corre pelos tracinhos, de cima para baixo, e cada tracinho deixa um pontinho de pico. No Relógio a capa passa a ser sempre redonda (os ponteiros não combinam com a capa quadrada).
 - **Espectro:** ganhou brilho, o rastro da forma de um instante atrás, a linha que clareia na caixa e as ondas do bumbo saindo da capa.
