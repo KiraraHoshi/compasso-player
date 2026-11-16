@@ -9,8 +9,38 @@ const semRolarDeLado = async (p) => {
 
 export default [
   {
-    nome: "seis ferramentas na ordem",
-    rodar: async (p) => assert.deepEqual(await p.avaliar(() => [...document.querySelectorAll("#ini-ferr [data-ferr]")].map((b) => b.dataset.ferr)), ["eq", "sono", "visual", "epoca", "vel", "palco"]),
+    nome: "oito ferramentas na ordem nova",
+    rodar: async (p) => assert.deepEqual(await p.avaliar(() => [...document.querySelectorAll("#ini-ferr [data-ferr]")].map((b) => b.dataset.ferr)), ["eq", "sono", "volmais", "efeitos", "visual", "epoca", "vel", "palco"]),
+  },
+  {
+    nome: "Volume + pela folha muda o amplificador",
+    rodar: async (p) => {
+      await p.clicar("[data-ferr=volmais]");
+      await p.clicar('#sheet [data-amp="1.5"]');
+      assert.equal(await p.avaliar(() => cfg.amp), 1.5);
+      assert.ok(await p.avaliar(() => document.querySelector("[data-ferr=volmais]").classList.contains("act")));
+    },
+  },
+  {
+    nome: "Efeitos pela folha liga o reverb e o 3D",
+    rodar: async (p) => {
+      await p.clicar("[data-ferr=efeitos]");
+      await p.clicar("#sheet [data-reverb=sala]");
+      assert.equal(await p.avaliar(() => cfg.reverb), "sala");
+      await p.avaliar(() => { const r = document.querySelector("#sheet [data-fx=largura]"); r.value = 50; r.dispatchEvent(new Event("input", { bubbles: true })); });
+      assert.equal(await p.avaliar(() => cfg.largura), 1.5);
+      assert.ok(await p.avaliar(() => document.querySelector("[data-ferr=efeitos]").classList.contains("act")));
+    },
+  },
+  {
+    nome: "aprimorador na folha do EQ",
+    rodar: async (p) => {
+      await p.clicar("[data-ferr=eq]");
+      await p.avaliar(() => { const r = document.getElementById("r-apGraves"); r.value = 6; r.dispatchEvent(new Event("input", { bubbles: true })); });
+      assert.equal(await p.avaliar(() => cfg.apGraves), 6);
+      await p.clicar("#sheet [data-apzerar]");
+      assert.deepEqual(await p.avaliar(() => [cfg.apGraves, cfg.apAgudos, cfg.apInt, +document.getElementById("r-apGraves").value]), [0, 0, 0, 0]);
+    },
   },
   {
     nome: "equalizador abre a folha e voltar fecha",
@@ -48,7 +78,10 @@ export default [
   {
     nome: "grade de ferramentas não estoura em 320 px",
     largura: 320,
-    rodar: async (p) => assert.ok(await p.avaliar(() => { const g = document.getElementById("ini-ferr"); return g.scrollWidth <= g.clientWidth; })),
+    rodar: async (p) => {
+      assert.ok(await p.avaliar(() => { const g = document.getElementById("ini-ferr"); return g.scrollWidth <= g.clientWidth; }));
+      assert.equal(await p.avaliar(() => new Set([...document.querySelectorAll("#ini-ferr .ini-f")].map((b) => b.offsetTop)).size), 2, "as 8 ferramentas deviam caber em 2 linhas de 4");
+    },
   },
   {
     nome: "saudação por hora",

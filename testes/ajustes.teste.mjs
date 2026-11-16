@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 
 // Controles da tela de Ajustes da 1.17.3 (contados antes de dividir): 57, incluindo o seletor de idioma
 const CONTROLES = "#tm :is(select, input, [role=switch], [data-vis], [data-epoca], [data-cor], [data-forma], [data-ledcor], button):not([data-porta], [data-porta-voltar])";
-const TOTAL_1173 = 57;
+// 1.19: + 10 no cartão Efeitos da porta Som (5 chips do amplificador, 4 do reverb e a faixa do efeito 3D)
+const TOTAL_1173 = 57 + 10;
 const textoH2 = (p) => p.avaliar(() => [...document.querySelectorAll("#tm h2, #tm .t, #tm label, #tm .sec-t")].map((e) => e.textContent).join(" | "));
 const abrir = async (p, id) => { await p.clicar(`[data-porta="${id}"]`); };
 
@@ -24,7 +25,7 @@ export default [
     nome: "cada porta tem seus cartões",
     hash: "temas",
     rodar: async (p) => {
-      const esperado = { aparencia: ["Ajuste rápido", "Efeitos"], som: ["Época do som"], reproducao: ["Botão Anterior", "Biblioteca"], sobre: ["Backup", "Sobre"] };
+      const esperado = { aparencia: ["Ajuste rápido", "Efeitos"], som: ["Época do som", "Efeitos", "Amplificador", "Reverb"], reproducao: ["Botão Anterior", "Biblioteca"], sobre: ["Backup", "Sobre"] };
       const ids = { som: "#s-xfade", reproducao: "#s-anterior" };
       for (const [porta, textos] of Object.entries(esperado)) {
         await abrir(p, porta);

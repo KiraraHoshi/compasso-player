@@ -34,6 +34,7 @@ const I = {
   prev: '<path d="M18 5l-9 7 9 7zM5.5 5H8v14H5.5z" fill="currentColor"/>',
   shuf: tr("M3 7h3.5c5 0 5.5 10 10.5 10H20M3 17h3.5c2 0 3.2-1.6 4.3-3.5M20 7h-3c-1.4 0-2.5.8-3.4 1.9M17.5 4.5L20 7l-2.5 2.5M17.5 14.5L20 17l-2.5 2.5"),
   rep: tr("M5 12V9.5A2.5 2.5 0 017.5 7H18M19 12v2.5a2.5 2.5 0 01-2.5 2.5H6M15.5 4.5L18 7l-2.5 2.5M8.5 14.5L6 17l2.5 2.5"),
+  ondas: tr("M2.5 12c1.6-3.2 3.2-3.2 4.8 0s3.2 3.2 4.8 0 3.2-3.2 4.8 0 3.2 3.2 4.8 0") + tr("M6 5.8a9 9 0 0 1 12 0M6 18.2a9 9 0 0 0 12 0"),
   dial: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/>',
   radio: tr("M4 9.5h16v10H4zM8 9.5l9-5") + '<circle cx="15" cy="14.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M6.5 13h3M6.5 16h3"),
   info: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M12 11v5.5") + '<circle cx="12" cy="7.8" r="1.2" fill="currentColor"/>',
@@ -1632,6 +1633,11 @@ function renderTemas() {
     <div class="card stack"><h2>${T("Época do som")}</h2><div class="chips" role="group" aria-label="${T("Época do som")}">${Object.entries(ERAS).map(([k, [n]]) => `<button data-epoca="${k}" aria-pressed="${String(cfg.era) === k}" class="${String(cfg.era) === k ? "on" : ""}">${n}</button>`).join("")}</div>
       <p class="note">${ERA_DESC[cfg.era] || ERA_DESC.off} ${T("Cada época também troca o visual, e você pode escolher outro depois.")}</p>
       ${cfg.era !== "off" && cfg.era !== "90" ? tg("eraRuido", T("Chiado e estalos")) : ""}</div>
+    <div class="card stack"><h2>${T("Efeitos")}</h2>
+      <p class="t">${T("Amplificador")}</p>${htmlAmp()}
+      <p class="t">${T("Reverb")}</p>${htmlReverb()}
+      ${htmlLargura("r-largura")}
+      <p class="note">${T("O amplificador passa de 100% com um limitador que segura os picos. O efeito 3D fica melhor com fone.")}</p></div>
     <div class="card stack"><h2>${T("Ajustes do som")}</h2>
       <div class="opt"><label for="s-xfade">${T("Crossfade entre músicas")}</label><select id="s-xfade" class="mini-sel" data-sel="xfade">${[[0, T("Desligado")], [2, T("2 segundos")], [4, T("4 segundos")], [6, T("6 segundos")], [8, T("8 segundos")]].map(([v, n]) => `<option value="${v}"${+cfg.xfade === v ? " selected" : ""}>${n}</option>`).join("")}</select></div>
       <div class="opt"><label for="s-vel">${T("Velocidade")}</label><select id="s-vel" class="mini-sel" data-sel="vel">${[0.75, 1, 1.25, 1.5, 2].map((v) => `<option value="${v}"${+cfg.vel === v ? " selected" : ""}>${decimal(String(v))}×</option>`).join("")}</select></div>
@@ -1742,6 +1748,8 @@ $("tm").addEventListener("click", (e) => {
   const fo = t.closest("[data-forma]"); if (fo) { cfg.formaCapa = fo.dataset.forma; salvarCfg(); aplicarVisual(); return renderTemas(); }
   const vi = t.closest("[data-vis]"); if (vi) { escolherVisual(vi.dataset.vis); return renderTemas(); }
   const ep = t.closest("[data-epoca]"); if (ep) { escolherEpoca(ep.dataset.epoca); return renderTemas(); }
+  const am = t.closest("[data-amp]"); if (am) { escolherAmp(+am.dataset.amp); return renderTemas(); }
+  const rv = t.closest("[data-reverb]"); if (rv) { escolherReverb(rv.dataset.reverb); return renderTemas(); }
   if (t.closest("[data-abrireq]")) return abrirEQ();
   if (t.closest("[data-bkp]")) return salvarBackup();
   if (t.closest("[data-rst]")) return $("backup-file").click();
@@ -1784,6 +1792,7 @@ $("tm").addEventListener("input", (e) => {
   if (t.id === "r-raio") ajustarAtual({ raio: +t.value });
   else if (t.dataset.rg) { cfg[t.dataset.rg] = +t.value; salvarCfg(); aplicarEfeitos(); }
   else if (t.dataset.rgx) { cfg[t.dataset.rgx] = +t.value; salvarCfg(); aplicarFundo(); }
+  else if (t.dataset.fx === "largura") escolherLargura(t.value);
 });
 $("tm").addEventListener("change", (e) => {
   if (e.target.id === "s-lang") return mudarIdioma(e.target.value);
@@ -1910,7 +1919,7 @@ function criarLargura(c, largura) { // meio/lado: o "lado" (diferença entre L e
   entrada.connect(sep);
   sep.connect(meio, 0); sep.connect(meio, 1); sep.connect(lado, 0); sep.connect(invR, 1); invR.connect(lado);
   meio.connect(saida, 0, 0); meio.connect(saida, 0, 1); lado.connect(saida, 0, 0); lado.connect(invLado); invLado.connect(saida, 0, 1);
-  return { entrada, saida, nos: [entrada, sep, meio, lado, invR, invLado, saida] };
+  return { entrada, saida, lado, nos: [entrada, sep, meio, lado, invR, invLado, saida] };
 }
 function criarAprimorador(c, graves, agudos, intensidade) {
   const lim = (v) => Math.max(-6, Math.min(9, +v || 0));
@@ -1919,16 +1928,37 @@ function criarAprimorador(c, graves, agudos, intensidade) {
   ag.type = "highshelf"; ag.frequency.value = 7000; ag.gain.value = lim(agudos);
   cp.threshold.value = -30; cp.ratio.value = 4; mix.gain.value = Math.max(0, Math.min(1, +intensidade || 0)) * 0.6; // compressão paralela: encorpa sem achatar
   entrada.connect(ag); ag.connect(saida); ag.connect(cp).connect(mix).connect(saida);
-  return { entrada, saida, nos: [entrada, ag, cp, mix, saida] };
+  return { entrada, saida, graves: entrada, agudos: ag, mix, nos: [entrada, ag, cp, mix, saida] };
 }
+let efeitosVivos = null;
+const assinaturaEfeitos = () => [!!(+cfg.apGraves || +cfg.apAgudos || +cfg.apInt), +cfg.largura > 1, REVERBS[cfg.reverb] ? cfg.reverb : "nenhum"].join("|");
 function montarEfeitos(depois) { // aprimorador → 3D → reverb; efeito no valor neutro não entra na cadeia
   efeitosNos.forEach((n) => n.disconnect()); efeitosNos = [];
-  const blocos = [];
-  if (+cfg.apGraves || +cfg.apAgudos || +cfg.apInt) blocos.push(criarAprimorador(ctx, cfg.apGraves, cfg.apAgudos, cfg.apInt));
-  if (+cfg.largura > 1) blocos.push(criarLargura(ctx, +cfg.largura));
+  const blocos = [], ap = (+cfg.apGraves || +cfg.apAgudos || +cfg.apInt) ? criarAprimorador(ctx, cfg.apGraves, cfg.apAgudos, cfg.apInt) : null, lg = +cfg.largura > 1 ? criarLargura(ctx, +cfg.largura) : null;
+  if (ap) blocos.push(ap);
+  if (lg) blocos.push(lg);
   const rv = criarReverb(ctx, cfg.reverb); if (rv) blocos.push(rv);
+  efeitosVivos = { assin: assinaturaEfeitos(), ap, lg };
   return blocos.reduce((a, b) => { a.connect(b.entrada); efeitosNos.push(...b.nos); return b.saida; }, depois);
 }
+function atualizarEfeitos() { // os mesmos efeitos continuam ligados? só muda o valor (arrastar a faixa não corta o som); senão remonta
+  if (!ctx) return;
+  const v = efeitosVivos, t = ctx.currentTime;
+  if (!v || v.assin !== assinaturaEfeitos()) return trocarEfeitos();
+  if (v.lg) v.lg.lado.gain.setTargetAtTime(0.5 * Math.max(1, Math.min(2, +cfg.largura)), t, 0.03);
+  if (v.ap) {
+    v.ap.graves.gain.setTargetAtTime(Math.max(-6, Math.min(9, +cfg.apGraves || 0)), t, 0.03);
+    v.ap.agudos.gain.setTargetAtTime(Math.max(-6, Math.min(9, +cfg.apAgudos || 0)), t, 0.03);
+    v.ap.mix.gain.setTargetAtTime(Math.max(0, Math.min(1, +cfg.apInt || 0)) * 0.6, t, 0.03);
+  }
+}
+const NOMES_REVERB = { nenhum: T("Nenhum"), sala: T("Sala"), palco: T("Palco"), catedral: T("Catedral") };
+const htmlAmp = () => chipsDe(AMPS.map((v) => [String(v), Math.round(v * 100) + "%"]), String(ganhoAmp()), "data-amp");
+const htmlReverb = () => chipsDe(Object.keys(REVERBS).map((k) => [k, NOMES_REVERB[k]]), REVERBS[cfg.reverb] ? cfg.reverb : "nenhum", "data-reverb");
+const htmlLargura = (id) => `<div class="opt"><label for="${id}">${T("Efeito 3D")}</label><input type="range" id="${id}" data-fx="largura" min="0" max="100" step="5" value="${Math.round((Math.max(1, Math.min(2, +cfg.largura || 1)) - 1) * 100)}"></div>`;
+function escolherReverb(k) { cfg.reverb = REVERBS[k] ? k : "nenhum"; salvarCfg(); atualizarEfeitos(); marcarFerramentas(); }
+function escolherLargura(pct) { cfg.largura = 1 + Math.max(0, Math.min(100, +pct || 0)) / 100; salvarCfg(); atualizarEfeitos(); marcarFerramentas(); }
+function escolherAprimorador(k, v) { if (k === "apInt") v = Math.max(0, Math.min(100, +v || 0)) / 100; cfg[k] = +v || 0; salvarCfg(); atualizarEfeitos(); }
 function trocarEfeitos() { // troca sem estalo: abaixa a entrada, remonta a cadeia e o aplicarEQ sobe de volta
   if (!ctx) return;
   entrada.gain.setTargetAtTime(0, ctx.currentTime, 0.01);
@@ -1968,7 +1998,13 @@ function htmlEQ() {
     <div class="seg" role="group" aria-label="${T("Quantidade de bandas")}"><button data-eqmodo="5" class="${cfg.eq.modo === 5 ? "on" : ""}" aria-pressed="${cfg.eq.modo === 5}">${T("5 bandas")}</button><button data-eqmodo="10" class="${cfg.eq.modo === 10 ? "on" : ""}" aria-pressed="${cfg.eq.modo === 10}">${T("10 bandas")}</button></div>
     <div class="chips" role="group" aria-label="${T("Predefinições")}">${Object.entries(EQ_P).map(([k, [n]]) => `<button data-eqp="${k}" aria-pressed="${cfg.eq.p === k}" class="${cfg.eq.p === k ? "on" : ""}">${n}</button>`).join("")}</div>
     ${F.map((f, i) => `<div class="eqrow"><label for="eq${i}" class="note">${rotHz(f)}</label><input type="range" id="eq${i}" data-eqb="${i}" min="-12" max="12" step="1" value="${G[i]}"><span class="dur" id="eqv${i}">${dB(G[i])}</span></div>`).join("")}
-    <p class="note">${T("Vale para todas as músicas. Mexer numa faixa liga o equalizador sozinho.")}</p>`;
+    <p class="note">${T("Vale para todas as músicas. Mexer numa faixa liga o equalizador sozinho.")}</p>
+    <h3 class="sec-t">${T("Aprimorador")}</h3>
+    <div class="eqrow"><label for="r-apGraves" class="note">${T("Graves")}</label><input type="range" id="r-apGraves" data-ap="apGraves" min="-6" max="9" step="1" value="${+cfg.apGraves || 0}"><span class="dur" id="apv-apGraves">${dB(+cfg.apGraves || 0)}</span></div>
+    <div class="eqrow"><label for="r-apAgudos" class="note">${T("Agudos")}</label><input type="range" id="r-apAgudos" data-ap="apAgudos" min="-6" max="9" step="1" value="${+cfg.apAgudos || 0}"><span class="dur" id="apv-apAgudos">${dB(+cfg.apAgudos || 0)}</span></div>
+    <div class="eqrow"><label for="r-apInt" class="note">${T("Intensidade")}</label><input type="range" id="r-apInt" data-ap="apInt" min="0" max="100" step="5" value="${Math.round((+cfg.apInt || 0) * 100)}"><span class="dur" id="apv-apInt">${Math.round((+cfg.apInt || 0) * 100)}%</span></div>
+    <div class="btns"><button class="btn ghost sm" data-apzerar>${T("Zerar")}</button></div>
+    <p class="note">${T("Reforça graves e agudos e deixa o som mais encorpado, sem mexer no equalizador.")}</p>`;
 }
 function abrirEQ() {
   abrirFolha({
@@ -1984,10 +2020,13 @@ function abrirEQ() {
         else cfg.eq.g = EQ5.map((f) => interp(EQ10, cfg.eq.g10, f));
         cfg.eq.modo = +m.dataset.eqmodo; montarFiltros();
       }
+      if (e.target.closest("[data-apzerar]")) { cfg.apGraves = cfg.apAgudos = cfg.apInt = 0; salvarCfg(); atualizarEfeitos(); $("sheet-b").innerHTML = htmlEQ(); return; }
       if (p || m) $("sheet-b").innerHTML = htmlEQ();
       if (on || p || m) { salvarCfg(); aplicarEQ(); paint(); }
     },
     entrada(e) {
+      const ap = e.target.dataset.ap;
+      if (ap) { escolherAprimorador(ap, +e.target.value); $("apv-" + ap).textContent = ap === "apInt" ? e.target.value + "%" : dB(+e.target.value); return; }
       const i = e.target.dataset.eqb; if (i === undefined) return;
       eqGanhos()[i] = +e.target.value; cfg.eq.p = "personalizado";
       $("eqv" + i).textContent = dB(eqGanhos()[i]);
@@ -2138,6 +2177,8 @@ function escolherEpoca(k) { cfg.era = k; cfg.visual = ERAS[cfg.era][1]; salvarCf
 const FERRAMENTAS = [
   { id: "eq", nome: T("Equalizador"), ic: "sliders", abrir: () => abrirEQ(), ativo: () => !!cfg.eq.on },
   { id: "sono", nome: T("Temporizador"), ic: "timer", abrir: () => abrirSono(), ativo: () => !!(sono.fim || sono.aoFim) },
+  { id: "volmais", nome: T("Volume +"), ic: "vol", abrir: () => abrirFolhaVolumeMais(), ativo: () => ganhoAmp() > 1 },
+  { id: "efeitos", nome: T("Efeitos 3D"), ic: "ondas", abrir: () => abrirFolhaEfeitos(), ativo: () => !!REVERBS[cfg.reverb] || +cfg.largura > 1 },
   { id: "visual", nome: T("Visual"), ic: "dial", abrir: () => abrirFolhaVisual() },
   { id: "epoca", nome: T("Época do som"), ic: "radio", abrir: () => abrirFolhaEpoca(), ativo: () => String(cfg.era) !== "off" },
   { id: "vel", nome: T("Velocidade"), ic: "", abrir: () => { $("b-vel").click(); marcarFerramentas(); }, ativo: () => (+cfg.vel || 1) !== 1 },
@@ -2157,6 +2198,18 @@ const chipsDe = (lista, sel, attr) => `<div class="chips" role="group">${lista.m
 function abrirFolhaVisual() {
   const html = () => chipsDe(Object.entries(VISUAIS), cfg.visual, "data-vis") + `<p class="note">${T("Mais opções do mostrador em Ajustes › Aparência.")}</p>`;
   abrirFolha({ titulo: T("Visual do mostrador"), html: html(), clique(e) { const b = e.target.closest("[data-vis]"); if (b) { escolherVisual(b.dataset.vis); $("sheet-b").innerHTML = html(); } } });
+}
+function abrirFolhaVolumeMais() {
+  const html = () => htmlAmp() + `<p class="note">${T("Aumenta o volume além de 100% para músicas baixas. Um limitador segura os picos para o som não estourar.")}</p>`;
+  abrirFolha({ titulo: T("Volume +"), html: html(), clique(e) { const b = e.target.closest("[data-amp]"); if (b) { escolherAmp(+b.dataset.amp); $("sheet-b").innerHTML = html(); } } });
+}
+function abrirFolhaEfeitos() {
+  const html = () => `<p class="t">${T("Reverb")}</p>${htmlReverb()}${htmlLargura("f-largura")}<p class="note">${T("O efeito 3D abre o som para os lados. Fica melhor com fone.")}</p>`;
+  abrirFolha({
+    titulo: T("Efeitos 3D"), html: html(),
+    clique(e) { const b = e.target.closest("[data-reverb]"); if (b) { escolherReverb(b.dataset.reverb); $("sheet-b").innerHTML = html(); } },
+    entrada(e) { if (e.target.dataset.fx === "largura") escolherLargura(e.target.value); },
+  });
 }
 function abrirFolhaEpoca() {
   const html = () => chipsDe(Object.entries(ERAS).map(([k, [n]]) => [k, n]), String(cfg.era), "data-epoca") + `<p class="note">${ERA_DESC[cfg.era] || ERA_DESC.off} ${T("Cada época também troca o visual, e você pode escolher outro depois.")}</p>`;
@@ -3198,7 +3251,7 @@ const TEXTOS_FIXOS = [];
       else if (typeof v === "object" && typeof v !== "function") visitar(v);
     }
   };
-  [FONTES, BASE, CAMPOS, DESTAQUES, ORDENS, EQ_P, AUTO, ERAS, ERA_DESC, VISUAIS, GALERIA, TELAS, PORTAS, FERRAMENTAS].forEach(visitar);
+  [FONTES, BASE, CAMPOS, DESTAQUES, ORDENS, EQ_P, AUTO, ERAS, ERA_DESC, VISUAIS, GALERIA, TELAS, PORTAS, FERRAMENTAS, NOMES_REVERB].forEach(visitar);
 })();
 function mudarIdioma(l) {
   if (!IDIOMAS[l] || l === LANG) return;
