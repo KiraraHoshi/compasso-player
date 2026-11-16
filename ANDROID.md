@@ -28,6 +28,10 @@ Na primeira publicação, deixe ativado o **Play App Signing** (o padrão): o Go
 
 `scripts/musicas-android.mjs` liga o plugin `android-plugin/MusicasPlugin.java` (lê a biblioteca de mídia do Android para "Procurar músicas no aparelho") e acrescenta a permissão de ler músicas: `READ_MEDIA_AUDIO` no Android 13+ e `READ_EXTERNAL_STORAGE` até o 12. Essa permissão é aceita pela Google Play para players de música; na ficha da loja, declare que o app lê arquivos de áudio do aparelho para tocá-los, sem enviar nada.
 
+## Fone e notificação (1.20)
+
+O mesmo plugin avisa o app quando um fone entra ou sai (com fio, Bluetooth ou USB) e quando a pessoa toca na notificação de mídia. Isso usa o aviso de aparelhos de som do Android (`registerAudioDeviceCallback`), que **não pede permissão nova**. Por isso, "Tocar ao conectar o fone" só funciona com o Orolon aberto ou em segundo plano.
+
 ## Política de privacidade
 
 [`privacidade.html`](https://kirarahoshi.github.io/compasso-player/privacidade.html), em português e inglês.

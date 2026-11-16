@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 1.20.0
+- **Modo carro:** uma tela cheia com a capa, o nome da música e botões enormes (anterior, tocar/pausar e próxima), mais aleatório e repetir. Mantém a tela ligada e funciona em pé e deitado. Abre pela ferramenta nova do Início e fecha pelo voltar ou pelo botão Sair.
+- **Já começar tocando** (Android): opção em Ajustes › Reprodução para o app abrir tocando de onde parou. Vem desligada.
+- **Pausar ao tirar o fone** (Android): ao desconectar o fone, com fio ou Bluetooth, a música pausa na hora. Vem ligada e pode ser desligada em Ajustes › Reprodução.
+- **Tocar ao conectar o fone** (Android): opção desligada por padrão. Funciona com o Orolon aberto ou em segundo plano, sem pedir permissão nova.
+- **Tocar na notificação de mídia abre o Tocando agora** (Android).
+- As ferramentas do Início ficam em três colunas no celular, com os nomes inteiros.
+- O backup leva as opções novas.
+
 ## 1.19.0
 - **Volume +:** o volume passa de 100% e vai até 200%, para músicas gravadas baixo. Um limitador segura os picos para o som não estourar. Na primeira vez, o app avisa para usar com moderação.
 - **Reverb:** Sala, Palco e Catedral, para dar a sensação de ouvir num lugar maior.

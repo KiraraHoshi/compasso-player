@@ -133,4 +133,16 @@ export default [
       assert.deepEqual(r, [true, true, false]);
     },
   },
+  {
+    nome: "plugin do Android avisa do fone e da notificação",
+    node: true,
+    rodar: async () => {
+      const j = readFileSync(new URL("../android-plugin/MusicasPlugin.java", import.meta.url), "utf8");
+      for (const t of ["registerAudioDeviceCallback", "unregisterAudioDeviceCallback", "handleOnNewIntent", 'notifyListeners("fone"', 'notifyListeners("notificacao"', "import android.media.AudioDeviceCallback;", "import android.media.AudioManager;"]) assert.ok(j.includes(t), "falta no plugin: " + t);
+      // tira comentários e textos entre aspas antes de contar chaves e parênteses
+      const semTexto = j.replace(/"(?:[^"\\]|\\.)*"/g, '""').replace(/'(?:[^'\\]|\\.)'/g, "''").replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const [a, b] of ["{}", "()", "[]"]) assert.equal(semTexto.split(a).length, semTexto.split(b).length, `${a} e ${b} desbalanceados no plugin`);
+      assert.ok(!/READ_PHONE_STATE|BLUETOOTH_CONNECT/.test(j), "o plugin não pode pedir permissão nova");
+    },
+  },
 ];

@@ -14,6 +14,13 @@ import com.getcapacitor.annotation.ActivityCallback;
 import java.util.ArrayDeque;
 import java.util.HashSet;
 import android.content.ContentResolver;
+import android.content.Context;
+import android.media.AudioDeviceCallback;
+import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.content.ContentUris;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -45,6 +52,72 @@ import java.io.ByteArrayOutputStream;
     }
 )
 public class MusicasPlugin extends Plugin {
+
+    // ---------------- Fone (com fio, Bluetooth, USB) e toque na notificação de mídia ----------------
+    // Não pede permissão nova: o Android avisa quando um aparelho de som entra ou sai, enquanto o app está aberto ou em segundo plano.
+
+    private AudioDeviceCallback avisoFone;
+    private long registradoEm = 0;
+
+    private static boolean ehFone(AudioDeviceInfo d) {
+        if (d == null || !d.isSink()) return false;
+        int t = d.getType();
+        return t == AudioDeviceInfo.TYPE_WIRED_HEADSET || t == AudioDeviceInfo.TYPE_WIRED_HEADPHONES
+            || t == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || t == AudioDeviceInfo.TYPE_USB_HEADSET
+            || t == 26; // 26 = fone Bluetooth de baixa energia (Android 12+)
+    }
+
+    private static boolean temFone(AudioDeviceInfo[] ds) {
+        if (ds == null) return false;
+        for (AudioDeviceInfo d : ds) if (ehFone(d)) return true;
+        return false;
+    }
+
+    private void avisarFone(boolean ligado) {
+        JSObject r = new JSObject();
+        r.put("ligado", ligado);
+        notifyListeners("fone", r);
+    }
+
+    @Override
+    public void load() {
+        try {
+            AudioManager am = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+            if (am == null) return;
+            avisoFone = new AudioDeviceCallback() {
+                @Override
+                public void onAudioDevicesAdded(AudioDeviceInfo[] ds) {
+                    // logo ao registrar, o Android manda a lista do que já estava ligado: isso não é "conectar o fone"
+                    if (SystemClock.elapsedRealtime() - registradoEm < 2000) return;
+                    if (temFone(ds)) avisarFone(true);
+                }
+
+                @Override
+                public void onAudioDevicesRemoved(AudioDeviceInfo[] ds) {
+                    if (temFone(ds)) avisarFone(false);
+                }
+            };
+            registradoEm = SystemClock.elapsedRealtime();
+            am.registerAudioDeviceCallback(avisoFone, new Handler(Looper.getMainLooper()));
+        } catch (Exception e) { avisoFone = null; /* aparelho sem esse aviso: o app segue sem as opções do fone */ }
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        try {
+            AudioManager am = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+            if (am != null && avisoFone != null) am.unregisterAudioDeviceCallback(avisoFone);
+        } catch (Exception e) { /* já solto */ }
+        avisoFone = null;
+        super.handleOnDestroy();
+    }
+
+    // A notificação de mídia reabre o app com uma intenção sem ação; o ícone do app usa a ação MAIN.
+    @Override
+    protected void handleOnNewIntent(Intent intent) {
+        super.handleOnNewIntent(intent);
+        if (intent != null && intent.getAction() == null) notifyListeners("notificacao", new JSObject());
+    }
 
     private String alias() { return Build.VERSION.SDK_INT >= 33 ? "audio" : "armazenamento"; }
 

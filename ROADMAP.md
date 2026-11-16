@@ -58,7 +58,9 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - ✅ **1.18.0:** aba Início, Ajustes em quatro partes, capa padrão nas cores do tema e testes automáticos.
 - ✅ **1.18.1:** ícone novo "O tocando" (gerado de `icons/orolon.svg` com `node scripts/gerar-icones.mjs`).
 - ✅ **1.19 Som:** amplificador até 200% com limitador, reverb, efeito 3D e aprimorador (graves, agudos e intensidade).
-- **1.20 Uso:** modo carro, "já começar tocando" ao abrir, tocar ao conectar o fone e notificação abrindo o Tocando.
+- ✅ **1.20 Uso:** modo carro, "já começar tocando" ao abrir, pausar ao tirar o fone, tocar ao conectar o fone e notificação abrindo o Tocando.
+- **1.21 Personalizar:** pincel no Tocando agora com a folha "Personalizar", capa personalizada de álbum e de música, "Enviar backup" e backup automático numa pasta.
+- **1.22 Biblioteca:** estrelas de 1 a 5, mais ordens, playlists `.m3u`, repetir trecho (A-B) e marcadores para áudios longos.
 - Depois: prints novos da loja e do README.
 
 ## Sugestões para versões futuras (anotadas em 16/11/2026)
