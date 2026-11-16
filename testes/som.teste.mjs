@@ -148,4 +148,67 @@ export default [
       assert.equal(r.efeitosAntesDaEra, true);
     },
   },
+  {
+    nome: "limitador com os valores planejados",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => { const l = montarLimitador(new OfflineAudioContext(2, 1, 44100)); return [l.ratio.value, +l.attack.value.toFixed(4), +l.release.value.toFixed(3), l.knee.value]; });
+      assert.deepEqual(r, [20, 0.002, 0.12, 0]);
+    },
+  },
+  {
+    nome: "limitador segura batidas secas a 200%",
+    rodar: async (p) => {
+      const pico = await p.avaliar(async () => {
+        const c = new OfflineAudioContext(2, 88200, 44100), b = c.createBuffer(2, 88200, 44100);
+        for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < d.length; i++) { const t = i % 11025; d[i] = t < 2205 ? Math.sin((2 * Math.PI * 90 * i) / 44100) * Math.exp(-t / 900) : Math.sin((2 * Math.PI * 700 * i) / 44100) * 0.15; } } // bumbo forte a cada 250 ms sobre um som baixo
+        const s = c.createBufferSource(), g = c.createGain(); s.buffer = b; g.gain.value = 2;
+        s.connect(g); g.connect(montarLimitador(c)).connect(c.destination); s.start();
+        const o = await c.startRendering(); let m = 0;
+        for (let ch = 0; ch < 2; ch++) { const d = o.getChannelData(ch); for (let i = 0; i < d.length; i++) m = Math.max(m, Math.abs(d[i])); }
+        return m;
+      });
+      assert.ok(pico <= 1.0, `pico = ${pico}`);
+    },
+  },
+  {
+    nome: "intensidade encorpa sem cavar buracos no som",
+    rodar: async (p) => {
+      const r = await p.avaliar(async () => {
+        const rms = async (f, int) => {
+          const c = new OfflineAudioContext(2, 44100, 44100), o = c.createOscillator(), g = c.createGain(), a = criarAprimorador(c, 0, 0, int);
+          o.frequency.value = f; g.gain.value = 0.02; // som baixo: abaixo do limiar do compressor, o caminho paralelo soma inteiro
+          o.connect(g); g.connect(a.entrada); a.saida.connect(c.destination); o.start();
+          const d = (await c.startRendering()).getChannelData(0); let s = 0; for (let i = 8820; i < d.length; i++) s += d[i] * d[i];
+          return Math.sqrt(s / (d.length - 8820));
+        };
+        const out = {};
+        for (const f of [83.33, 250, 416.67, 1000, 3000]) out[f] = (await rms(f, 1)) / (await rms(f, 0)); // 83, 250 e 417 Hz seriam buracos com um atraso de 6 ms sem compensar
+        return out;
+      });
+      for (const [f, q] of Object.entries(r)) assert.ok(q >= 1, `${f} Hz ficou ${q.toFixed(2)}× com a intensidade no máximo (devia reforçar)`);
+    },
+  },
+  {
+    nome: "trocar de reverb abaixa a saída antes de remontar e volta depois",
+    rodar: async (p) => {
+      await ligarAudio(p);
+      await p.avaliar(() => { cfg.reverb = "catedral"; montarFiltros(); });
+      await p.avaliar(async () => {
+        const orig = montarFiltros; window.__visto = null;
+        montarFiltros = function () { window.__visto = eraIn.gain.value; montarFiltros = orig; orig(); };
+        cfg.reverb = "nenhum"; trocarEfeitos();
+      });
+      await p.esperar(() => window.__visto !== null, 2000);
+      assert.ok(await p.avaliar(() => window.__visto) < 0.05, "a cadeia foi remontada com a saída ainda aberta (cortaria a cauda do reverb com estalo)");
+      await p.esperar(() => eraIn.gain.value > 0.95, 2000);
+      assert.equal(await p.avaliar(() => efeitosNos.length), 0);
+    },
+  },
+  {
+    nome: "impulso do reverb é gerado uma vez por tipo",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => { const c = new OfflineAudioContext(2, 1, 44100); return criarReverb(c, "sala").nos[2].buffer === criarReverb(c, "sala").nos[2].buffer; });
+      assert.equal(r, true);
+    },
+  },
 ];

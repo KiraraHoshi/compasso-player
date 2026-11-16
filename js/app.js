@@ -941,9 +941,11 @@ const ganhoVol = () => (cfg.mudo ? 0 : Math.pow(Math.max(0, Math.min(1, +cfg.vol
 /* ---- Amplificador (acima de 100%) com limitador no fim: a saída nunca passa de 0 dBFS ---- */
 const AMPS = [1, 1.25, 1.5, 1.75, 2];
 const ganhoAmp = () => Math.max(1, Math.min(2, +cfg.amp || 1));
+const LIMIAR_LIMITADOR = -3;
 function montarLimitador(c) {
   const l = c.createDynamicsCompressor();
-  l.threshold.value = -3; l.knee.value = 0; // −3 e não −1: o compressor do navegador soma um ganho de compensação, e com −1 o pico passava de 0 dBFS l.ratio.value = 20; l.attack.value = 0.002; l.release.value = 0.12;
+  // limiar abaixo de −1: o compressor do navegador soma um ganho de compensação, e com −1 o pico passava de 0 dBFS
+  l.threshold.value = LIMIAR_LIMITADOR; l.knee.value = 0; l.ratio.value = 20; l.attack.value = 0.002; l.release.value = 0.12;
   return l;
 }
 function escolherAmp(v) {
@@ -1730,7 +1732,7 @@ $("tm").addEventListener("click", (e) => {
     const k = g.dataset.tg; cfg[k] = !cfg[k]; salvarCfg(); aplicarEfeitos();
     if (k === "exemplos") { cfg.exemplosMexeu = true; salvarCfg(); mudouExemplos(); }
     if (k === "tela") atualizarTela();
-    if (k === "nivelar" && ctx) montarFiltros();
+    if (k === "nivelar" && ctx) trocarEfeitos();
     if (k === "eraRuido") ajustarRuido();
     if (k === "coracoes") { renderBib(); renderPl(); }
     if (k === "corCapa") atualizarCorViz();
@@ -1905,10 +1907,12 @@ function impulsoReverb(c, segundos, decai) { // ruído estéreo que some aos pou
   for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, decai); }
   return b;
 }
+const impulsos = {};
 function criarReverb(c, tipo) {
   const r = REVERBS[tipo]; if (!r) return null;
   const entrada = c.createGain(), saida = c.createGain(), seco = c.createGain(), molhado = c.createGain(), conv = c.createConvolver();
-  seco.gain.value = 0.9; molhado.gain.value = 0.28; conv.buffer = impulsoReverb(c, r[0], r[1]);
+  const chave = tipo + "@" + c.sampleRate; // gerar o impulso custa caro no celular: faz uma vez por tipo
+  seco.gain.value = 0.9; molhado.gain.value = 0.28; conv.buffer = impulsos[chave] || (impulsos[chave] = impulsoReverb(c, r[0], r[1]));
   entrada.connect(seco).connect(saida); entrada.connect(conv).connect(molhado).connect(saida);
   return { entrada, saida, nos: [entrada, seco, conv, molhado, saida] };
 }
@@ -1921,14 +1925,16 @@ function criarLargura(c, largura) { // meio/lado: o "lado" (diferença entre L e
   meio.connect(saida, 0, 0); meio.connect(saida, 0, 1); lado.connect(saida, 0, 0); lado.connect(invLado); invLado.connect(saida, 0, 1);
   return { entrada, saida, lado, nos: [entrada, sep, meio, lado, invR, invLado, saida] };
 }
+const ATRASO_COMPRESSOR = 0.006; // o compressor do navegador "olha à frente" 6 ms e entrega o som com esse atraso
 function criarAprimorador(c, graves, agudos, intensidade) {
   const lim = (v) => Math.max(-6, Math.min(9, +v || 0));
-  const entrada = c.createBiquadFilter(), ag = c.createBiquadFilter(), saida = c.createGain(), cp = c.createDynamicsCompressor(), mix = c.createGain();
+  const entrada = c.createBiquadFilter(), ag = c.createBiquadFilter(), saida = c.createGain(), cp = c.createDynamicsCompressor(), mix = c.createGain(), direto = c.createDelay(0.05);
+  direto.delayTime.value = ATRASO_COMPRESSOR; // sem isso, a soma dos dois caminhos cava buracos no som (filtro pente)
   entrada.type = "lowshelf"; entrada.frequency.value = 110; entrada.gain.value = lim(graves);
   ag.type = "highshelf"; ag.frequency.value = 7000; ag.gain.value = lim(agudos);
   cp.threshold.value = -30; cp.ratio.value = 4; mix.gain.value = Math.max(0, Math.min(1, +intensidade || 0)) * 0.6; // compressão paralela: encorpa sem achatar
-  entrada.connect(ag); ag.connect(saida); ag.connect(cp).connect(mix).connect(saida);
-  return { entrada, saida, graves: entrada, agudos: ag, mix, nos: [entrada, ag, cp, mix, saida] };
+  entrada.connect(ag); ag.connect(direto).connect(saida); ag.connect(cp).connect(mix).connect(saida);
+  return { entrada, saida, graves: entrada, agudos: ag, mix, nos: [entrada, ag, direto, cp, mix, saida] };
 }
 let efeitosVivos = null;
 const assinaturaEfeitos = () => [!!(+cfg.apGraves || +cfg.apAgudos || +cfg.apInt), +cfg.largura > 1, REVERBS[cfg.reverb] ? cfg.reverb : "nenhum"].join("|");
@@ -1959,10 +1965,11 @@ const htmlLargura = (id) => `<div class="opt"><label for="${id}">${T("Efeito 3D"
 function escolherReverb(k) { cfg.reverb = REVERBS[k] ? k : "nenhum"; salvarCfg(); atualizarEfeitos(); marcarFerramentas(); }
 function escolherLargura(pct) { cfg.largura = 1 + Math.max(0, Math.min(100, +pct || 0)) / 100; salvarCfg(); atualizarEfeitos(); marcarFerramentas(); }
 function escolherAprimorador(k, v) { if (k === "apInt") v = Math.max(0, Math.min(100, +v || 0)) / 100; cfg[k] = +v || 0; salvarCfg(); atualizarEfeitos(); }
-function trocarEfeitos() { // troca sem estalo: abaixa a entrada, remonta a cadeia e o aplicarEQ sobe de volta
-  if (!ctx) return;
-  entrada.gain.setTargetAtTime(0, ctx.currentTime, 0.01);
-  clearTimeout(trocarEfeitos.t); trocarEfeitos.t = setTimeout(montarFiltros, 30);
+let trocaPend = 0;
+function trocarEfeitos() { // troca sem estalo: fecha a saída dos efeitos (a cauda do reverb some junto), remonta a cadeia e reabre
+  if (!ctx || trocaPend) return; // já há uma troca a caminho: ela vai ler os valores mais novos
+  eraIn.gain.setTargetAtTime(0, ctx.currentTime, 0.008);
+  trocaPend = setTimeout(() => { trocaPend = 0; montarFiltros(); eraIn.gain.setTargetAtTime(1, ctx.currentTime, 0.03); }, 45);
 }
 function montarFiltros() {
   if (!ctx) return;
@@ -2018,7 +2025,7 @@ function abrirEQ() {
       if (m && +m.dataset.eqmodo !== cfg.eq.modo) {
         if (cfg.eq.modo === 5) cfg.eq.g10 = EQ10.map((f) => interp(EQ5, cfg.eq.g, f));
         else cfg.eq.g = EQ5.map((f) => interp(EQ10, cfg.eq.g10, f));
-        cfg.eq.modo = +m.dataset.eqmodo; montarFiltros();
+        cfg.eq.modo = +m.dataset.eqmodo; trocarEfeitos();
       }
       if (e.target.closest("[data-apzerar]")) { cfg.apGraves = cfg.apAgudos = cfg.apInt = 0; salvarCfg(); atualizarEfeitos(); $("sheet-b").innerHTML = htmlEQ(); return; }
       if (p || m) $("sheet-b").innerHTML = htmlEQ();

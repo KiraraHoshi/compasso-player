@@ -8,7 +8,7 @@
 - Tudo grátis, no cartão **Efeitos** de Ajustes › Som e em duas ferramentas novas do Início: **Volume +** e **Efeitos 3D**. As ferramentas agora ficam em duas linhas de quatro.
 - Trocar de efeito com a música tocando não dá estalo, e os visuais continuam reagindo igual com o volume alto.
 - **Ícone maior:** o símbolo ocupa mais espaço no ícone do app.
-- O backup leva os efeitos novos. Backups de versões anteriores restauram com os efeitos desligados.
+- O backup leva os efeitos novos. Backups de versões anteriores continuam restaurando normalmente.
 
 ## 1.18.1
 - **Ícone novo:** um O que também é uma barra de progresso, com a cabeça de leitura na ponta e um equalizador no centro. Vale no ícone do app, na tela de abertura, no app instalado pelo navegador e na loja.
