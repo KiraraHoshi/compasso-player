@@ -3029,7 +3029,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.17.3";
+const VERSAO = "1.18.0";
 const linkPrivacidade = () => "https://kirarahoshi.github.io/compasso-player/privacidade.html" + (LANG === "en" ? "#en" : "#pt");
 let instalar = null;
 const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
