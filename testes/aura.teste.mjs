@@ -73,10 +73,10 @@ export default [
     rodar: async (p) => {
       const r = await p.avaliar(() => {
         const vistos = []; const orig = recolherAura; recolherAura = (t, d) => vistos.push(d);
-        proxima(); anterior(); anterior();
+        proxima(); anterior(); proxima();
         recolherAura = orig; return vistos;
       });
-      assert.deepEqual(r.slice(0, 2), [1, -1]);
+      assert.deepEqual(r, [1, -1, 1], "depois de voltar, a próxima entra de novo pelo lado de sempre");
     },
   },
   {
@@ -89,13 +89,54 @@ export default [
         let imgs = 0; const orig = c.drawImage; c.drawImage = function (...a) { imgs++; return orig.apply(this, a); };
         golpesQ.prato = 1; desenharAura(c, 600, true); golpesQ.prato = 0;
         const brilhou = imgs, larg = foraAura.width, cintila = poeiraAura.filter((q) => q.br > 0.5).length;
+        const estado = [c.globalCompositeOperation, c.globalAlpha, cfa.filter].join(" ");
         imgs = 0; cfg.leve = true; desenharAura(c, 600, true); cfg.leve = false;
-        return { brilhou, larg, cintila, leve: imgs };
+        return { brilhou, larg, cintila, leve: imgs, estado };
       });
       assert.equal(r.brilhou, 1, "o brilho é uma imagem esticada por cima");
       assert.equal(r.larg, 150, "o brilho é pintado com um quarto do tamanho");
       assert.ok(r.cintila >= 3, `${r.cintila} grãos de poeira cintilando`);
       assert.equal(r.leve, 0, "no modo leve não há brilho");
+      assert.equal(r.estado, "source-over 1 none", "a Aura não deixa estado de desenho para o próximo mostrador");
+    },
+  },
+  {
+    nome: "modo leve não desliga o brilho para sempre (lá o desenho roda a cada dois quadros)",
+    hash: "tocando",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        prepararAudio(); brilhoAura.desligado = false; brilhoAura.lento = 0; cfg.leve = true;
+        const cv = document.createElement("canvas"); cv.width = cv.height = 300; const c = cv.getContext("2d");
+        fqV = 4; for (let i = 0; i < 300; i++) desenharAura(c, 300, true);
+        cfg.leve = false; const volta = usarBrilho(); brilhoAura.desligado = false; brilhoAura.lento = 0; return volta;
+      });
+      assert.equal(r, true);
+    },
+  },
+  {
+    nome: "WebView antigo (sem getAnimations): a troca de música continua funcionando",
+    hash: "tocando",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        escolherVisual("aura"); const orig = Element.prototype.getAnimations; delete Element.prototype.getAnimations;
+        let erro = ""; try { proxima(); proxima(); } catch (e) { erro = String(e); }
+        Element.prototype.getAnimations = orig; escolherVisual("relogio"); return erro;
+      });
+      assert.equal(r, "");
+    },
+  },
+  {
+    nome: "modo leve: a capa não ganha animação na troca e a cor troca na hora",
+    hash: "tocando",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        escolherVisual("aura"); cfg.leve = true;
+        const d = document.getElementById("disc"); d.getAnimations().forEach((a) => a.cancel());
+        recolherAura(performance.now(), 1); const anim = d.getAnimations().length;
+        corAura[0] = [255, 0, 0]; corViz = "#0000ff"; corViz2 = null; passoCorAura(); const azul = corAura[0][2];
+        cfg.leve = false; escolherVisual("relogio"); return { anim, azul };
+      });
+      assert.deepEqual(r, { anim: 0, azul: 255 });
     },
   },
 ];

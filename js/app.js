@@ -817,10 +817,10 @@ function posAtual() {
   if (!x.demo) return el && el.dataset.id === x.id ? el.currentTime : pos;
   return playing && ctx ? posBase + (ctx.currentTime - inicioT) : pos;
 }
-function aoTrocar(x) { escuta.zerar(); recolherAura(performance.now(), dirTroca); dirTroca = 1; if (trecho && (!x || trecho.id !== x.id)) limparTrecho(); renderInicio(); luz(coresDe(x)); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
+function aoTrocar(x) { escuta.zerar(); try { recolherAura(performance.now(), dirTroca); } catch (e) { /* só enfeite */ } dirTroca = 1; if (trecho && (!x || trecho.id !== x.id)) limparTrecho(); renderInicio(); luz(coresDe(x)); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
 function carregar(auto) {
   const x = cur();
-  if (!x) { playing = false; paint(); return; }
+  if (!x) { dirTroca = 1; playing = false; paint(); return; }
   pos = 0; novaEscuta(); clearTimeout(pausaPend);
   if (ctx) {
     pararSintese(); cancelarTroca(); els.forEach((a) => a.pause());
@@ -3642,7 +3642,7 @@ function desenharNeon(c, W, vivo) {
    Brilho macio (pintado pequeno e borrado, depois esticado), poeira com profundidade que cintila no prato,
    uma onda em cada bumbo que sai rápido e freia, e um fio de luz que clareia na caixa. */
 const AURA_N = 64, auraEco1 = new Float32Array(AURA_N), auraEco2 = new Float32Array(AURA_N), auraTmp = new Float32Array(AURA_N);
-let auraGiro = 0, auraPres = 1, recolheuEm = -1e9, dirTroca = 1; // auraPres: 0 = recolhida na borda da capa, 1 = aberta
+let auraGiro = 0, auraPres = 1, recolheuEm = -1e9, dirTroca = 1, animCapa = null; // auraPres: 0 = recolhida na borda da capa, 1 = aberta
 const ondasAura = [], corAura = [[106, 75, 216], [106, 75, 216]], BRANCO_A = [255, 255, 255];
 const foraAura = document.createElement("canvas"), cfa = foraAura.getContext("2d");
 const poeiraAura = Array.from({ length: 70 }, () => ({ a: Math.random() * Math.PI * 2, d: Math.random(), z: 0.45 + Math.random() * 1.2, v: 0.6 + Math.random(), br: 0 })); // z: perto (grande e rápida) ou longe
@@ -3671,8 +3671,8 @@ function recolherAura(agora, dir) {
   if (!temAura(cfg.visual) || APP.dataset.view !== "tocando" || calmo || cfg.leve) return;
   recolheuEm = agora; ondasAura.length = 0;
   const d = $("disc"); if (!d || !d.animate) return;
-  d.getAnimations().forEach((a) => { if (!(a instanceof CSSAnimation)) a.cancel(); });
-  d.animate([{ translate: `${18 * dir}% 0`, scale: "0.86", opacity: 0 }, { translate: "0 0", scale: "1", opacity: 1 }], { duration: 440, easing: "cubic-bezier(.2,.9,.25,1.15)" });
+  if (animCapa) animCapa.cancel();
+  animCapa = d.animate([{ translate: `${18 * dir}% 0`, scale: "0.86", opacity: 0 }, { translate: "0 0", scale: "1", opacity: 1 }], { duration: 440, easing: "cubic-bezier(.2,.9,.25,1.15)" });
 }
 function passoPres(agora, fq) { const alvo = agora - recolheuEm < 240 ? 0 : 1; auraPres += (alvo - auraPres) * (1 - Math.pow(0.9, fq)); }
 function curvaAura(c, niv, W, off, A, cx, giro, buraco) {
@@ -3707,7 +3707,7 @@ function desenharAura(c, Wc, vivo) {
     auraEco1[i] += (auraNiv[i] - auraEco1[i]) * sv(0.12);
     auraEco2[i] += (auraEco1[i] - auraEco2[i]) * sv(0.07);
   }
-  passoCorAura(); passoPres(agora, fqV); if (vivo) vigiarBrilho(fqV);
+  passoCorAura(); passoPres(agora, fqV);
   const c1 = corAura[0], c2 = corAura[1], rgba = (q, a) => `rgba(${q[0] | 0},${q[1] | 0},${q[2] | 0},${a})`, mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
   const tintaA = c.createLinearGradient(0, 0, Wc, Wc); tintaA.addColorStop(0.15, rgba(c1, 1)); tintaA.addColorStop(0.85, rgba(c2, 1));
   auraGiro += (0.001 + eB * 0.006 * k) * fqV * parado; // gira bem devagar, com impulso no bumbo
@@ -3715,6 +3715,7 @@ function desenharAura(c, Wc, vivo) {
   c.lineJoin = "round";
   // 1) brilho macio atrás de tudo
   if (usarBrilho()) {
+    if (vivo) vigiarBrilho(fqV);
     const w = Math.round(Wc / 4), g = cfa; if (foraAura.width !== w) foraAura.width = foraAura.height = w;
     g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.filter = "none"; g.clearRect(0, 0, w, w);
     g.filter = `blur(${(w * 0.022).toFixed(1)}px)`; g.globalCompositeOperation = "lighter"; g.setTransform(0.25, 0, 0, 0.25, 0, 0);
