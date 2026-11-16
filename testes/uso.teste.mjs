@@ -62,4 +62,75 @@ export default [
       assert.equal(await p.avaliar(() => querTela()), true);
     },
   },
+  {
+    nome: "padrões do uso: não toca sozinho, pausa ao tirar o fone",
+    rodar: async (p) => assert.deepEqual(await p.avaliar(() => [cfg.autoTocar, cfg.tocarFone, cfg.pausarFone]), [false, false, true]),
+  },
+  {
+    nome: "já começar tocando só com a opção ligada e no app",
+    rodar: async (p) => {
+      assert.equal(await p.avaliar(() => autoTocar(true)), false);
+      await p.avaliar(() => { cfg.autoTocar = true; });
+      assert.equal(await p.avaliar(() => autoTocar(false)), false, "no navegador não deve tentar tocar sozinho");
+      assert.equal(await p.avaliar(() => autoTocar(true)), true);
+      assert.equal(await p.avaliar(() => playing), true);
+    },
+  },
+  {
+    nome: "já começar tocando sem música não dá erro",
+    antes: { "compasso.cfg": { exemplos: false, exemplosMexeu: true, autoTocar: true } },
+    rodar: async (p) => {
+      assert.equal(await p.avaliar(() => !!cur()), false);
+      assert.equal(await p.avaliar(() => autoTocar(true)), false);
+      assert.equal(await p.avaliar(() => playing), false);
+    },
+  },
+  {
+    nome: "tirar o fone pausa na hora",
+    rodar: async (p) => {
+      await p.avaliar(() => tocar());
+      assert.equal(await p.avaliar(() => playing), true);
+      await p.avaliar(() => aoFone(false));
+      assert.equal(await p.avaliar(() => playing), false);
+      assert.equal(await p.avaliar(() => cfg.fade), true, "a opção de suavizar tem que continuar como estava");
+    },
+  },
+  {
+    nome: "tirar o fone não pausa com a opção desligada",
+    rodar: async (p) => {
+      await p.avaliar(() => { cfg.pausarFone = false; tocar(); aoFone(false); });
+      assert.equal(await p.avaliar(() => playing), true);
+    },
+  },
+  {
+    nome: "conectar o fone só toca com a opção ligada",
+    rodar: async (p) => {
+      await p.avaliar(() => aoFone(true));
+      assert.equal(await p.avaliar(() => playing), false);
+      await p.avaliar(() => { cfg.tocarFone = true; aoFone(true); });
+      assert.equal(await p.avaliar(() => playing), true);
+    },
+  },
+  {
+    nome: "toque na notificação abre o Tocando e fecha a folha",
+    rodar: async (p) => {
+      await p.clicar("[data-ferr=eq]");
+      await p.avaliar(() => aoAbrirNotificacao());
+      assert.equal(await p.avaliar(() => document.getElementById("app").dataset.view), "tocando");
+      await p.esperar(() => document.getElementById("sheet").hidden, 1500);
+    },
+  },
+  {
+    nome: "backup leva as opções de uso",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        Object.assign(cfg, { autoTocar: true, tocarFone: true, pausarFone: false });
+        const b = JSON.parse(JSON.stringify(gerarBackup()));
+        Object.assign(cfg, { autoTocar: false, tocarFone: false, pausarFone: true });
+        restaurarBackup(b);
+        return [cfg.autoTocar, cfg.tocarFone, cfg.pausarFone];
+      });
+      assert.deepEqual(r, [true, true, false]);
+    },
+  },
 ];

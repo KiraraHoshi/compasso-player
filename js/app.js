@@ -91,7 +91,7 @@ const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i>
 
 /* ===================== Ajustes e temas ===================== */
 const cfg = Object.assign(
-  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", vol: 0.8, amp: 1, reverb: "nenhum", largura: 1, apGraves: 0, apAgudos: 0, apInt: 0, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false, corCapa: true, formaCapa: "quadrada", ledCor: "arte" },
+  { tema: null, ajustes: {}, amb: true, ambF: 0.7, reage: true, batF: 0.7, exemplos: true, ord: "recentes", fade: true, tela: false, anterior: "reiniciar", autoTocar: false, tocarFone: false, pausarFone: true, vol: 0.8, amp: 1, reverb: "nenhum", largura: 1, apGraves: 0, apAgudos: 0, apInt: 0, mudo: false, coracoes: true, aura: true, era: "off", eraRuido: true, visual: "relogio", xfade: 0, vel: 1, nivelar: false, corCapa: true, formaCapa: "quadrada", ledCor: "arte" },
   guardado.get("compasso.cfg", {})
 );
 const salvarCfg = () => guardado.set("compasso.cfg", cfg);
@@ -1650,6 +1650,7 @@ function renderTemas() {
     <div class="card stack"><h2>${T("Reprodução")}</h2>
       ${tg("fade", T("Suavizar o volume ao pausar e tocar"))}
       ${tg("tela", T("Manter a tela ligada em Tocando agora"))}
+      ${NATIVO ? tg("autoTocar", T("Já começar tocando ao abrir o app")) + tg("pausarFone", T("Pausar ao tirar o fone")) + tg("tocarFone", T("Tocar ao conectar o fone")) + `<p class="note">${T("Tocar ao conectar o fone só funciona com o Orolon aberto ou em segundo plano.")}</p>` : ""}
       <div class="opt"><label for="s-anterior">${T("Botão Anterior")}</label><select id="s-anterior" class="mini-sel" data-sel="anterior"><option value="reiniciar"${cfg.anterior !== "sempre" ? " selected" : ""}>${T("Recomeça a música")}</option><option value="sempre"${cfg.anterior === "sempre" ? " selected" : ""}>${T("Volta para a anterior")}</option></select></div>
       <p class="note">${T("Com \"Recomeça a música\", o Anterior volta para o começo se já passaram 3 segundos, e só então para a música anterior.")}</p>
       <div class="btns"><button class="btn ghost sm" data-abrirsono>${ico("timer", 18)}${T("Temporizador")}</button></div></div>
@@ -2125,6 +2126,28 @@ function paintSono() {
   if (folha && folha.modo === "timer") { const s = $("sono-st"); if (s && sono.fim) s.textContent = T("Pausa em {0}.", fmt((sono.fim - Date.now()) / 1000)); }
 }
 
+/* ===================== Uso: já começar tocando, fone e notificação (os dois últimos chegam do plugin do Android) ===================== */
+function autoTocar(nativo = NATIVO) { // no navegador o som é bloqueado sem um toque, então só vale no app
+  if (!cfg.autoTocar || !nativo || !cur() || playing) return false;
+  tocar(); return true;
+}
+function aoFone(ligado) {
+  if (!ligado) {
+    if (!cfg.pausarFone || !playing) return;
+    const f = cfg.fade; cfg.fade = false; // sem suavizar: o som não pode vazar pelo alto-falante
+    try { pausar(); } finally { cfg.fade = f; }
+  } else if (cfg.tocarFone && !playing && cur()) tocar();
+}
+function aoAbrirNotificacao() {
+  if (emCarro()) return; // no modo carro, a tela continua a mesma
+  if (folha) fecharFolha();
+  if ($("app").dataset.view !== "tocando") ir("tocando");
+}
+if (MUS && MUS.addListener) {
+  nat(() => MUS.addListener("fone", (d) => aoFone(!!(d && d.ligado))));
+  nat(() => MUS.addListener("notificacao", () => aoAbrirNotificacao()));
+}
+
 /* ===================== Modo carro: tela cheia com botões enormes ===================== */
 const CARRO = $("carro");
 const emCarro = () => !CARRO.hidden;
@@ -2551,7 +2574,7 @@ function restaurarBackup(o) {
   for (const t of o.temas || []) { try { const v = validarTema(t); if (!meusTemas.some((m) => m.nome === v.nome)) { v.id = uid("t"); meusTemas.push(v); } } catch (err) { /* tema inválido: pula */ } }
   salvarTemas();
   const aj = o.ajustes || {};
-  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "volRec", "leve", "coracoes", "corCapa", "formaCapa", "ledCor", "amp", "avisoAmp", "reverb", "largura", "apGraves", "apAgudos", "apInt"]) if (k in aj) cfg[k] = aj[k];
+  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "volRec", "leve", "coracoes", "corCapa", "formaCapa", "ledCor", "amp", "avisoAmp", "reverb", "largura", "apGraves", "apAgudos", "apInt", "autoTocar", "tocarFone", "pausarFone"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
   if (aj.ajustes) cfg.ajustes = aj.ajustes;
@@ -3407,6 +3430,7 @@ requestAnimationFrame(quadro);
   if (cfg.tagsVer !== 2) setTimeout(relerLetras, 1500);
   if (cfg.capasVer !== 1) setTimeout(acertarCapas, 2500);
   if (!guardado.get("compasso.boasvindas", false) && !importadas().length) boasVindas();
+  autoTocar();
   if (MUS && cfg.aparelho) setTimeout(() => procurarNoAparelho(false), 1500);
   else if (MUS && (cfg.pastasEscolhidas || []).length) setTimeout(() => procurarNasPastas(false), 1500);
 })();
