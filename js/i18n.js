@@ -603,6 +603,7 @@ const EN = {
  "{0} e 4 automáticas": "{0} and 4 automatic",
  "{0} h": "{0} h",
  "{0} min": "{0} min",
+ "Início": "Home",
  "Álbum": "Album",
  "Álbuns": "Albums",
  "Época do som": "Sound era",

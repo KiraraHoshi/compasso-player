@@ -65,8 +65,10 @@ async function novaPagina(cr, base, t) {
   await s("Runtime.enable"); await s("Page.enable");
   const largura = t.largura || 360, altura = t.altura || 780;
   await s("Emulation.setDeviceMetricsOverride", { width: largura, height: altura, deviceScaleFactor: 1, mobile: largura < 900 });
-  if (t.antes && Object.keys(t.antes).length) {
-    const dados = Object.fromEntries(Object.entries(t.antes).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]));
+  // por padrão as boas-vindas já foram vistas (senão a folha abre sozinha e atrapalha o teste); um teste pode mudar isso
+  const antes = { "compasso.boasvindas": true, ...(t.antes || {}) };
+  {
+    const dados = Object.fromEntries(Object.entries(antes).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]));
     await s("Page.addScriptToEvaluateOnNewDocument", { source: `if (!sessionStorage.getItem("__semeado")) { const d = ${JSON.stringify(dados)}; for (const k in d) localStorage.setItem(k, d[k]); sessionStorage.setItem("__semeado", "1"); }` });
   }
   await s("Page.navigate", { url: `${base}/index.html${t.hash ? "#" + t.hash : ""}` });

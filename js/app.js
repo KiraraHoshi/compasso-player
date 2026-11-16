@@ -34,6 +34,7 @@ const I = {
   prev: '<path d="M18 5l-9 7 9 7zM5.5 5H8v14H5.5z" fill="currentColor"/>',
   shuf: tr("M3 7h3.5c5 0 5.5 10 10.5 10H20M3 17h3.5c2 0 3.2-1.6 4.3-3.5M20 7h-3c-1.4 0-2.5.8-3.4 1.9M17.5 4.5L20 7l-2.5 2.5M17.5 14.5L20 17l-2.5 2.5"),
   rep: tr("M5 12V9.5A2.5 2.5 0 017.5 7H18M19 12v2.5a2.5 2.5 0 01-2.5 2.5H6M15.5 4.5L18 7l-2.5 2.5M8.5 14.5L6 17l2.5 2.5"),
+  home: tr("M4 11l8-6.5 8 6.5M6.5 9.5V19h11V9.5M10 19v-5h4v5"),
   lib: tr("M5 4v16M10 4v16M14.5 5l4.5 14"),
   now: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M12 7.5V12l3 2"),
   pls: tr("M4 7h11M4 12h11M4 17h7M18 10v7.5") + '<circle cx="16.5" cy="17.5" r="1.8" fill="currentColor"/>',
@@ -2004,6 +2005,9 @@ function rankArtistas(ano) {
   return [...m].map(([n, s]) => ({ n, s, capa: vis().find((x) => x.a === n && x.cover) || vis().find((x) => x.a === n) })).sort((a, b) => b.s - a.s);
 }
 let topVoce = [];
+/* ===================== Início ===================== */
+function renderInicio() {}
+
 function renderVoce() {
   const V = $("vc"), total = Object.values(stats.fx).reduce((s, f) => s + (f.s || 0), 0);
   const plays = Object.values(stats.fx).reduce((s, f) => s + (f.n || 0), 0), diasOuvindo = Object.values(stats.dias).filter((s) => s >= 30).length;
@@ -2935,18 +2939,21 @@ function boasVindas() {
 const GALERIA = [{"nome": T("Entardecer"), "fundo": "#0E1119", "card": "#1A1F2B", "texto": "#F4EEE6", "suave": "#A9A39A", "destaque": "#EDA36D", "secundaria": "#F7D9A5", "raio": 16, "fonte": "padrao"}, {"nome": T("Brasa"), "fundo": "#17100C", "card": "#241812", "texto": "#F7EBDD", "suave": "#B59E8A", "destaque": "#FF8A3D", "secundaria": "#F2D7A6", "raio": 12, "fonte": "padrao"}, {"nome": T("Maré"), "fundo": "#0A1418", "card": "#12222A", "texto": "#E6F4F6", "suave": "#8FB0B8", "destaque": "#4FD1E0", "secundaria": "#F06A86", "raio": 20, "fonte": "padrao"}, {"nome": T("Meia-noite"), "fundo": "#000000", "card": "#101014", "texto": "#F2F2F5", "suave": "#9A9AA8", "destaque": "#7C9BFF", "secundaria": "#E3C98A", "raio": 14, "fonte": "sistema"}, {"nome": T("Folha"), "fundo": "#F1F4EA", "card": "#FFFFFF", "texto": "#1C2414", "suave": "#5F6B52", "destaque": "#3F7A14", "secundaria": "#B5560F", "raio": 18, "fonte": "padrao"}, {"nome": T("Papel"), "fundo": "#F3F1EC", "card": "#FFFEFB", "texto": "#22201C", "suave": "#6B665C", "destaque": "#2F5FA8", "secundaria": "#9A4B2F", "raio": 6, "fonte": "serifada"}];
 
 /* ===================== Navegação ===================== */
-const TELAS = [["biblioteca", T("Biblioteca"), "lib"], ["tocando", T("Tocando"), "now"], ["playlists", T("Playlists"), "pls"], ["voce", T("Você"), "user"], ["temas", T("Ajustes"), "thm"]];
+/* O Tocando agora não fica na barra: abre pelo mini player, pelo Continuar do Início e ao tocar uma lista */
+const TELAS = [["inicio", T("Início"), "home"], ["biblioteca", T("Biblioteca"), "lib"], ["playlists", T("Playlists"), "pls"], ["voce", T("Você"), "user"], ["temas", T("Ajustes"), "thm"]];
+const TELAS_VALIDAS = [...TELAS.map((x) => x[0]), "tocando"];
 const montarNav = () => { $("nav").innerHTML = TELAS.map((v) => `<button data-v="${v[0]}">${ico(v[2])}<span>${v[1]}</span></button>`).join(""); };
 montarNav();
 let historico = [], rolagens = {}; // telas visitadas, para o voltar refazer o caminho
 function ir(v, voltando) {
-  if (!TELAS.some((x) => x[0] === v)) v = "biblioteca";
+  if (!TELAS_VALIDAS.includes(v)) v = "inicio";
   const antes = $("app").dataset.view;
   if (antes && antes !== v) { rolagens[antes] = $("main").scrollTop; if (!voltando) { historico.push(antes); if (historico.length > 30) historico.shift(); } }
   $("app").dataset.view = v;
   document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + v));
   document.querySelectorAll("nav button").forEach((b) => { const on = b.dataset.v === v; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   if (v === "voce") renderVoce();
+  if (v === "inicio") renderInicio();
   ultSeek = -1;
   if (v === "playlists") renderPl();
   if (v !== "tocando" && emPalco()) alternarPalco(false);
@@ -3064,7 +3071,7 @@ function voltarUmPasso() {
   if (v === "playlists" && plAberta) { plAberta = null; renderPl(); return true; }
   if (v === "temas" && editando) { editando = null; aplicarTema(); renderTemas(); return true; }
   while (historico.length) { const p = historico.pop(); if (p !== v) { ir(p, true); return true; } } // volta para a tela anterior, não para a primeira
-  if (v !== "biblioteca") { ir("biblioteca", true); return true; }
+  if (v !== "inicio") { ir("inicio", true); return true; }
   return false;
 }
 if (PLUG.App) nat(() => PLUG.App.addListener("backButton", () => { if (!voltarUmPasso()) nat(() => PLUG.App.minimizeApp()); }));
@@ -3102,7 +3109,7 @@ traduzirPagina(document.body);
 APP.dataset.leve = cfg.leve ? "1" : "";
 aplicarVolume(true); aplicarVolRec(); aplicarVel();
 aplicarTema(); aplicarFundo(); aplicarVisual(); renderLetra();
-ir(location.hash.slice(1) || "biblioteca");
+ir(location.hash.slice(1) || "inicio");
 renderBib(); renderTemas(); paint();
 requestAnimationFrame(quadro);
 
