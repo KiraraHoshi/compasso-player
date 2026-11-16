@@ -4,12 +4,14 @@ import assert from "node:assert/strict";
 
 /* Roda a escuta sobre uma "música" de mentira. eventos: [tempo em ms, força de 0 a 1].
    Cada evento faz a energia da faixa subir de repente e cair aos poucos, como um golpe de bateria. */
-const simular = (p, opcoes) => p.avaliar(({ dur, bumbo, caixa, prato, piso }) => {
-  const E = criarEscuta(), dt = 1000 / 60, env = { bumbo: 0, caixa: 0, prato: 0 }, fila = { bumbo: (bumbo || []).slice(), caixa: (caixa || []).slice(), prato: (prato || []).slice() };
+const simular = (p, opcoes) => p.avaliar(({ dur, bumbo, caixa, prato, piso, ruido, semAndamento, pausa }) => {
+  const E = criarEscuta({ andamento: !semAndamento }), dt = 1000 / 60, env = { bumbo: 0, caixa: 0, prato: 0 }, fila = { bumbo: (bumbo || []).slice(), caixa: (caixa || []).slice(), prato: (prato || []).slice() };
   const golpes = { bumbo: [], caixa: [], prato: [] };
-  for (let t = 1000; t < 1000 + dur; t += dt) {
+  let semente = 7, relogio = 1000, pausou = false; const sorte = () => (semente = (semente * 16807) % 2147483647) / 2147483647; // "acaso" repetível
+  for (let t = 1000; t < 1000 + dur; t += dt, relogio += dt) {
+    if (pausa && !pausou && t - 1000 >= pausa[0]) { pausou = true; E.soltarAndamento(); relogio += pausa[1]; } // a música para; o relógio do aparelho continua
     for (const k in env) { env[k] *= 0.55; while (fila[k].length && fila[k][0][0] + 1000 <= t) env[k] = Math.max(env[k], fila[k].shift()[1]); }
-    const g = E.passo(t, { bumbo: (piso || 0) + env.bumbo * 0.6, caixa: env.caixa * 0.6, prato: env.prato * 0.6 }, 1);
+    const g = E.passo(relogio, { bumbo: (piso || 0) * (1 + (ruido || 0) * (sorte() * 2 - 1)) + env.bumbo * 0.6, caixa: env.caixa * 0.6, prato: env.prato * 0.6 }, 1);
     for (const k in golpes) if (g[k]) golpes[k].push([Math.round(t - 1000), +g[k].toFixed(2)]);
   }
   return { golpes, P: E.GR.P, conf: +E.GR.conf.toFixed(2) };
@@ -38,13 +40,42 @@ export default [
   {
     nome: "com andamento firme, grave forte fora do tempo bate mais fraco que o do tempo",
     rodar: async (p) => {
-      const fora = []; for (let t = 200 + 4000 + 170; t < 10000; t += 1500) fora.push([t, 0.9]); // depois de 4 s de ritmo firme
-      const r = await simular(p, { dur: 10000, bumbo: [...cada(500, 10000), ...fora].sort((a, b) => a[0] - b[0]) });
+      const fora = []; for (let t = 200 + 4000 + 250; t < 10000; t += 1500) fora.push([t, 0.9]); // depois de 4 s de ritmo firme, bem no meio entre dois bumbos
+      const musica = { dur: 10000, bumbo: [...cada(500, 10000), ...fora].sort((a, b) => a[0] - b[0]) };
+      const r = await simular(p, musica), semFiltro = await simular(p, { ...musica, semAndamento: true });
       const noTempo = (t) => Math.abs(((t - 200) % 500 + 500) % 500 - 0) < 60 || Math.abs(((t - 200) % 500) - 500) < 60;
       const dentro = r.golpes.bumbo.filter(([t]) => t > 4000 && noTempo(t)).map((g) => g[1]), foraG = r.golpes.bumbo.filter(([t]) => t > 4000 && !noTempo(t)).map((g) => g[1]);
       const media = (l) => (l.length ? l.reduce((a, b) => a + b, 0) / l.length : 0);
       assert.ok(dentro.length >= 9, `poucos golpes no tempo: ${dentro.length}`);
-      assert.ok(foraG.length <= 2 || media(foraG) < media(dentro) * 0.75, `fora do tempo: ${foraG.length} golpes de força média ${media(foraG).toFixed(2)}; no tempo: ${media(dentro).toFixed(2)}`);
+      assert.ok(foraG.length <= 1, `fora do tempo passaram ${foraG.length} golpes de força média ${media(foraG).toFixed(2)}`);
+      const foraSem = semFiltro.golpes.bumbo.filter(([t]) => t > 4000 && !noTempo(t));
+      assert.ok(foraSem.length >= 3, `sem o andamento, esses golpes deviam passar (passaram ${foraSem.length}): é o andamento que segura, não o intervalo mínimo`);
+    },
+  },
+  {
+    nome: "ritmo quebrado: sem andamento firme, a capa segue cada bumbo",
+    rodar: async (p) => {
+      const b = []; let t = 200; for (const d of [310, 520, 410, 690, 350, 560, 430, 720, 380, 610, 290, 650, 470, 540, 330, 700, 420, 580]) { b.push([t, 1]); t += d; }
+      const r = await simular(p, { dur: t + 300, bumbo: b });
+      assert.ok(r.golpes.bumbo.length >= b.length - 2, `${r.golpes.bumbo.length} socos para ${b.length} bumbos`);
+    },
+  },
+  {
+    nome: "depois de pausar, a capa volta a pulsar logo no primeiro bumbo",
+    rodar: async (p) => {
+      const r = await simular(p, { dur: 9000, bumbo: cada(500, 9000), pausa: [6000, 3230] }); // 3,23 s de pausa: o tempo forte muda de lugar no relógio
+      const depois = r.golpes.bumbo.filter(([t]) => t > 6000);
+      assert.ok(depois.length && depois[0][0] < 6700, `primeiro soco depois da pausa em ${depois.length ? depois[0][0] : "nunca"} ms (a música voltou em 6000)`);
+      assert.ok(depois.length >= 5, `só ${depois.length} socos nos 3 s depois da pausa (são 6 bumbos)`);
+    },
+  },
+  {
+    nome: "grave contínuo que oscila um pouco (órgão, ambiente) não vira soco; bumbo por cima dele continua valendo",
+    rodar: async (p) => {
+      const so = await simular(p, { dur: 15000, piso: 0.4, ruido: 0.05 });
+      assert.ok(so.golpes.bumbo.length <= 2, `${so.golpes.bumbo.length} socos em 15 s de grave contínuo sem bateria`);
+      const com = await simular(p, { dur: 8000, piso: 0.3, ruido: 0.05, bumbo: cada(500, 8000) });
+      assert.ok(com.golpes.bumbo.length >= 13 && com.golpes.bumbo.length <= 17, `${com.golpes.bumbo.length} socos para 16 bumbos sobre o grave contínuo`);
     },
   },
   {
@@ -119,6 +150,36 @@ export default [
         };
       });
       assert.deepEqual(r, { escuta: true, somDireto: true, desenhoComAtraso: true, semVolta: true, atraso: true });
+    },
+  },
+  {
+    nome: "pausar e pular na música soltam o andamento; o modo leve devolve a capa ao tamanho normal",
+    hash: "tocando",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        const o = [];
+        escuta.GR.P = 500; escuta.GR.conf = 0.9; tocar(); pausar(); o.push(escuta.GR.P);
+        escuta.GR.P = 500; buscarSeg(20); o.push(escuta.GR.P);
+        document.querySelector(".dial").style.setProperty("--ds", "1.030"); definirLeve(true);
+        o.push(getComputedStyle(document.querySelector(".dial")).getPropertyValue("--ds").trim());
+        return o;
+      });
+      assert.deepEqual(r, [0, 0, "1"]);
+    },
+  },
+  {
+    nome: "a cadeia do som termina na saída certa (senão o app ficaria mudo)",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        prepararAudio();
+        const lig = []; const orig = AudioNode.prototype.connect;
+        AudioNode.prototype.connect = function (d, ...x) { lig.push([this, d]); return orig.call(this, d, ...x); };
+        cfg.era = "80"; montarEra(); cfg.era = "off"; montarEra();
+        AudioNode.prototype.connect = orig;
+        return { naSaida: lig.filter(([, d]) => d === saidaEra).length, noAnalisador: lig.filter(([, d]) => d === an).length };
+      });
+      assert.ok(r.naSaida >= 3, `ligações na saída do som: ${r.naSaida}`);
+      assert.equal(r.noAnalisador, 0, "nada deve se ligar direto no analisador dos desenhos");
     },
   },
   {

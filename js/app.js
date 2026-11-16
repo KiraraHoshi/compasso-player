@@ -796,6 +796,7 @@ function tocar() {
   playing = true; paint();
 }
 function pausar() {
+  escuta.soltarAndamento();
   const x = cur();
   if (ctx) {
     if (x && x.demo) { pos = posAtual(); pararSintese(); }
@@ -880,6 +881,7 @@ function anterior() {
   qi = (qi - 1 + queue.length) % queue.length; carregar(playing);
 }
 function buscarSeg(s) {
+  escuta.soltarAndamento(); // o tempo forte muda de lugar ao pular
   const x = cur(); if (!x) return;
   s = Math.max(0, Math.min(s, (x.d || 0) - 0.25));
   if (x.demo) { pos = s; if (playing) tocar(); }
@@ -1063,6 +1065,7 @@ function definirLeve(on) {
   if (cfg.leve) { // volta tudo ao repouso
     nivel.fill(0); linhas.forEach((l) => l.setAttribute("y2", "12"));
     AMB.style.setProperty("--pulse", "0.4"); DIAL.style.setProperty("--pulse", "0.4"); DIAL.style.setProperty("--beat", "0");
+    molaCapa.parar(); escDisco = 1; DIAL.style.setProperty("--ds", "1"); ultEsc = "1.000"; // a capa volta ao tamanho normal
     ultPulso = ultBatida = "";
   }
   if (APP.dataset.view === "temas" && !editando) renderTemas();
@@ -1082,7 +1085,9 @@ function lerBins() { if (binsLidos !== nQuadro) { an.getByteFrequencyData(bins);
 const FAIXAS = { bumbo: { lo: 38, hi: 115, gap: 200, lim: 2, rel: 0.4, cai: 0.88 }, caixa: { lo: 1200, hi: 4500, gap: 160, lim: 2, rel: 0.45, cai: 0.86 }, prato: { lo: 7000, hi: 14000, gap: 70, lim: 1.6, rel: 0.3, cai: 0.78 } };
 const faixaEmBins = (lo, hi, taxa, janela) => { const n = janela / 2, hz = (f) => Math.max(1, Math.min(n - 1, Math.round(f / (taxa / janela)))); return [hz(lo), hz(hi)]; };
 function energiaFaixa(b, a, z) { let e = 0; for (let i = a; i <= z; i++) { const v = b[i] / 255; e += v * v * v; } return e / (z - a + 1); } // ao cubo: som alto pesa muito mais que som baixo
-function criarEscuta() {
+function criarEscuta(op = {}) {
+  const comAndamento = op.andamento !== false; // os testes desligam para provar que é o andamento que segura o grave fora do tempo
+  let ultPasso = 0, primeiro = true;
   const O = {}; for (const k in FAIXAS) O[k] = { ...FAIXAS[k], med: 0, ult: -1e9, env: 0, ant: 0, pico: 0 };
   const GR = { ev: [], P: 0, fase: 0, conf: 0, ult: 0 }; // andamento: P = ms por batida, fase = onde cai o tempo forte
   const sino = (x) => Math.exp((-x * x) / 1568), volta = (x, P) => { let d = ((x % P) + P) % P; if (d > P / 2) d -= P; return d; };
@@ -1111,20 +1116,27 @@ function criarEscuta() {
     GR.P = mP; GR.fase = mF; GR.conf += (reg / tot - GR.conf) * 0.5;
   }
   function noTempo(agora) { // 1 = no tempo forte; menos que isso = fora do tempo numa música de andamento firme
-    if (!GR.P) return 1;
+    if (!GR.P || !comAndamento) return 1;
     const c = Math.max(0, Math.min(1, (GR.conf - 0.6) / 0.22));
     return Math.abs(volta(agora - GR.fase, GR.P)) < Math.max(48, GR.P * 0.13) ? 1 : 1 - c;
   }
   const golpes = { bumbo: 0, caixa: 0, prato: 0 };
+  /* A música parou, pulou ou o app ficou um tempo sem ouvir: o tempo forte mudou de lugar no relógio.
+     Esquece o andamento (senão a capa ignoraria os bumbos por alguns segundos) e não conta a entrada do som como golpe. */
+  function soltarAndamento() { Object.assign(GR, { ev: [], P: 0, fase: 0, conf: 0 }); primeiro = true; }
   return {
-    O, GR,
+    O, GR, soltarAndamento,
     /* agora em ms; e = energia de cada faixa neste quadro; fq = quadros de 60 Hz passados. Devolve a força (0 a 1) do golpe de cada faixa. */
     passo(agora, e, fq) {
       const sv = (k) => 1 - Math.pow(1 - k, fq);
+      if (ultPasso && agora - ultPasso > 500) soltarAndamento(); // ficou sem ouvir (outra tela, app escondido)
+      ultPasso = agora;
+      if (primeiro) { primeiro = false; for (const k in O) { O[k].ant = e[k] || 0; golpes[k] = 0; } return golpes; }
       for (const k in O) {
-        const d = O[k], fl = Math.max(0, (e[k] || 0) - d.ant); d.ant = e[k] || 0; golpes[k] = 0; d.env *= Math.pow(d.cai, fq);
+        const d = O[k], antes = d.ant, fl = Math.max(0, (e[k] || 0) - antes); d.ant = e[k] || 0; golpes[k] = 0; d.env *= Math.pow(d.cai, fq);
         d.pico = Math.max(fl, d.pico * Math.pow(0.9965, fq)); // lembra o golpe mais forte por uns 3 segundos
-        if (fl > d.med * d.lim + 0.004 && fl > d.pico * d.rel && agora - d.ult > d.gap) {
+        // a subida precisa ser grande perto do som que já estava lá: grave contínuo que só oscila (órgão, ambiente) não é golpe
+        if (fl > d.med * d.lim + 0.004 && fl > d.pico * d.rel && fl > antes * 0.25 && agora - d.ult > d.gap) {
           d.ult = agora; let f = Math.min(1, 0.4 + (0.6 * fl) / d.pico);
           if (k === "bumbo") { GR.ev.push([agora, fl / d.pico]); f *= noTempo(agora); } // grave fora do tempo (baixo, voz) quase não mexe a capa
           if (f >= 0.4) golpes[k] = f;
@@ -1135,7 +1147,7 @@ function criarEscuta() {
       if (agora - GR.ult > 400) { GR.ult = agora; compasso(agora); }
       return golpes;
     },
-    zerar() { for (const k in O) Object.assign(O[k], { med: 0, ult: -1e9, env: 0, ant: 0, pico: 0 }); Object.assign(GR, { ev: [], P: 0, fase: 0, conf: 0, ult: 0 }); },
+    zerar() { for (const k in O) Object.assign(O[k], { med: 0, ult: -1e9, env: 0, ant: 0, pico: 0 }); GR.ult = 0; soltarAndamento(); },
   };
 }
 /* A capa tem peso: leva um soco no bumbo e volta como mola. Soco logo depois de outro sai mais fraco, para não ficar tremendo. */
@@ -1164,7 +1176,7 @@ function ouvirBatidas(agora) {
   anD.getByteFrequencyData(binsD);
   return escuta.passo(agora, { bumbo: energiaFaixa(binsD, ...binsBat.bumbo), caixa: energiaFaixa(binsD, ...binsBat.caixa), prato: energiaFaixa(binsD, ...binsBat.prato) }, fqQ);
 }
-let acesas = -1, arrastandoSeek = false, pulso = 0.4, graveEnv = 0, gravePiso = 0, escDisco = 1, ultEsc = "", batida = 0, alvoBatida = 0, media = 0, ultimaBatida = 0, ultimoSeg = -1;
+let acesas = -1, arrastandoSeek = false, pulso = 0.4, graveEnv = 0, gravePiso = 0, escDisco = 1, ultEsc = "", batida = 0, alvoBatida = 0, ultimaBatida = 0, ultimoSeg = -1;
 const nivel = new Float32Array(60);
 const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function quadro() {
@@ -1199,7 +1211,7 @@ function quadro() {
     let s = 0; for (let i = 1; i < 19; i++) s += bins[i];
     alvo = Math.min(1, s / 18 / 170);
     const g = (bins[0] + bins[1] + bins[2] + bins[3]) / 4, agora = performance.now();
-    golpeBumbo = ouvirBatidas(agora).bumbo; // escuta nova: só o que é batida de verdade
+    golpeBumbo = APP.dataset.view === "tocando" ? ouvirBatidas(agora).bumbo : 0; // escuta nova: só o que é batida de verdade (e só com o Tocando na tela)
     if (golpeBumbo) { alvoBatida = Math.max(alvoBatida, golpeBumbo); ultimaBatida = agora; }
     // pulso da capa: segue a força dos graves acima do nível médio da música, para pulsar mesmo em músicas altas
     const gv = g / 255; graveEnv += (gv - graveEnv) * sq(gv > graveEnv ? 0.35 : 0.1); gravePiso += (graveEnv - gravePiso) * sq(0.015);
