@@ -817,7 +817,7 @@ function posAtual() {
   if (!x.demo) return el && el.dataset.id === x.id ? el.currentTime : pos;
   return playing && ctx ? posBase + (ctx.currentTime - inicioT) : pos;
 }
-function aoTrocar(x) { escuta.zerar(); try { recolherAura(performance.now(), dirTroca); } catch (e) { /* só enfeite */ } dirTroca = 1; if (trecho && (!x || trecho.id !== x.id)) limparTrecho(); renderInicio(); luz(coresDe(x)); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
+function aoTrocar(x) { escuta.zerar(); acordarViz(); try { recolherAura(performance.now(), dirTroca); } catch (e) { /* só enfeite */ } dirTroca = 1; if (trecho && (!x || trecho.id !== x.id)) limparTrecho(); renderInicio(); luz(coresDe(x)); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
 function carregar(auto) {
   const x = cur();
   if (!x) { dirTroca = 1; playing = false; paint(); return; }
@@ -1069,6 +1069,7 @@ function definirLeve(on) {
     nivel.fill(0); linhas.forEach((l) => l.setAttribute("y2", "12"));
     AMB.style.setProperty("--pulse", "0.4"); DIAL.style.setProperty("--pulse", "0.4"); DIAL.style.setProperty("--beat", "0");
     molaCapa.parar(); escDisco = 1; DIAL.style.setProperty("--ds", "1"); ultEsc = "1.000"; // a capa volta ao tamanho normal
+    ondasBumbo.length = 0; ultPk.fill("x"); zerarPicosRelogio(); // e as ondas e os pontinhos que estavam no caminho somem
     ultPulso = ultBatida = "";
   }
   if (APP.dataset.view === "temas" && !editando) renderTemas();
@@ -1076,6 +1077,20 @@ function definirLeve(on) {
 }
 /* As animações seguem o tempo real, e não o número de quadros: assim um monitor de 144 Hz e um celular a 60 Hz (ou 30 Hz na economia de bateria) reagem igual */
 let fqQ = 1, fqV = 1, ultQ = 0, ultV = 0, nQuadro = 0, binsLidos = -1;
+/* Economia (o celular esquentava). Tela de 90, 120 ou 144 Hz chama o laço mais vezes do que o olho precisa:
+   o que desenha (mostradores, tracinhos, luz de fundo) fica em ~60 vezes por segundo. A sobra de tempo é guardada,
+   para um quadro atrasado não fazer o seguinte ser pulado. Com a música pausada há 1,5 s para tudo assentar;
+   depois o giro e a poeira param e o desenho cai para ~10 por segundo. */
+function criarRitmo() {
+  let acc = 0, ult = 0;
+  return {
+    pode(ts, alvo) { const dt = Math.min(alvo * 2, Math.max(0, ts - ult)); ult = ts; acc += dt; if (acc < alvo * 0.9) return false; acc = Math.min(acc - alvo, alvo); return true; },
+    zerar() { acc = 1e9; },
+  };
+}
+const ritmoViz = criarRitmo(), ritmoSvg = criarRitmo();
+let tsQ = 0, fqAcc = 0, ultAtivoViz = 0, movViz = 1; // movViz: 1 = giro e poeira andando; 0 = parados (pausado há mais de 1,5 s)
+function acordarViz() { ultAtivoViz = performance.now(); ritmoViz.zerar(); } // trocou a música ou o mostrador: desenha já, e liso por um instante
 const passoT = (agora, ult) => (ult ? Math.min(4, Math.max(0.25, (agora - ult) / 16.667)) : 1);
 const sq = (k) => 1 - Math.pow(1 - k, fqQ), sv = (k) => 1 - Math.pow(1 - k, fqV); // suavização por quadro de 60 Hz, ajustada ao tempo
 // curva suave: realça o meio e comprime o topo sem achatar, para os picos ainda irem até onde "pretendiam"
@@ -1185,16 +1200,27 @@ function ouvirBatidas(agora) {
    com o tranco de relógio: passa um pouco do ponto e volta. */
 function criarPonteiro() {
   let a = 0, v = 0, alvo = 0;
-  return { passo(golpe, fq) { if (golpe) alvo += 6; v += (alvo - a) * 0.3 * fq; v *= Math.pow(0.6, fq); a += v * fq; return a; } };
+  return { passo(golpe, fq) {
+    if (golpe) alvo += 6; v += (alvo - a) * 0.3 * fq; v *= Math.pow(0.6, fq); a += v * fq;
+    if (alvo > 3600) { alvo -= 3600; a -= 3600; } // dez voltas a menos: o ponteiro fica no mesmo lugar e o número não cresce sem fim
+    return a;
+  } };
 }
 const ponteiro = criarPonteiro(), nivPk = new Float32Array(60), nivPv = new Float32Array(60), ultPk = new Array(60).fill("");
 let ultPT = "", ultPB = "", ultBate = null;
+const P_TEMPO = $("p-tempo"), P_BATE = $("p-bate");
 function pintarPonteiroTempo(fr) {
   const t = `rotate(${(fr * 360).toFixed(1)} 100 100)`;
-  if (t !== ultPT) { ultPT = t; $("p-tempo").setAttribute("transform", t); }
+  if (t !== ultPT) { ultPT = t; P_TEMPO.setAttribute("transform", t); }
 }
-function pintarRelogio(ativo) {
-  passoPicos(nivel, nivPk, nivPv, 60, fqQ);
+/* No Vinil os tracinhos levam o empurrão de sempre em cada batida; no Relógio o bumbo corre por eles, de cima para baixo */
+const reforcoTraco = (j, vis) => (vis === "relogio" ? ondaNoTraco(j, ondasBumbo) : batida * 0.35);
+function zerarPicosRelogio() { // modo leve ou troca de mostrador: nada fica parado na tela no meio do caminho
+  nivPk.fill(0); nivPv.fill(0);
+  for (let i = 0; i < 60; i++) if (ultPk[i]) { ultPk[i] = ""; pontos[i].setAttribute("visibility", "hidden"); }
+}
+function pintarRelogio(ang, fq) {
+  passoPicos(nivel, nivPk, nivPv, 60, fq);
   for (let i = 0; i < 60; i++) { // o pontinho fica um instante onde o tracinho chegou
     const v = nivPk[i] < 0.05 ? "" : (14.2 + nivPk[i] * 12).toFixed(1);
     if (v === ultPk[i]) continue;
@@ -1202,14 +1228,15 @@ function pintarRelogio(ativo) {
     if (v) pontos[i].setAttribute("cy", v);
     ultPk[i] = v;
   }
-  const a = `rotate(${ponteiro.passo(ativo ? golpeBumbo : 0, fqQ).toFixed(1)} 100 100)`;
-  if (a !== ultPB) { ultPB = a; $("p-bate").setAttribute("transform", a); }
+  const a = `rotate(${ang.toFixed(1)} 100 100)`;
+  if (a !== ultPB) { ultPB = a; P_BATE.setAttribute("transform", a); }
 }
 let acesas = -1, arrastandoSeek = false, pulso = 0.4, graveEnv = 0, gravePiso = 0, escDisco = 1, ultEsc = "", batida = 0, alvoBatida = 0, ultimaBatida = 0, ultimoSeg = -1;
 const nivel = new Float32Array(60);
 const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
-function quadro() {
-  { const ag = performance.now(); fqQ = passoT(ag, ultQ); ultQ = ag; nQuadro++; }
+function quadro(ts) {
+  { const ag = performance.now(); tsQ = ts || ag; fqQ = passoT(ag, ultQ); ultQ = ag; nQuadro++; fqAcc += fqQ; }
+  const svgOk = ritmoSvg.pode(tsQ, 16.67), fqS = fqAcc; if (svgOk) fqAcc = 0; // tracinhos, ponteiros e luz de fundo: no máximo ~60 vezes por segundo
   const x = cur();
   if (x) {
     const p = posAtual();
@@ -1231,7 +1258,7 @@ function quadro() {
       }
       const n = Math.round(fr * 60);
       if (n !== acesas) { linhas.forEach((l, i) => l.classList.toggle("on", i < n)); acesas = n; }
-      pintarPonteiroTempo(fr);
+      if (APP.dataset.visual === "relogio" && APP.dataset.view === "tocando") pintarPonteiroTempo(fr);
     }
   }
   let alvo = 0.4;
@@ -1252,26 +1279,26 @@ function quadro() {
   if (naTela && !leve) passoOndas(ondasBumbo, ativo ? golpeBumbo : 0, fqQ); // uma onda por bumbo, para todos os mostradores
   // os tracinhos só se mexem quando o mostrador de relógio está na tela
   // os tracinhos se mexem no Relógio e no Vinil: seguem a frequência de cada lado e ganham um empurrão em cada batida
-  if (naTela && !leve && (APP.dataset.visual === "relogio" || APP.dataset.visual === "vinil") && APP.dataset.letra !== "1") for (let i = 0; i < 60; i++) {
-    const p = (i < 30 ? i : 59 - i) / 29, t = ativo ? Math.pow(bins[1 + Math.round(60 * p * p)] / 255, 1.6) * cfg.batF * 1.5 + ondaNoTraco(i < 30 ? i : 59 - i, ondasBumbo) * cfg.batF : 0; // o bumbo corre pelos tracinhos, de cima para baixo
-    const nv = nivel[i] + (Math.min(1, t) - nivel[i]) * sq(t > nivel[i] ? 0.4 : 0.13);
+  if (svgOk && naTela && !leve && (APP.dataset.visual === "relogio" || APP.dataset.visual === "vinil") && APP.dataset.letra !== "1") for (let i = 0; i < 60; i++) {
+    const p = (i < 30 ? i : 59 - i) / 29, t = ativo ? Math.pow(bins[1 + Math.round(60 * p * p)] / 255, 1.6) * cfg.batF * 1.5 + reforcoTraco(i < 30 ? i : 59 - i, APP.dataset.visual) * cfg.batF : 0;
+    const nv = nivel[i] + (Math.min(1, t) - nivel[i]) * (1 - Math.pow(1 - (t > nivel[i] ? 0.4 : 0.13), fqS));
     if (Math.abs(nv - nivel[i]) > 0.004 || (nv < 0.004 && nivel[i] !== 0)) {
       nivel[i] = nv < 0.004 ? 0 : nv;
       linhas[i].setAttribute("y2", (12 + nivel[i] * 12).toFixed(1));
     }
   }
-  if (naTela && !leve && APP.dataset.visual === "relogio" && APP.dataset.letra !== "1") pintarRelogio(ativo);
+  if (naTela && !leve && APP.dataset.visual === "relogio" && APP.dataset.letra !== "1") { const ang = ponteiro.passo(ativo ? golpeBumbo : 0, fqQ); if (svgOk) pintarRelogio(ang, fqS); } // o golpe dura um quadro: a conta roda sempre, a tela só quando é a vez
   { const b = cfg.reage && !calmo ? "1" : ""; if (b !== ultBate) { ultBate = b; DIAL.dataset.bate = b; } } // sem "reagir à batida" ou com "reduzir movimento", o ponteiro fino some
   pulso += (alvo - pulso) * sq(0.1);
   // As variáveis ficam só nos elementos que as usam (e só mudam quando o valor muda),
   // para o navegador não recalcular o estilo da página inteira a cada quadro.
   if (!leve && naTela) { // fora do Tocando agora a luz de fundo fica parada
     const pv = pulso.toFixed(2), bv = batida.toFixed(2);
-    if (pv !== ultPulso) { ultPulso = pv; AMB.style.setProperty("--pulse", pv); DIAL.style.setProperty("--pulse", pv); }
-    if (bv !== ultBatida) { ultBatida = bv; DIAL.style.setProperty("--beat", bv); }
+    if (svgOk && pv !== ultPulso) { ultPulso = pv; AMB.style.setProperty("--pulse", pv); DIAL.style.setProperty("--pulse", pv); }
+    if (svgOk && bv !== ultBatida) { ultBatida = bv; DIAL.style.setProperty("--beat", bv); }
     const k = cfg.reage ? cfg.batF : 0, env = Math.max(0, Math.min(1, (graveEnv - gravePiso * 0.88) / Math.max(0.12, 1 - gravePiso * 0.88)));
     escDisco = molaCapa.passo(ativo ? golpeBumbo : 0, k, env, performance.now(), fqQ); // soco no bumbo, volta como mola e respira pouco entre as batidas
-    const ev = escDisco.toFixed(3); if (ev !== ultEsc) { ultEsc = ev; DIAL.style.setProperty("--ds", ev); }
+    const ev = escDisco.toFixed(3); if (svgOk && ev !== ultEsc) { ultEsc = ev; DIAL.style.setProperty("--ds", ev); }
   }
   if (naTela && playing) medirQuadro();
   if (!leve || (quadros++ & 1)) desenharViz();
@@ -3426,6 +3453,7 @@ function aplicarVisual() {
   a.dataset.visual = VISUAIS[cfg.visual] ? cfg.visual : "relogio";
   capaQuad = cfg.formaCapa !== "redonda" && ["aura", "espectro", "anel"].includes(a.dataset.visual); // no Relógio a capa é sempre redonda: ponteiro não combina com capa quadrada
   a.dataset.capa = capaQuad ? "quadrada" : "";
+  zerarPicosRelogio(); acordarViz();
   a.dataset.era = cfg.era && cfg.era !== "off" ? cfg.era : "";
   pintarCena();
 }
@@ -3469,10 +3497,6 @@ function contornoCapa(c, W, cx, off, inverso) { // contorno da capa (mais um afa
   }
   c.closePath();
 }
-/* Economia (o celular esquentava): no máximo ~60 desenhos por segundo mesmo em tela de 90 ou 120 Hz,
-   e ~10 por segundo com a música pausada (o desenho quase não muda). */
-let ultDesenho = 0;
-const podeDesenhar = (agora, tocando, ult) => agora - ult >= (tocando ? 12 : 100);
 /* O desfoque do brilho é o que mais pesa: é refeito quadro sim, quadro não; no outro a imagem pronta é reaproveitada.
    Ao trocar de mostrador ou de tamanho, refaz na hora. */
 let foraDono = "", foraQ = 0;
@@ -3491,7 +3515,7 @@ function desenharViz() {
     if (!aura && !auraLimpa && (v === "relogio" || v === "vinil")) { const cv = $("viz"); cv.getContext("2d").clearRect(0, 0, cv.width, cv.height); auraLimpa = true; }
     return;
   }
-  { const ag = performance.now(); if (!podeDesenhar(ag, playing, ultDesenho)) return; ultDesenho = ag; }
+  { const ag = tsQ || performance.now(); if (playing) ultAtivoViz = ag; movViz = ag - ultAtivoViz < 1500 ? 1 : 0; if (!ritmoViz.pode(ag, movViz ? 16.67 : 100)) return; }
   const cv = $("viz"), w = cv.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1); if (!w) return;
   const hc = v === "led" ? cv.clientHeight || w : w;
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(hc * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(hc * dpr); }
@@ -3551,7 +3575,7 @@ function ondasCapa(c, W, cx, k) { // as ondas do bumbo saindo da capa: rápidas 
 /* Espectro: anel fino com picos para fora, com brilho, o rastro da forma de um instante atrás e a linha que clareia na caixa */
 // poeira: sai do anel e se afasta devagar; nas batidas corre um pouco mais
 function desenharPoeira(c, W, R, k, graves, Wc = W, riscos = false) {
-  const cx = Wc / 2, vel = 0.0016 * (1 + batida * 4 * k + graves);
+  const cx = Wc / 2, vel = 0.0016 * (1 + batida * 4 * k + graves) * movViz;
   c.fillStyle = tinta;
   for (const q of poeira) {
     q.d += vel * q.v * fqV; if (q.d > 1) { q.d = 0; q.a = Math.random() * Math.PI * 2; }
@@ -3604,7 +3628,7 @@ function desenharAnel(c, Wc, vivo) {
     anelNiv[i] += (alvo - anelNiv[i]) * sv(alvo > anelNiv[i] ? 0.6 : 0.2);
   }
   passoPicos(anelNiv, anelPk, anelPv, n, fqV);
-  anelGiro += (0.0005 + eB * 0.004 * k) * fqV * (calmo ? 0 : 1);
+  anelGiro += (0.0005 + eB * 0.004 * k) * fqV * (calmo ? 0 : movViz);
   const graves = vivo ? (bins[1] + bins[2] + bins[3]) / 765 : 0, gap = W * 0.022, A = W * 0.15 * (0.45 + k * 0.75), N = n * 2, teto = Wc / 2 - 3;
   const barras = (g, larg) => {
     g.lineCap = "round"; g.lineWidth = larg; g.beginPath();
@@ -3615,7 +3639,7 @@ function desenharAnel(c, Wc, vivo) {
     }
     g.stroke(); g.lineCap = "butt";
   };
-  brilhoViz(c, Wc, 0.55 + eB * 0.35 * k, vivo, (g) => { g.strokeStyle = tintaDe(g, Wc); barras(g, W * 0.013); }, 0, "anel");
+  brilhoViz(c, Wc, 0.55 + eB * 0.35 * k, vivo, (g) => { g.strokeStyle = tintaDe(g, Wc); barras(g, W * 0.013); }, W, "anel");
   desenharPoeira(c, W, W * 0.36, k, graves, Wc, true);
   c.strokeStyle = c.fillStyle = tinta; c.globalAlpha = 0.9; barras(c, W * 0.0042);
   c.globalAlpha = 0.8; // pontinho que fica um instante onde a barrinha chegou
@@ -3728,9 +3752,10 @@ function desenharNeon(c, W, vivo) {
   c.fillStyle = c.strokeStyle = tinta; c.lineJoin = "round";
   if (!brilhou) { c.globalAlpha = 0.1; forma(c, 1.5); c.fill(); c.globalAlpha = 0.22; forma(c, 1.18); c.fill(); } // sem brilho: as camadas transparentes de antes
   if (eC > 0.05) { // na caixa, as duas cores se separam um instante
-    const d = eC * W * 0.008 * k; forma(c, 1);
+    const d = eC * W * 0.008 * k; // o caminho fica preso onde foi traçado: é preciso traçar de novo depois de deslocar
     c.save(); c.globalCompositeOperation = "lighter"; c.globalAlpha = 0.45;
-    c.translate(d, 0); c.fillStyle = rgbaDe(corAura[0], 1); c.fill(); c.translate(-2 * d, 0); c.fillStyle = rgbaDe(corAura[1], 1); c.fill();
+    c.translate(d, 0); forma(c, 1); c.fillStyle = rgbaDe(corAura[0], 1); c.fill();
+    c.translate(-2 * d, 0); forma(c, 1); c.fillStyle = rgbaDe(corAura[1], 1); c.fill();
     c.restore();
   }
   forma(c, 1); c.globalAlpha = 0.5; c.fill();
@@ -3821,7 +3846,7 @@ function curvaAura(c, niv, W, off, A, cx, giro, buraco) {
 }
 function desenharAura(c, Wc, vivo) {
   const W = Wc / FOLGA_VIZ, n = AURA_N, k = cfg.reage ? cfg.batF : 0.3, cx = Wc / 2, ouve = vivo && cfg.reage, O = escuta.O; // a tela de desenho é maior que o mostrador
-  const eB = ouve ? O.bumbo.env : 0, eC = ouve ? O.caixa.env : 0, agora = performance.now(), parado = calmo ? 0 : 1;
+  const eB = ouve ? O.bumbo.env : 0, eC = ouve ? O.caixa.env : 0, agora = performance.now(), parado = calmo ? 0 : movViz;
   if (vivo) lerBins();
   for (let i = 0; i < n; i++) {
     const p = i / (n - 1), alvo = vivo ? bins[2 + Math.round(110 * Math.pow(p, 1.5))] / 255 : 0;

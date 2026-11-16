@@ -111,15 +111,51 @@ export default [
     },
   },
   {
-    nome: "economia: no máximo ~60 desenhos por segundo em tela de 120 Hz, e ~10 com a música pausada",
+    nome: "economia: ~60 desenhos por segundo em tela de 60, 90, 120 e 144 Hz, sem perder quadro com tranco, e ~10 com a música pausada",
     rodar: async (p) => {
       const r = await p.avaliar(() => {
-        const contar = (passo, tocando) => { let n = 0, ult = 0; for (let t = 1000; t < 2000; t += passo) if (podeDesenhar(t, tocando, ult)) { n++; ult = t; } return n; };
-        return { hz120: contar(1000 / 120, true), hz60: contar(1000 / 60, true), pausado: contar(1000 / 60, false) };
+        const contar = (passos, alvo) => { const R = criarRitmo(); let n = 0, t = 1000, k = 0; while (t < 2000) { if (R.pode(t, alvo)) n++; t += passos[k++ % passos.length]; } return n; };
+        return { hz60: contar([1000 / 60], 16.67), hz90: contar([1000 / 90], 16.67), hz120: contar([1000 / 120], 16.67), hz144: contar([1000 / 144], 16.67), tranco: contar([21.4, 11.9], 16.67), pausado: contar([1000 / 60], 100) };
       });
-      assert.ok(r.hz120 >= 55 && r.hz120 <= 62, `a 120 Hz desenhou ${r.hz120} vezes num segundo`);
-      assert.ok(r.hz60 >= 58, `a 60 Hz não pode perder quadros: ${r.hz60}`);
-      assert.ok(r.pausado >= 8 && r.pausado <= 11, `pausado: ${r.pausado}`);
+      assert.ok(r.hz60 >= 59, `a 60 Hz desenha todos os quadros: ${r.hz60}`);
+      for (const k of ["hz90", "hz120", "hz144"]) assert.ok(r[k] >= 56 && r[k] <= 63, `${k}: ${r[k]} desenhos num segundo`);
+      assert.ok(r.tranco >= 59, `tela de 60 Hz com quadros irregulares não pode perder desenho: ${r.tranco} de 60`);
+      assert.ok(r.pausado >= 9 && r.pausado <= 11, `pausado: ${r.pausado}`);
+    },
+  },
+  {
+    nome: "Neon: na caixa as duas cores saem de lugares diferentes (a forma é refeita depois de deslocar)",
+    hash: "tocando",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        prepararAudio(); cfg.leve = true; cfg.reage = true; escuta.O.caixa.env = 1;
+        const cv = document.createElement("canvas"); cv.width = cv.height = 400; const c = cv.getContext("2d"), seq = [];
+        for (const m of ["translate", "beginPath", "fill"]) { const o = c[m]; c[m] = function (...a) { seq.push(m[0]); return o.apply(this, a); }; }
+        tinta = "#8855ff"; desenharNeon(c, 400, true); escuta.O.caixa.env = 0; cfg.leve = false;
+        return seq.join("");
+      });
+      assert.equal((r.match(/t/g) || []).length, 2, "duas cópias deslocadas: " + r);
+      assert.ok(!r.includes("tf"), "pintar logo depois de deslocar usa a forma antiga, no mesmo lugar: " + r);
+    },
+  },
+  {
+    nome: "Vinil não mudou: os tracinhos levam o empurrão de sempre; só no Relógio o bumbo corre",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => { batida = 1; ondasBumbo.length = 0; const o = [reforcoTraco(5, "vinil"), reforcoTraco(5, "relogio")]; batida = 0; return o; });
+      assert.deepEqual(r, [0.35, 0]);
+    },
+  },
+  {
+    nome: "ligar o modo leve tira da tela as ondas e os pontinhos que estavam no meio do caminho",
+    hash: "tocando",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => {
+        escolherVisual("relogio"); ondasBumbo.push({ t: 0.3, f: 1 }); nivPk.fill(0.5); ultPk.fill("20.2"); pontos.forEach((q) => q.setAttribute("visibility", "visible"));
+        definirLeve(true);
+        const o = { ondas: ondasBumbo.length, pico: nivPk[3], ponto: pontos[3].getAttribute("visibility") };
+        definirLeve(false); return o;
+      });
+      assert.deepEqual(r, { ondas: 0, pico: 0, ponto: "hidden" });
     },
   },
   {
