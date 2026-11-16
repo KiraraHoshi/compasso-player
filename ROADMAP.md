@@ -63,15 +63,16 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - ✅ **1.24 Aura refinada:** brilho macio, poeira com profundidade, onda do bumbo, fio de luz na caixa e troca de música.
 - ✅ **1.25 Mostradores:** Relógio redondo com ponteiros, Espectro, Anel, Neon e Barras refinados, e economia de bateria (menos desenhos por segundo).
 - ✅ **1.25.1:** correção da capa esticada ao sair do LED, fluidez máxima (90/120 Hz) como opção e menos trabalho fora do Tocando agora.
-- **Próxima:** estilos da Aura (Phonk, Lo-fi, Anos 80), que depois entram no pacote Apoiador.
+- **1.26 Estilos da Aura** (em teste, na branch `1.26-estilos-aura`): Phonk, Lo-fi e Anos 80 no pincel, liberados por enquanto; depois entram no pacote Apoiador.
+- **Próxima:** publicação (ficha e prints da Play, README, teste fechado).
 
-## Onde o app está (depois da 1.25)
+## Onde o app está (depois da 1.26)
 
 O Orolon já tem o que os players grátis conhecidos têm, e mais os mostradores. **O que falta para lançar não é função, é publicação.** Ordem sugerida:
 
 1. **Publicar na Google Play.** É o passo que mais demora: conta pessoal nova precisa de teste fechado com 12 testadores por 14 dias seguidos. Falta a ficha da loja, os prints novos (`loja/pt`, `loja/en`), as artes e a declaração da permissão de áudio. Vale começar a juntar testadores já.
 2. **README e prints** com as novidades da 1.19 à 1.25.
-3. **Pacote "Apoiador"** (compra única, só cosmético): estilos da Aura (Phonk, Lo-fi, Anos 80), LED refinado como opção, temas e ícones extras. Só depois de o app estar na loja.
+3. **Pacote "Apoiador"** (compra única, só cosmético): estilos da Aura (Phonk, Lo-fi, Anos 80; já prontos desde a 1.26, falta só a compra), LED refinado como opção, temas e ícones extras. Só depois de o app estar na loja.
 4. **Só no Android:** widgets e Android Auto.
 5. **Efeitos extras de som** (lista abaixo) e os pequenos acertos adiados das revisões.
 

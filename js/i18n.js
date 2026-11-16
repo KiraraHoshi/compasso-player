@@ -10,6 +10,9 @@ let LANG = (function () {
 })();
 document.documentElement.lang = LANG === "en" ? "en" : "pt-BR";
 const EN = {
+ "Estilo da Aura": "Aura style",
+ "Padrão": "Default",
+ "Phonk, Lo-fi e Anos 80 estão liberados para teste. No futuro farão parte do pacote Apoiador.": "Phonk, Lo-fi and 80s are unlocked for testing. Later they will be part of the Supporter pack.",
  "Fluidez máxima (90/120 Hz)": "Maximum smoothness (90/120 Hz)",
  "Usa a taxa inteira da tela nas animações do Tocando agora. Fica mais liso, mas gasta mais bateria e pode esquentar o aparelho. Não muda nada em telas de 60 Hz nem com o modo leve ligado.": "Uses the screen's full refresh rate for the Now Playing animations. Smoother, but it uses more battery and can warm up the device. No effect on 60 Hz screens or with light mode on.",
  "Não deu para abrir as pastas do aparelho": "Couldn't open the device folders",

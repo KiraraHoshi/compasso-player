@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.26.0
+- **Estilos da Aura:** no pincel do Tocando agora, com o mostrador Aura, dá para escolher o estilo. O Padrão continua como era.
+  - **Phonk:** soco mais forte na capa, tremida a cada bumbo, riscos no lugar da poeira, vermelho, e as cores se separam na caixa.
+  - **Lo-fi:** movimento calmo, grão na tela, a capa balança de leve e a poeira vira vagalumes.
+  - **Anos 80:** neon rosa e ciano mais forte e linhas de varredura de TV antiga.
+- Os três estilos novos estão liberados para teste. No futuro farão parte do pacote Apoiador (só visual; nenhuma função do app é paga).
+- Com o modo leve ou com "reduzir movimento" do aparelho, os estilos mudam só as cores: nada treme, balança ou pisca.
+
 ## 1.25.1
 - **Correção:** ao sair do LED para outro mostrador pelo pincel, a capa ficava esticada (o quadrado virava retângulo e o redondo virava oval) até sair e voltar ao Tocando agora.
 - **Relógio:** o ponteiro grande agora só avança nos graves bem definidos, com um tranco mais forte.
