@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 1.19.0
+- **Volume +:** o volume passa de 100% e vai até 200%, para músicas gravadas baixo. Um limitador segura os picos para o som não estourar. Na primeira vez, o app avisa para usar com moderação.
+- **Reverb:** Sala, Palco e Catedral, para dar a sensação de ouvir num lugar maior.
+- **Efeito 3D:** abre o som para os lados, de 0 a 100%. Fica melhor com fone. Músicas em mono continuam iguais.
+- **Aprimorador** no equalizador: Graves, Agudos e Intensidade (deixa o som mais encorpado), com um botão para zerar.
+- Tudo grátis, no cartão **Efeitos** de Ajustes › Som e em duas ferramentas novas do Início: **Volume +** e **Efeitos 3D**. As ferramentas agora ficam em duas linhas de quatro.
+- Trocar de efeito com a música tocando não dá estalo, e os visuais continuam reagindo igual com o volume alto.
+- **Ícone maior:** o símbolo ocupa mais espaço no ícone do app.
+- O backup leva os efeitos novos. Backups de versões anteriores restauram com os efeitos desligados.
+
 ## 1.18.1
 - **Ícone novo:** um O que também é uma barra de progresso, com a cabeça de leitura na ponta e um equalizador no centro. Vale no ícone do app, na tela de abertura, no app instalado pelo navegador e na loja.
 - As músicas sem capa usam o mesmo símbolo, em branco, sobre as cores do tema.

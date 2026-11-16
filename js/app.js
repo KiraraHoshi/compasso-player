@@ -2520,12 +2520,12 @@ function restaurarBackup(o) {
   for (const t of o.temas || []) { try { const v = validarTema(t); if (!meusTemas.some((m) => m.nome === v.nome)) { v.id = uid("t"); meusTemas.push(v); } } catch (err) { /* tema inválido: pula */ } }
   salvarTemas();
   const aj = o.ajustes || {};
-  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "volRec", "leve", "coracoes", "corCapa", "formaCapa", "ledCor"]) if (k in aj) cfg[k] = aj[k];
+  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "volRec", "leve", "coracoes", "corCapa", "formaCapa", "ledCor", "amp", "avisoAmp", "reverb", "largura", "apGraves", "apAgudos", "apInt"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
   if (aj.ajustes) cfg.ajustes = aj.ajustes;
-  salvarCfg(); aplicarTema(); aplicarFundo(); aplicarVisual(); aplicarVel(); if (ctx) montarFiltros();
-  mudouExemplos(); renderBib(); renderPl(); renderTemas(); paint();
+  salvarCfg(); aplicarTema(); aplicarFundo(); aplicarVisual(); aplicarVel(); aplicarVolume(); if (ctx) montarFiltros();
+  mudouExemplos(); marcarFerramentas(); renderBib(); renderPl(); renderTemas(); paint();
   return { achadas, total, nPl };
 }
 
@@ -3143,7 +3143,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.18.1";
+const VERSAO = "1.19.0";
 const linkPrivacidade = () => "https://kirarahoshi.github.io/compasso-player/privacidade.html" + (LANG === "en" ? "#en" : "#pt");
 let instalar = null;
 const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
