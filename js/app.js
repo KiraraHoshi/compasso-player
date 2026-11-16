@@ -236,7 +236,8 @@ const MARCA = (() => {
   return `<svg class="marca" viewBox="0 0 100 100" aria-hidden="true"><g stroke="#fff" stroke-width="3.4" stroke-linecap="round">${t}</g><circle cx="50" cy="50" r="27" fill="#fff" fill-opacity=".24"/><circle cx="50" cy="50" r="4.5" fill="#000" fill-opacity=".45"/></svg>`;
 })();
 const capa = (x, cls = "thumb") => `<span class="${cls}" style="background:${fundoDe(x)}">${x.cover ? "" : MARCA}</span>`;
-const linha2 = (x) => x.a + (x.al ? " · " + x.al : "");
+const semArtista = (a) => desconhecido(a) || a === T("Artista desconhecido") || a === "Artista desconhecido";
+const linha2 = (x) => (semArtista(x.a) && x.pasta ? ultimaPasta(x.pasta) : x.a) + (x.al ? " · " + x.al : "");
 /* Formato sem perdas (FLAC, WAV, AIFF): ganha a etiqueta no app */
 function semPerdas(x) {
   if (!x || x.demo) return "";
@@ -914,7 +915,7 @@ function aplicarVolume(agora) {
   if (volNo) volNo.gain.setTargetAtTime(ganhoVol(), ctx.currentTime, agora ? 0 : 0.03);
   const v = cfg.mudo ? 0 : Math.round(cfg.vol * 100), b = $("b-vol"), r = $("vol");
   b.innerHTML = ico(v === 0 ? "vol0" : v < 50 ? "vol1" : "vol", 20);
-  const bp = $("b-volpill"); if (bp) bp.innerHTML = ico(v === 0 ? "vol0" : v < 50 ? "vol1" : "vol", 18);
+  const bp = $("b-volpill"); if (bp) bp.innerHTML = ico(v === 0 ? "vol0" : v < 50 ? "vol1" : "vol", 18) + `<span class="pill-t">${T("Volume")}</span>`;
   b.setAttribute("aria-label", cfg.mudo ? T("Tirar do mudo") : T("Deixar mudo"));
   b.setAttribute("aria-pressed", !!cfg.mudo);
   if (document.activeElement !== r) r.value = Math.round(cfg.vol * 100);
@@ -1097,14 +1098,14 @@ function paint() {
   $("tot").textContent = fmt(x.d);
   const depois = queue.length - qi - 1;
   { const tx = depois ? T("Fila · {0}", depois) : T("Fila · última"); $("b-fila").innerHTML = ico("queue", 18) + `<span class="pill-t">${esc(tx)}</span>`; $("b-fila").setAttribute("aria-label", tx); }
-  $("b-npmais").innerHTML = ico("more", 18);
+  $("b-npmais").innerHTML = ico("more", 18) + `<span class="pill-t">${T("Mais")}</span>`;
   const fav = ehFav(x.id), bf = $("b-fav");
   bf.innerHTML = ico(fav ? "heartOn" : "heart"); bf.classList.toggle("act", fav); bf.setAttribute("aria-pressed", fav);
   bf.setAttribute("aria-label", fav ? T("Tirar das favoritas") : T("Adicionar às favoritas"));
   const mf = $("mini-fav");
   mf.innerHTML = ico(fav ? "heartOn" : "heart", 22); mf.classList.toggle("act", fav); mf.setAttribute("aria-pressed", fav);
   mf.setAttribute("aria-label", fav ? T("Tirar das favoritas") : T("Adicionar às favoritas"));
-  $("b-eq").innerHTML = ico("sliders", 18); $("b-eq").classList.toggle("act", !!cfg.eq.on);
+  $("b-eq").innerHTML = ico("sliders", 18) + `<span class="pill-t">${T("EQ")}</span>`; $("b-eq").classList.toggle("act", !!cfg.eq.on);
   paintSono(); atualizarTela();
   document.title = playing ? `${x.t} · Orolon` : T("Orolon Player");
 }
@@ -1157,7 +1158,7 @@ function linhaFaixa(x, o = {}) {
     `<span class="dur">${x.d ? fmt(x.d) : ""}</span>` +
     `<button class="ic sm" data-more="${x.id}" aria-label="${T("Opções de {0}", esc(x.t))}">${ico("more", 20)}</button></div>`;
 }
-const botoesTocar = (n) => `<div class="btns"><button class="btn sm" data-tudo>${ico("play", 18)}${T("Tocar")}</button><button class="btn ghost sm" data-aleatorio>${ico("shuf", 18)}${T("Aleatório")}</button>${n || ""}</div>`;
+const botoesTocar = (n) => `<div class="btns"><button class="btn sm" data-tudo>${ico("play", 18)}${T("Tocar")}</button><button class="btn ghost sm" data-aleatorio aria-label="${T("Aleatório")}">${ico("shuf", 18)}<span class="rot">${T("Aleatório")}</span></button>${n || ""}</div>`;
 const vazio = (txt, extra = "") => `<div class="empty"><p>${txt}</p>${extra}</div>`;
 function renderBib() {
   const v = vis(), q = $("q").value.trim().toLowerCase(), imp = importadas().length;
@@ -1220,7 +1221,7 @@ function renderBib() {
     const f = ordenar(v).filter((x) => casa(x.t + " " + x.a + " " + (x.al || "")));
     listaBib = { ids: f.map((x) => x.id), ctx: q ? T("busca") : T("Biblioteca") };
     const nEx = v.filter((x) => x.demo).length;
-    L.innerHTML = (nEx && !q ? `<div class="card row aviso-ex"><span class="grow note">${T("As {0} músicas marcadas como exemplo servem só para testar o app.", nEx)}</span><button class="btn ghost sm" data-esconder-ex>${T("Esconder")}</button></div>` : "") + `<div class="row"><div class="grow">${f.length && !sel ? botoesTocar(`<button class="btn ghost sm" data-selecionar>${T("Selecionar")}</button>`) : ""}</div>
+    L.innerHTML = (nEx && !q ? `<div class="card row aviso-ex"><span class="grow note">${T("As {0} músicas marcadas como exemplo servem só para testar o app.", nEx)}</span><button class="btn ghost sm" data-esconder-ex>${T("Esconder")}</button></div>` : "") + `<div class="row bib-acoes"><div class="grow">${f.length && !sel ? botoesTocar(`<button class="btn ghost sm so-ic" data-selecionar aria-label="${T("Selecionar")}" title="${T("Selecionar")}">${ico("check", 18)}</button>`) : ""}</div>
       <select id="ord" class="mini-sel" aria-label="${T("Ordem das músicas")}">${Object.entries(ORDENS).map(([k, n]) => `<option value="${k}"${k === cfg.ord ? " selected" : ""}>${n}</option>`).join("")}</select></div>
       ${f.length ? `<div class="list">${f.map((x) => (sel ? linhaSel(x) : linhaFaixa(x))).join("")}</div>` : vazio(T("Nada encontrado para essa busca."))}${sel ? barraSel(f.length) : ""}`;
   } else if (aba === "albuns") {
@@ -1938,6 +1939,8 @@ function registrarEscuta(x, dt) {
   statsSujo = true;
 }
 function novaEscuta() { contado = false; ouvido = 0; }
+/* Nos quadrinhos do Você não cabe "menos de 1 min": lá aparece "0 min" */
+const fmtTempoCurto = (s) => (s < 60 ? T("{0} min", 0) : fmtTempo(s));
 const fmtTempo = (s) => (s < 60 ? T("menos de 1 min") : s < 3600 ? T("{0} min", Math.round(s / 60)) : T("{0} h", decimal((s / 3600).toFixed(1))));
 
 /* ===================== Temporizador de sono ===================== */
@@ -1985,7 +1988,7 @@ function paintSono() {
   marcarFerramentas();
   const b = $("b-timer"); if (!b) return;
   const txt = textoSono();
-  b.innerHTML = ico("timer", 18) + (txt ? `<span>${txt}</span>` : "");
+  b.innerHTML = ico("timer", 18) + `<span class="pill-t">${txt || T("Timer")}</span>`;
   b.setAttribute("aria-label", txt ? T("Temporizador: {0}", txt) : T("Temporizador de sono"));
   b.classList.toggle("act", !!(sono.fim || sono.aoFim));
   if (folha && folha.modo === "timer") { const s = $("sono-st"); if (s && sono.fim) s.textContent = T("Pausa em {0}.", fmt((sono.fim - Date.now()) / 1000)); }
@@ -2117,7 +2120,7 @@ function renderVoce() {
   const desde = stats.desde ? new Date(stats.desde).toLocaleDateString(LOCALE(), { day: "numeric", month: "long", year: "numeric" }) : "";
   V.innerHTML = `<div class="perfil">${avatar()}<div class="grow"><h1 class="clip">${esc(perfil.nome || T("Você"))}</h1><p class="sub">${desde ? T("Ouvindo no Orolon desde {0}", desde) : T("Suas estatísticas aparecem aqui conforme você ouve.")}</p></div>
       <button class="btn ghost sm" data-editarperfil>${ico("edit", 18)}${T("Editar")}</button></div>
-    <div class="tiles"><div class="tile"><b>${fmtTempo(total)}</b><span class="sub">${T("de escuta")}</span></div><div class="tile"><b>${plays}</b><span class="sub">${plays === 1 ? T("reprodução") : T("reproduções")}</span></div><div class="tile"><b>${diasOuvindo}</b><span class="sub">${diasOuvindo === 1 ? T("dia ouvindo") : T("dias ouvindo")}</span></div></div>
+    <div class="tiles"><div class="tile"><b>${fmtTempoCurto(total)}</b><span class="sub">${T("de escuta")}</span></div><div class="tile"><b>${plays}</b><span class="sub">${plays === 1 ? T("reprodução") : T("reproduções")}</span></div><div class="tile"><b>${diasOuvindo}</b><span class="sub">${diasOuvindo === 1 ? T("dia ouvindo") : T("dias ouvindo")}</span></div></div>
     <div class="card stack"><div class="row"><h2 class="grow">${T("Últimos 7 dias")}</h2><span class="sub">${fmtTempo(dias.reduce((s, d) => s + d.s, 0))}</span></div>
       <div class="bars" role="img" aria-label="${T("Minutos ouvidos por dia nos últimos 7 dias")}">${dias.map((d, i) => `<div class="${i === 6 ? "hoje" : ""}"><em>${d.s >= 60 ? Math.round(d.s / 60) : ""}</em><i style="height:${Math.max(3, (d.s / maxDia) * 100).toFixed(1)}%"></i><span>${i === 6 ? T("hoje") : d.d.toLocaleDateString(LOCALE(), { weekday: "short" }).replace(".", "")}</span></div>`).join("")}</div></div>
     <button class="recap-btn" data-recap><span class="grow"><span class="t">${T("Seu {0} em música", new Date().getFullYear())}</span><span class="sub">${T("Seu resumo do ano, guardado só neste aparelho")}</span></span>${ico("next", 20)}</button>
@@ -2416,7 +2419,7 @@ function parseLetra(txt) {
 function renderLetra() {
   const P = $("letra"), x = cur();
   letraIdx = -1;
-  $("b-letra").innerHTML = ico("lyrics", 18); $("b-letra").setAttribute("aria-label", modoLetra ? T("Esconder a letra") : T("Mostrar a letra")); $("b-letra").classList.toggle("act", modoLetra); $("b-letra").setAttribute("aria-pressed", modoLetra);
+  $("b-letra").innerHTML = ico("lyrics", 18) + `<span class="pill-t">${T("Letra")}</span>`; $("b-letra").setAttribute("aria-label", modoLetra ? T("Esconder a letra") : T("Mostrar a letra")); $("b-letra").classList.toggle("act", modoLetra); $("b-letra").setAttribute("aria-pressed", modoLetra);
   if (!modoLetra || !x) return;
   if (x.demo) { letraCache = null; P.innerHTML = vazio(T("As músicas de exemplo não têm letra.")); return; }
   if (!x.letra) {
