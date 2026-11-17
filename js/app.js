@@ -768,7 +768,7 @@ function nota(f, t, dur, tipo, vol) {
 }
 function agendar() {
   const x = cur(); if (!x || !x.demo) return;
-  if (playing && posAtual() >= x.d) return fimDaFaixa(); // com a janela escondida o desenho da tela para; quem passa para a próxima é este relógio
+  if (playing && !vigiarTrecho() && posAtual() >= x.d) return fimDaFaixa(); // com a janela escondida o desenho da tela para; quem passa para a próxima é este relógio
   const sd = 30 / x.bpm;
   while (proxT < ctx.currentTime + 0.25) {
     nota(NOTAS[x.sc[passo % x.sc.length]] * (passo % 12 > 5 ? 2 : 1), proxT, sd * 1.8, x.w, 0.16);
@@ -1863,6 +1863,8 @@ function cardTema(t) {
     <span class="t clip">${esc(t.nome)}</span><span class="sub">${t.fixo ? T("Grátis") : T("Seu tema")}</span></button>
     ${t.fixo ? "" : `<button class="edit" data-editar="${t.id}" aria-label="${T("Editar {0}", esc(t.nome))}">${T("Editar")}</button>`}</div>`;
 }
+/* "Cores do visual seguem a capa": nos estilos da Aura com cores próprias a opção não vale, então aparece desativada e explica (sem data-tg, o toque não muda a escolha guardada) */
+const tgCorCapa = (pre, normal) => (estiloAura().cores ? `<div class="opt"><span id="${pre}corCapa">${T("Cores do visual seguem a capa da música")}</span><button class="tg" role="switch" aria-checked="false" aria-disabled="true" aria-labelledby="${pre}corCapa" aria-describedby="${pre}corCapa-n"></button></div><p class="note" id="${pre}corCapa-n" data-nota-cor>${T("Este estilo da Aura tem cores próprias. A opção volta a valer no estilo Padrão e nos outros visuais.")}</p>` : normal);
 const tg = (chave, rotulo) => `<div class="opt"><span id="l-${chave}">${rotulo}</span><button class="tg" data-tg="${chave}" role="switch" aria-checked="${!!cfg[chave]}" aria-labelledby="l-${chave}"></button></div>`;
 const faixaAjuste = (chave, rotulo, ligado) => `<div class="opt sub-opt"${ligado ? "" : " hidden"}><label for="r-${chave}">${rotulo}</label><input type="range" id="r-${chave}" data-rg="${chave}" min="0.15" max="1" step="0.05" value="${cfg[chave]}"></div>`;
 /* Ajustes em quatro portas: a raiz é curta (idioma + portas) e cada porta abre uma tela própria */
@@ -1909,7 +1911,7 @@ function renderTemas() {
       ${cfg.visual === "led" ? `<p class="t">${T("Cores do LED")}</p><div class="chips" role="group" aria-label="${T("Cores do LED")}">${[["arte", T("Arte da capa")], ["capa", T("Cores da capa")], ["tema", T("Cores do tema")], ["classico", T("Clássico")]].map(([k, n]) => `<button data-ledcor="${k}" aria-pressed="${cfg.ledCor === k}" class="${cfg.ledCor === k ? "on" : ""}">${n}</button>`).join("")}</div>` : ""}
       <p class="t">${T("Formato da capa")}</p><div class="chips" role="group" aria-label="${T("Formato da capa")}">${[["quadrada", T("Quadrada")], ["redonda", T("Redonda")]].map(([k, n]) => `<button data-forma="${k}" aria-pressed="${cfg.formaCapa === k}" class="${cfg.formaCapa === k ? "on" : ""}">${n}</button>`).join("")}</div>
       <p class="note">${T("Vale para Aura, Espectro e Anel. No Relógio e no Vinil a capa é sempre redonda.")}</p>
-      ${tg("corCapa", T("Cores do visual seguem a capa da música"))}</div>
+      ${tgCorCapa("l-", tg("corCapa", T("Cores do visual seguem a capa da música")))}</div>
     <div class="card stack"><h2>${T("Compartilhar tema")}</h2><p class="note">${T("Um tema é um arquivo JSON pequeno. Exporte o tema em uso ou importe um de outra pessoa.")}</p>
       <div class="btns"><button class="btn ghost sm" data-exp="copiar">${T("Copiar JSON")}</button><button class="btn ghost sm" data-exp="baixar">${T("Baixar .json")}</button><button class="btn ghost sm" data-imp="arquivo">${T("Abrir .json")}</button><button class="btn ghost sm" data-imp="colar">${T("Colar JSON")}</button></div></div>`,
     som: `
@@ -2729,7 +2731,7 @@ function abrirPersonalizar() {
     ${cfg.visual === "led" ? `<p class="t">${T("Cores do LED")}</p>` + chipsDe([["arte", T("Arte da capa")], ["capa", T("Cores da capa")], ["tema", T("Cores do tema")], ["classico", T("Clássico")]], cfg.ledCor, "data-ledcor") : ""}
     ${["aura", "espectro", "anel"].includes(cfg.visual) ? `<p class="t">${T("Formato da capa")}</p>` + chipsDe([["quadrada", T("Quadrada")], ["redonda", T("Redonda")]], cfg.formaCapa === "redonda" ? "redonda" : "quadrada", "data-forma") : "" /* só onde o formato vale: no Relógio e no Vinil a capa é sempre redonda */}
     ${cfg.visual === "aura" ? `<p class="t">${T("Estilo da Aura")}</p>` + chipsDe([["padrao", T("Padrão")], ["phonk", "Phonk"], ["lofi", "Lo-fi"], ["oitenta", T("Anos 80")]], estiloAura() === ESTILOS_AURA.padrao ? "padrao" : cfg.auraEst, "data-estilo") + `<p class="note">${T("Phonk, Lo-fi e Anos 80 estão liberados para teste. No futuro farão parte do pacote Apoiador.")}</p>` : ""}
-    ${estiloAura().cores ? `<div class="opt"><span id="pz-l-corCapa">${T("Cores do visual seguem a capa da música")}</span><button class="tg" data-tg="corCapa" role="switch" aria-checked="false" aria-labelledby="pz-l-corCapa" aria-describedby="pz-n-corCapa" disabled></button></div><p class="note" id="pz-n-corCapa" data-nota-cor>${T("Este estilo da Aura tem cores próprias. A opção volta a valer no estilo Padrão e nos outros visuais.")}</p>` : liga("corCapa", T("Cores do visual seguem a capa da música"))}
+    ${tgCorCapa("pz-l-", liga("corCapa", T("Cores do visual seguem a capa da música")))}
     ${liga("amb", T("Luz de fundo com as cores da capa"))}${faixa("ambF", T("Intensidade da luz"), cfg.amb)}
     ${liga("reage", T("Reagir à batida da música"))}${faixa("batF", T("Força da batida"), cfg.reage)}`;
   const refazer = () => { const r = $("sheet-b"), y = r.scrollTop; r.innerHTML = html(); r.scrollTop = y; };
@@ -4254,15 +4256,21 @@ function voltarUmPasso() {
 if (PLUG.App) nat(() => PLUG.App.addListener("backButton", () => { if (!voltarUmPasso()) nat(() => PLUG.App.minimizeApp()); }));
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && folha) return fecharFolha();
-  if (e.key === "Escape" && emCarro()) return fecharCarro();
-  if (e.key === "Escape" && emPalco()) return alternarPalco(false);
-  if (e.key === "Escape" && APP.dataset.view === "temas" && porta && !editando) return abrirPorta(null);
-  const alvo = e.target, tag = alvo.tagName;
-  if (e.key === "Escape" && (tag === "INPUT" || tag === "TEXTAREA") && !folha) return alvo.blur(); // primeiro sai do campo de texto
+  const alvo = e.target, tag = alvo.tagName, esc = e.key === "Escape";
+  if (esc) { // um passo de cada vez, como o botão voltar do celular; a tecla não segue adiante (no Android um Esc não tratado vira outro "voltar")
+    const campo = tag === "TEXTAREA" || (tag === "INPUT" && !["range", "checkbox", "radio", "button"].includes(alvo.type));
+    if (folha) { e.preventDefault(); return fecharFolha(); }
+    if (emCarro()) { e.preventDefault(); return fecharCarro(); }
+    if (emPalco()) { e.preventDefault(); return alternarPalco(false); }
+    if (campo) { e.preventDefault(); return alvo.blur(); } // primeiro sai do campo de texto
+    if (tag === "SELECT" || alvo.isContentEditable || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (editando && APP.dataset.view === "temas") return; // um tema em edição não é descartado sem querer
+    if (voltarUmPasso()) e.preventDefault();
+    return;
+  }
   if (folha || e.ctrlKey || e.metaKey || e.altKey || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || alvo.isContentEditable) return;
-  if (e.key === "Escape") { if (!editando && voltarUmPasso()) e.preventDefault(); } // volta um passo, como o botão voltar do celular; um tema em edição não é descartado sem querer
-  else if (e.key >= "1" && e.key <= String(TELAS.length) && e.key.length === 1) ir(TELAS[+e.key - 1][0]);
+  if (emCarro() && (e.key === "/" || (e.key >= "1" && e.key <= "9"))) return; // no modo carro a tela de baixo não muda
+  if (e.key >= "1" && e.key <= String(TELAS.length) && e.key.length === 1) ir(TELAS[+e.key - 1][0]);
   else if (e.key === "/") { e.preventDefault(); ir("biblioteca"); $("q").focus(); }
   else if (e.key === " " && tag !== "BUTTON") { e.preventDefault(); alternar(); }
   else if (e.key === "ArrowRight") { e.preventDefault(); buscarSeg(posAtual() + 5); }

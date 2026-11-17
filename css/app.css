@@ -181,7 +181,7 @@ nav button.on{color:var(--accent);font-weight:600}
 .mini-v span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mini-v.on{border-color:var(--accent);color:var(--text);background:color-mix(in srgb,var(--accent) 16%,var(--card))}
 .app[data-palco="1"] :is(#b-pincel,#b-voltar){visibility:hidden}
-.tg:disabled{opacity:.45;cursor:default}
+.tg[aria-disabled=true]{opacity:.45;cursor:default}
 #mini-prev{display:none}
 @media (min-width:700px){#mini-prev{display:grid}}
 .sheet-h{display:flex;align-items:center;gap:8px;padding:14px 12px 8px 18px}

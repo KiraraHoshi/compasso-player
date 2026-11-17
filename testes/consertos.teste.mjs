@@ -11,9 +11,11 @@ export default [
     rodar: async (p) => {
       const antes = await p.avaliar(() => {
         window.requestAnimationFrame = () => 0; // janela em segundo plano: o navegador para de chamar o desenho
-        const id = cur().id; alternar(); buscarSeg(cur().d - 0.4); return id;
+        const id = cur().id; alternar(); buscarSeg(cur().d - 0.4); return { id, prox: queue[qi + 1] };
       });
-      await p.esperar((id) => cur().id !== id, 4000, antes);
+      await p.esperar((id) => cur().id !== id, 4000, antes.id);
+      await new Promise((r) => setTimeout(r, 400));
+      assert.equal(await p.avaliar(() => cur().id), antes.prox, "passa para a música seguinte, sem pular nenhuma");
       assert.equal(await p.avaliar(() => playing), true, "continua tocando a próxima");
     },
   },
@@ -90,6 +92,8 @@ export default [
       await tecla(p, "Escape");
       assert.equal(await p.avaliar(() => document.activeElement.id !== "q"), true, "Esc sai da busca");
       assert.equal(await tela(p), "biblioteca", "e só depois volta de tela");
+      await tecla(p, "Escape");
+      assert.notEqual(await tela(p), "biblioteca", "o Esc seguinte volta de tela");
     },
   },
   {
@@ -98,11 +102,55 @@ export default [
     rodar: async (p) => {
       await p.avaliar(() => { cfg.visual = "aura"; cfg.auraEst = "phonk"; cfg.corCapa = true; aplicarVisual(); });
       await abrirPincel(p);
-      const ler = () => { const b = document.querySelector('#sheet [data-tg="corCapa"]'); return { off: b.disabled, marcado: b.getAttribute("aria-checked"), nota: !!document.querySelector("#sheet [data-nota-cor]") }; };
+      const ler = () => { const q = () => document.querySelector('#sheet [aria-labelledby="pz-l-corCapa"]'); q().click(); const b = q(); return { off: b.getAttribute("aria-disabled") === "true", marcado: b.getAttribute("aria-checked"), nota: !!document.querySelector("#sheet [data-nota-cor]") }; };
       assert.deepEqual(await p.avaliar(ler), { off: true, marcado: "false", nota: true });
       assert.equal(await p.avaliar(() => cfg.corCapa), true, "a escolha da pessoa fica guardada para os outros estilos");
       await p.clicar('#sheet [data-estilo="padrao"]');
-      assert.deepEqual(await p.avaliar(ler), { off: false, marcado: "true", nota: false });
+      assert.deepEqual(await p.avaliar(ler), { off: false, marcado: "false", nota: false }); // aqui o clique do teste vale: desliga
+      assert.equal(await p.avaliar(() => cfg.corCapa), false);
+    },
+  },
+  {
+    nome: "em Ajustes a mesma opção também fica desativada nos estilos com cores próprias",
+    rodar: async (p) => {
+      const ler = () => { const b = document.querySelector('#tm [aria-labelledby="l-corCapa"]'); b.click(); return { off: b.getAttribute("aria-disabled") === "true", marcado: b.getAttribute("aria-checked"), nota: !!document.querySelector("#tm [data-nota-cor]"), cfg: cfg.corCapa }; };
+      const abrir = () => { ir("temas"); for (const b of [...document.querySelectorAll("#tm [data-porta]")].map((x) => x.dataset.porta)) { abrirPorta(b); if (document.querySelector('#tm [aria-labelledby="l-corCapa"]')) return true; } return false; };
+      await p.avaliar(() => { cfg.visual = "aura"; cfg.auraEst = "lofi"; cfg.corCapa = true; aplicarVisual(); });
+      assert.equal(await p.avaliar(abrir), true, "achei a opção em Ajustes");
+      assert.deepEqual(await p.avaliar(ler), { off: true, marcado: "false", nota: true, cfg: true });
+      await p.avaliar(() => { cfg.auraEst = "padrao"; aplicarVisual(); abrirPorta(null); });
+      await p.avaliar(abrir);
+      assert.equal((await p.avaliar(ler)).off, false);
+    },
+  },
+  {
+    nome: "no modo carro as teclas de aba e de busca não mexem na tela de baixo",
+    largura: 1280, altura: 800,
+    rodar: async (p) => {
+      await p.avaliar(() => abrirCarro());
+      await tecla(p, "2"); await tecla(p, "/");
+      assert.equal(await tela(p), "inicio");
+      assert.notEqual(await p.avaliar(() => document.activeElement.id), "q");
+      await tecla(p, "Escape");
+      assert.equal(await p.avaliar(() => emCarro()), false, "Esc sai do modo carro");
+    },
+  },
+  {
+    nome: "tema em edição só segura o Esc na tela de Ajustes; nas outras o Esc volta normalmente",
+    rodar: async (p) => {
+      await p.avaliar(() => { ir("biblioteca"); ir("tocando"); editando = { nome: "x" }; });
+      await tecla(p, "Escape");
+      assert.equal(await tela(p), "biblioteca");
+      await p.avaliar(() => { editando = null; });
+    },
+  },
+  {
+    nome: "Esc com o foco na barra de tempo volta de tela (só campo de texto segura o Esc)",
+    hash: "tocando",
+    rodar: async (p) => {
+      await p.avaliar(() => document.getElementById("seek").focus());
+      await tecla(p, "Escape");
+      assert.equal(await tela(p), "inicio");
     },
   },
 ];
