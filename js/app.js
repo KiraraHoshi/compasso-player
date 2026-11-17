@@ -182,10 +182,10 @@ async function paletaDaCapa(x, t) {
 let corViz2 = null;
 async function atualizarCorViz(t) {
   t = t || temaAtual();
-  let x = null; try { x = cfg.corCapa ? cur() : null; } catch (e) { /* ainda carregando */ }
+  let x = null; try { x = segueCapa() ? cur() : null; } catch (e) { /* ainda carregando */ }
   corViz = t.destaque; corViz2 = null;
   if (x) {
-    const p = await paletaDaCapa(x, t); if (cur() !== x || !cfg.corCapa) return;
+    const p = await paletaDaCapa(x, t); if (cur() !== x || !segueCapa()) return;
     if (p.neutro) [corViz, corViz2] = NEUTRO(t); else { corViz = ajustarL(p.h1, t); corViz2 = ajustarL(p.h2, t, 0.4); }
   }
   document.documentElement.style.setProperty("--viz", corViz);
@@ -868,13 +868,20 @@ function iniciarTroca(ni, dur) {
   trocando = { sai, t: setTimeout(() => { sai.pause(); trocando = null; }, dur * 1000 + 150) };
   qi = ni; pos = 0; novaEscuta(); aoTrocar(cur());
 }
+/* Fim da fila: o app volta para a primeira música e pausa. O aviso evita que pareça defeito; com a janela escondida ele espera a pessoa voltar */
+let fimFilaPend = false;
+function avisarFimDaFila() {
+  if (document.visibilityState === "hidden") { fimFilaPend = true; return; }
+  fimFilaPend = false;
+  toast(T("Fim da fila. A música voltou para o começo."), [T("Tocar de novo"), () => tocar()]);
+}
 function fimDaFaixa() {
   if (cur()) esquecerPosicao(cur().id);
   if (sono.aoFim) { sono.aoFim = false; if (qi < queue.length - 1) qi++; carregar(false); paintSono(); toast(T("Temporizador: música pausada")); return; }
   if (repeat === "one") { pos = 0; novaEscuta(); if (el) el.currentTime = 0; return tocar(); }
   if (qi < queue.length - 1) { qi++; return carregar(true); }
   if (repeat === "all") { qi = 0; return carregar(true); }
-  qi = 0; carregar(false);
+  qi = 0; carregar(false); avisarFimDaFila();
 }
 function proxima() { if (!queue.length) return; qi = (qi + 1) % queue.length; carregar(playing); }
 function anterior() {
@@ -1863,8 +1870,11 @@ function cardTema(t) {
     <span class="t clip">${esc(t.nome)}</span><span class="sub">${t.fixo ? T("Grátis") : T("Seu tema")}</span></button>
     ${t.fixo ? "" : `<button class="edit" data-editar="${t.id}" aria-label="${T("Editar {0}", esc(t.nome))}">${T("Editar")}</button>`}</div>`;
 }
-/* "Cores do visual seguem a capa": nos estilos da Aura com cores próprias a opção não vale, então aparece desativada e explica (sem data-tg, o toque não muda a escolha guardada) */
-const tgCorCapa = (pre, normal) => (estiloAura().cores ? `<div class="opt"><span id="${pre}corCapa">${T("Cores do visual seguem a capa da música")}</span><button class="tg" role="switch" aria-checked="false" aria-disabled="true" aria-labelledby="${pre}corCapa" aria-describedby="${pre}corCapa-n"></button></div><p class="note" id="${pre}corCapa-n" data-nota-cor>${T("Este estilo da Aura tem cores próprias. A opção volta a valer no estilo Padrão e nos outros visuais.")}</p>` : normal);
+/* "Cores do visual seguem a capa": nos estilos da Aura com cores próprias (Phonk, Lo-fi, Anos 80) a escolha é separada (cfg.auraCorCapa) e começa desligada, para o estilo manter a cara dele */
+const chaveCorCapa = () => { try { return estiloAura().cores ? "auraCorCapa" : "corCapa"; } catch (e) { return "corCapa"; } }; // no arranque a tabela de estilos ainda não existe
+const segueCapa = () => !!cfg[chaveCorCapa()];
+const coresDoEstilo = (E) => (E.cores && !cfg.auraCorCapa ? E.cores : null);
+const tgCorCapa = (pre) => { const k = chaveCorCapa(); return `<div class="opt"><span id="${pre}corCapa">${T("Cores do visual seguem a capa da música")}</span><button class="tg" data-tg="${k}" role="switch" aria-checked="${!!cfg[k]}" aria-labelledby="${pre}corCapa"></button></div>${k === "auraCorCapa" ? `<p class="note" data-nota-cor>${T("Desligada, a Aura usa as cores do estilo. Ligada, usa as cores da capa.")}</p>` : ""}`; };
 const tg = (chave, rotulo) => `<div class="opt"><span id="l-${chave}">${rotulo}</span><button class="tg" data-tg="${chave}" role="switch" aria-checked="${!!cfg[chave]}" aria-labelledby="l-${chave}"></button></div>`;
 const faixaAjuste = (chave, rotulo, ligado) => `<div class="opt sub-opt"${ligado ? "" : " hidden"}><label for="r-${chave}">${rotulo}</label><input type="range" id="r-${chave}" data-rg="${chave}" min="0.15" max="1" step="0.05" value="${cfg[chave]}"></div>`;
 /* Ajustes em quatro portas: a raiz é curta (idioma + portas) e cada porta abre uma tela própria */
@@ -1911,7 +1921,7 @@ function renderTemas() {
       ${cfg.visual === "led" ? `<p class="t">${T("Cores do LED")}</p><div class="chips" role="group" aria-label="${T("Cores do LED")}">${[["arte", T("Arte da capa")], ["capa", T("Cores da capa")], ["tema", T("Cores do tema")], ["classico", T("Clássico")]].map(([k, n]) => `<button data-ledcor="${k}" aria-pressed="${cfg.ledCor === k}" class="${cfg.ledCor === k ? "on" : ""}">${n}</button>`).join("")}</div>` : ""}
       <p class="t">${T("Formato da capa")}</p><div class="chips" role="group" aria-label="${T("Formato da capa")}">${[["quadrada", T("Quadrada")], ["redonda", T("Redonda")]].map(([k, n]) => `<button data-forma="${k}" aria-pressed="${cfg.formaCapa === k}" class="${cfg.formaCapa === k ? "on" : ""}">${n}</button>`).join("")}</div>
       <p class="note">${T("Vale para Aura, Espectro e Anel. No Relógio e no Vinil a capa é sempre redonda.")}</p>
-      ${tgCorCapa("l-", tg("corCapa", T("Cores do visual seguem a capa da música")))}</div>
+      ${tgCorCapa("l-")}</div>
     <div class="card stack"><h2>${T("Compartilhar tema")}</h2><p class="note">${T("Um tema é um arquivo JSON pequeno. Exporte o tema em uso ou importe um de outra pessoa.")}</p>
       <div class="btns"><button class="btn ghost sm" data-exp="copiar">${T("Copiar JSON")}</button><button class="btn ghost sm" data-exp="baixar">${T("Baixar .json")}</button><button class="btn ghost sm" data-imp="arquivo">${T("Abrir .json")}</button><button class="btn ghost sm" data-imp="colar">${T("Colar JSON")}</button></div></div>`,
     som: `
@@ -2023,7 +2033,7 @@ $("tm").addEventListener("click", (e) => {
     if (k === "nivelar" && ctx) trocarEfeitos();
     if (k === "eraRuido") ajustarRuido();
     if (k === "coracoes") { renderBib(); renderPl(); }
-    if (k === "corCapa") atualizarCorViz();
+    if (k === "corCapa" || k === "auraCorCapa") atualizarCorViz();
     renderTemas(); return;
   }
   if (t.closest("[data-alternar-leve]")) return definirLeve(!cfg.leve);
@@ -2644,6 +2654,7 @@ setInterval(() => {
 addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { if (statsSujo) salvarStats(); if (cur()) salvarSessao(); if (carregado) backupAutomatico(); } // se o Android fechar o app em segundo plano, ele volta de onde parou
   else if (playing && ctx && ctx.state === "suspended") ctx.resume().catch(() => {}); // depois de uma ligação, por exemplo
+  if (document.visibilityState !== "hidden" && fimFilaPend) { if (playing) fimFilaPend = false; else avisarFimDaFila(); }
   ligarRamoViz(document.visibilityState !== "hidden");
   atualizarTela();
 });
@@ -2731,7 +2742,7 @@ function abrirPersonalizar() {
     ${cfg.visual === "led" ? `<p class="t">${T("Cores do LED")}</p>` + chipsDe([["arte", T("Arte da capa")], ["capa", T("Cores da capa")], ["tema", T("Cores do tema")], ["classico", T("Clássico")]], cfg.ledCor, "data-ledcor") : ""}
     ${["aura", "espectro", "anel"].includes(cfg.visual) ? `<p class="t">${T("Formato da capa")}</p>` + chipsDe([["quadrada", T("Quadrada")], ["redonda", T("Redonda")]], cfg.formaCapa === "redonda" ? "redonda" : "quadrada", "data-forma") : "" /* só onde o formato vale: no Relógio e no Vinil a capa é sempre redonda */}
     ${cfg.visual === "aura" ? `<p class="t">${T("Estilo da Aura")}</p>` + chipsDe([["padrao", T("Padrão")], ["phonk", "Phonk"], ["lofi", "Lo-fi"], ["oitenta", T("Anos 80")]], estiloAura() === ESTILOS_AURA.padrao ? "padrao" : cfg.auraEst, "data-estilo") + `<p class="note">${T("Phonk, Lo-fi e Anos 80 estão liberados para teste. No futuro farão parte do pacote Apoiador.")}</p>` : ""}
-    ${tgCorCapa("pz-l-", liga("corCapa", T("Cores do visual seguem a capa da música")))}
+    ${tgCorCapa("pz-l-")}
     ${liga("amb", T("Luz de fundo com as cores da capa"))}${faixa("ambF", T("Intensidade da luz"), cfg.amb)}
     ${liga("reage", T("Reagir à batida da música"))}${faixa("batF", T("Força da batida"), cfg.reage)}`;
   const refazer = () => { const r = $("sheet-b"), y = r.scrollTop; r.innerHTML = html(); r.scrollTop = y; };
@@ -2743,7 +2754,7 @@ function abrirPersonalizar() {
       const lc = t.closest("[data-ledcor]"); if (lc) { cfg.ledCor = lc.dataset.ledcor; salvarCfg(); ledId = null; prepararLed(cur()); return refazer(); }
       const fo = t.closest("[data-forma]"); if (fo) { cfg.formaCapa = fo.dataset.forma; salvarCfg(); aplicarVisual(); return refazer(); }
       const es = t.closest("[data-estilo]"); if (es) { cfg.auraEst = es.dataset.estilo; salvarCfg(); aplicarVisual(); refazer(); const b = $("sheet-b").querySelector(`[data-estilo="${cfg.auraEst}"]`); if (b) b.focus(); return; }
-      const g = t.closest("[data-tg]"); if (g) { const k = g.dataset.tg; cfg[k] = !cfg[k]; salvarCfg(); aplicarEfeitos(); if (k === "corCapa") atualizarCorViz(); return refazer(); }
+      const g = t.closest("[data-tg]"); if (g) { const k = g.dataset.tg; cfg[k] = !cfg[k]; salvarCfg(); aplicarEfeitos(); if (k === "corCapa" || k === "auraCorCapa") atualizarCorViz(); return refazer(); }
     },
     entrada(e) { const k = e.target.dataset.rg; if (k) { cfg[k] = +e.target.value; salvarCfg(); aplicarEfeitos(); } },
   });
@@ -3275,7 +3286,7 @@ function restaurarBackup(o) {
   for (const t of o.temas || []) { try { const v = validarTema(t); if (!meusTemas.some((m) => m.nome === v.nome)) { v.id = uid("t"); meusTemas.push(v); } } catch (err) { /* tema inválido: pula */ } }
   salvarTemas();
   const aj = o.ajustes || {};
-  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "volRec", "leve", "fluido", "coracoes", "corCapa", "formaCapa", "ledCor", "auraEst", "amp", "avisoAmp", "reverb", "largura", "apGraves", "apAgudos", "apInt", "autoTocar", "tocarFone", "pausarFone"]) if (k in aj) cfg[k] = aj[k];
+  for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "volRec", "leve", "fluido", "coracoes", "corCapa", "formaCapa", "ledCor", "auraEst", "auraCorCapa", "amp", "avisoAmp", "reverb", "largura", "apGraves", "apAgudos", "apInt", "autoTocar", "tocarFone", "pausarFone"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
   if (aj.ajustes) cfg.ajustes = aj.ajustes;
@@ -3540,7 +3551,7 @@ function aplicarVisual() {
   a.dataset.visual = VISUAIS[cfg.visual] ? cfg.visual : "relogio";
   capaQuad = cfg.formaCapa !== "redonda" && ["aura", "espectro", "anel"].includes(a.dataset.visual); // no Relógio a capa é sempre redonda: ponteiro não combina com capa quadrada
   a.dataset.capa = capaQuad ? "quadrada" : "";
-  { const e = estiloAura(); a.dataset.estilo = e === ESTILOS_AURA.padrao ? "" : cfg.auraEst; if (e.grao) prepararGrao(); else if (FX_AURA) FX_AURA.style.transform = ""; }
+  { const e = estiloAura(); a.dataset.estilo = e === ESTILOS_AURA.padrao ? "" : cfg.auraEst; if (e.grao) prepararGrao(); else if (FX_AURA) FX_AURA.style.transform = ""; atualizarCorViz(); } // a escolha "seguir a capa" é outra nos estilos com cores próprias
   zerarPicosRelogio(); acordarViz();
   ajustarDial(); // o LED do celular estica o mostrador: ao sair dele pelo pincel, volta ao quadrado na hora
   a.dataset.era = cfg.era && cfg.era !== "off" ? cfg.era : "";
@@ -3906,7 +3917,7 @@ function vigiarBrilho(fq) {
 }
 const usarBrilho = () => temFiltro && !cfg.leve && !calmo && !brilhoAura.desligado;
 function passoCorAura() { // a cor segue a da capa aos poucos: na troca de música, uma passa para a outra
-  const E = estiloAura(), a = E.cores ? E.cores[0] : paraRgb(corViz) || corAura[0], b = E.cores ? E.cores[1] : (corViz2 && paraRgb(corViz2)) || a, k = cfg.leve || calmo || !corAuraPronta ? 1 : sv(0.07); // na primeira vez a cor entra direto, sem deslizar
+  const E = estiloAura(), C = coresDoEstilo(E), a = C ? C[0] : paraRgb(corViz) || corAura[0], b = C ? C[1] : (corViz2 && paraRgb(corViz2)) || a, k = cfg.leve || calmo || !corAuraPronta ? 1 : sv(0.07); // na primeira vez a cor entra direto, sem deslizar
   corAuraPronta = true;
   for (let i = 0; i < 3; i++) { corAura[0][i] += (a[i] - corAura[0][i]) * k; corAura[1][i] += (b[i] - corAura[1][i]) * k; }
 }
@@ -4070,7 +4081,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.26.2";
+const VERSAO = "1.26.3";
 /* De onde vêm as versões novas: a versão da Google Play atualiza pela loja (e não pode mandar baixar APK de fora);
    o APK de teste aponta para o GitHub; o site só avisa quais botões abrem o navegador. */
 function notaAtualizacao(nativo, loja) {

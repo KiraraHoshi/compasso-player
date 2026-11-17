@@ -79,15 +79,19 @@ export default [
     rodar: async (p) => {
       const r = await p.avaliar(() => {
         const ir1 = () => { for (let i = 0; i < 400; i++) passoCorAura(); return [corAura[0].map(Math.round), corAura[1].map(Math.round)]; };
+        const refaz = atualizarCorViz; atualizarCorViz = async () => {}; // trocar de estilo recalcula a cor da capa; aqui a cor é posta à mão
         corViz = "#0000ff"; corViz2 = null; cfg.visual = "aura";
         cfg.auraEst = "phonk"; aplicarVisual(); const phonk = ir1();
+        cfg.auraCorCapa = true; const phonkCapa = ir1(); cfg.auraCorCapa = false;
         cfg.auraEst = "oitenta"; aplicarVisual(); const oitenta = ir1();
         cfg.auraEst = "padrao"; aplicarVisual(); const padrao = ir1();
         cfg.auraEst = "phonk"; cfg.visual = "anel"; aplicarVisual(); const anel = ir1();
         cfg.visual = "aura"; cfg.auraEst = "padrao"; aplicarVisual();
-        return { phonk, oitenta, padrao, anel };
+        atualizarCorViz = refaz;
+        return { phonk, phonkCapa, oitenta, padrao, anel };
       });
       assert.deepEqual(r.phonk, [[255, 45, 70], [138, 16, 36]]);
+      assert.deepEqual(r.phonkCapa, [[0, 0, 255], [0, 0, 255]], "com a opção ligada, o Phonk usa a cor da capa");
       assert.deepEqual(r.oitenta, [[255, 79, 216], [61, 232, 255]]);
       assert.deepEqual(r.padrao, [[0, 0, 255], [0, 0, 255]]);
       assert.deepEqual(r.anel, [[0, 0, 255], [0, 0, 255]], "no Anel o estilo da Aura não pinta nada");

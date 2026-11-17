@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.26.3
+- **Phonk, Lo-fi e Anos 80 com as cores da capa:** nesses estilos da Aura, a opção "Cores do visual seguem a capa da música" agora funciona. Ela começa desligada, para o estilo manter as cores dele; ligada, a Aura usa as cores da capa. A escolha é separada da dos outros visuais.
+- **Aviso de fim da fila:** quando a última música da fila acaba (com o repetir desligado), o app volta para a primeira e pausa, como antes, mas agora avisa "Fim da fila" e oferece um botão para tocar de novo. Se a janela estava em segundo plano, o aviso aparece quando você volta.
+
 ## 1.26.2
 Consertos pedidos por quem usa o app no PC.
 - **Música de exemplo com a janela em segundo plano:** quando a música acabava e o app estava em outra aba ou janela, ela não passava para a próxima. Agora passa.

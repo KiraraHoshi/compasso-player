@@ -97,30 +97,33 @@ export default [
     },
   },
   {
-    nome: "nos estilos da Aura com cores próprias, a opção de seguir a capa fica desativada e explica por quê",
+    nome: "nos estilos da Aura com cores próprias, a opção de seguir a capa funciona: começa desligada e, ligada, troca as cores do estilo pelas da capa",
     hash: "tocando",
     rodar: async (p) => {
       await p.avaliar(() => { cfg.visual = "aura"; cfg.auraEst = "phonk"; cfg.corCapa = true; aplicarVisual(); });
       await abrirPincel(p);
-      const ler = () => { const q = () => document.querySelector('#sheet [aria-labelledby="pz-l-corCapa"]'); q().click(); const b = q(); return { off: b.getAttribute("aria-disabled") === "true", marcado: b.getAttribute("aria-checked"), nota: !!document.querySelector("#sheet [data-nota-cor]") }; };
-      assert.deepEqual(await p.avaliar(ler), { off: true, marcado: "false", nota: true });
-      assert.equal(await p.avaliar(() => cfg.corCapa), true, "a escolha da pessoa fica guardada para os outros estilos");
+      const q = '#sheet [aria-labelledby="pz-l-corCapa"]';
+      const ler = (q) => { const b = document.querySelector(q); return { marcado: b.getAttribute("aria-checked"), off: b.disabled || b.getAttribute("aria-disabled") === "true", proprias: !!coresDoEstilo(estiloAura()), nota: !!document.querySelector("[data-nota-cor]") }; };
+      assert.deepEqual(await p.avaliar(ler, q), { marcado: "false", off: false, proprias: true, nota: true }, "de fábrica o estilo mantém as cores dele");
+      await p.clicar(q);
+      assert.deepEqual(await p.avaliar(ler, q), { marcado: "true", off: false, proprias: false, nota: true }, "ligada, a Aura usa as cores da capa");
+      assert.deepEqual(await p.avaliar(() => [cfg.auraCorCapa, cfg.corCapa]), [true, true], "a escolha dos estilos é separada da dos outros visuais");
       await p.clicar('#sheet [data-estilo="padrao"]');
-      assert.deepEqual(await p.avaliar(ler), { off: false, marcado: "false", nota: false }); // aqui o clique do teste vale: desliga
-      assert.equal(await p.avaliar(() => cfg.corCapa), false);
+      assert.deepEqual(await p.avaliar(ler, q), { marcado: "true", off: false, proprias: false, nota: false }, "no Padrão vale a opção de sempre");
+      await p.clicar(q);
+      assert.deepEqual(await p.avaliar(() => [cfg.auraCorCapa, cfg.corCapa]), [true, false]);
     },
   },
   {
-    nome: "em Ajustes a mesma opção também fica desativada nos estilos com cores próprias",
+    nome: "em Ajustes a mesma opção também vale para os estilos com cores próprias",
     rodar: async (p) => {
-      const ler = () => { const b = document.querySelector('#tm [aria-labelledby="l-corCapa"]'); b.click(); return { off: b.getAttribute("aria-disabled") === "true", marcado: b.getAttribute("aria-checked"), nota: !!document.querySelector("#tm [data-nota-cor]"), cfg: cfg.corCapa }; };
-      const abrir = () => { ir("temas"); for (const b of [...document.querySelectorAll("#tm [data-porta]")].map((x) => x.dataset.porta)) { abrirPorta(b); if (document.querySelector('#tm [aria-labelledby="l-corCapa"]')) return true; } return false; };
+      const q = '#tm [aria-labelledby="l-corCapa"]';
+      const abrir = (q) => { ir("temas"); abrirPorta(null); for (const b of [...document.querySelectorAll("#tm [data-porta]")].map((x) => x.dataset.porta)) { abrirPorta(b); if (document.querySelector(q)) return true; } return false; };
       await p.avaliar(() => { cfg.visual = "aura"; cfg.auraEst = "lofi"; cfg.corCapa = true; aplicarVisual(); });
-      assert.equal(await p.avaliar(abrir), true, "achei a opção em Ajustes");
-      assert.deepEqual(await p.avaliar(ler), { off: true, marcado: "false", nota: true, cfg: true });
-      await p.avaliar(() => { cfg.auraEst = "padrao"; aplicarVisual(); abrirPorta(null); });
-      await p.avaliar(abrir);
-      assert.equal((await p.avaliar(ler)).off, false);
+      assert.equal(await p.avaliar(abrir, q), true, "achei a opção em Ajustes");
+      assert.equal(await p.avaliar((q) => document.querySelector(q).getAttribute("aria-checked"), q), "false");
+      await p.clicar(q);
+      assert.deepEqual(await p.avaliar((q) => [document.querySelector(q).getAttribute("aria-checked"), cfg.auraCorCapa, cfg.corCapa], q), ["true", true, true]);
     },
   },
   {
@@ -151,6 +154,38 @@ export default [
       await p.avaliar(() => document.getElementById("seek").focus());
       await tecla(p, "Escape");
       assert.equal(await tela(p), "inicio");
+    },
+  },
+  {
+    nome: "fim da fila: volta para a primeira música, pausa e avisa, com botão para tocar de novo",
+    rodar: async (p) => {
+      await p.avaliar(() => { repeat = "off"; qi = queue.length - 1; carregar(true); buscarSeg(cur().d - 0.4); });
+      await p.esperar(() => qi === 0 && !playing, 4000);
+      const t = await p.avaliar(() => { const t = document.getElementById("toast"); return { on: t.classList.contains("on"), txt: t.textContent, botao: !!t.querySelector("button") }; });
+      assert.ok(t.on && /Fim da fila/.test(t.txt) && t.botao, JSON.stringify(t));
+      await p.avaliar(() => document.querySelector("#toast button").click());
+      assert.deepEqual(await p.avaliar(() => [qi, playing]), [0, true], "o botão toca a fila de novo");
+    },
+  },
+  {
+    nome: "fim da fila com a janela escondida: o aviso espera a pessoa voltar",
+    rodar: async (p) => {
+      await p.avaliar(() => {
+        let v = "hidden"; Object.defineProperty(document, "visibilityState", { get: () => v, configurable: true }); window.__ver = () => { v = "visible"; document.dispatchEvent(new Event("visibilitychange", { bubbles: true })); };
+        repeat = "off"; qi = queue.length - 1; carregar(true); buscarSeg(cur().d - 0.4);
+      });
+      await p.esperar(() => qi === 0 && !playing, 4000);
+      assert.equal(await p.avaliar(() => /Fim da fila/.test(document.getElementById("toast").textContent)), false, "escondida, ainda não avisa");
+      await p.avaliar(() => window.__ver());
+      assert.equal(await p.avaliar(() => { const t = document.getElementById("toast"); return t.classList.contains("on") && /Fim da fila/.test(t.textContent); }), true, "avisa quando a janela volta");
+    },
+  },
+  {
+    nome: "com repetir a fila ligado não há aviso de fim: a fila recomeça tocando",
+    rodar: async (p) => {
+      await p.avaliar(() => { repeat = "all"; qi = queue.length - 1; carregar(true); buscarSeg(cur().d - 0.4); });
+      await p.esperar(() => qi === 0, 4000);
+      assert.deepEqual(await p.avaliar(() => [playing, /Fim da fila/.test(document.getElementById("toast").textContent)]), [true, false]);
     },
   },
 ];
