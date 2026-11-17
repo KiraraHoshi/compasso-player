@@ -180,7 +180,10 @@ nav button.on{color:var(--accent);font-weight:600}
 .mini-v svg{width:30px;height:30px;color:var(--accent)}
 .mini-v span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mini-v.on{border-color:var(--accent);color:var(--text);background:color-mix(in srgb,var(--accent) 16%,var(--card))}
-.app[data-palco="1"] #b-pincel{visibility:hidden}
+.app[data-palco="1"] :is(#b-pincel,#b-voltar){visibility:hidden}
+.tg:disabled{opacity:.45;cursor:default}
+#mini-prev{display:none}
+@media (min-width:700px){#mini-prev{display:grid}}
 .sheet-h{display:flex;align-items:center;gap:8px;padding:14px 12px 8px 18px}
 .sheet-b{overflow-y:auto;padding:4px 12px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
 .sheet .grab{width:40px;height:4px;border-radius:9px;background:var(--line);margin:8px auto 0}
@@ -272,7 +275,8 @@ textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
 .sheet .seg button{font-size:13px}
 
 /* Visuais do mostrador, épocas e tela cheia */
-.np-top{display:grid;grid-template-columns:36px 1fr 36px;align-items:center;width:100%;text-align:center}
+.np-lado{display:flex}.np-lado.fim{justify-content:flex-end}
+.np-top{display:grid;grid-template-columns:72px 1fr 72px;align-items:center;width:100%;text-align:center}
 .hora{display:none;font-family:var(--display);font-weight:700;font-size:clamp(40px,9vw,84px);font-variant-numeric:tabular-nums;line-height:1}
 .gira,.selo{position:absolute;inset:0;display:grid;place-items:center;border-radius:50%}
 #viz,.cena{position:absolute;inset:0;width:100%;height:100%;display:none}

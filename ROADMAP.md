@@ -66,6 +66,9 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - ✅ **1.26 Estilos da Aura:** Phonk, Lo-fi e Anos 80 no pincel, liberados por enquanto; depois entram no pacote Apoiador.
 - ✅ **1.26.1 Preparo da loja:** Android sem permissão de internet, aviso de atualização próprio da versão da Play, prints e textos da ficha.
 - **A refazer:** o Phonk ficou sem impacto perto das edits de Phonk e slowed; refazer com vídeos de referência.
+- ✅ **1.26.2 Consertos do PC:** fim da música de exemplo em segundo plano, Continuar ao vivo, botões de anterior e de voltar, Esc e atalhos de navegação.
+- **A fazer:** redesenhar o card do Recap em imagem (mais bonito, sem destacar "offline e sem conta", com o nome Orolon no lugar de "Compasso").
+- **Ideia:** no pacote Apoiador, temas exclusivos para o card do Recap.
 - **Ideia (a desenhar com calma):** no pacote Apoiador, escolher um vídeo do aparelho que acelera e desacelera conforme a batida, como uma edit. Cuidar do custo no celular.
 - **Próxima:** publicação (ficha e prints da Play, README, teste fechado).
 

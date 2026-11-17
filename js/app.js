@@ -768,6 +768,7 @@ function nota(f, t, dur, tipo, vol) {
 }
 function agendar() {
   const x = cur(); if (!x || !x.demo) return;
+  if (playing && posAtual() >= x.d) return fimDaFaixa(); // com a janela escondida o desenho da tela para; quem passa para a próxima é este relógio
   const sd = 30 / x.bpm;
   while (proxT < ctx.currentTime + 0.25) {
     nota(NOTAS[x.sc[passo % x.sc.length]] * (passo % 12 > 5 ? 2 : 1), proxT, sd * 1.8, x.w, 0.16);
@@ -1938,7 +1939,7 @@ function renderTemas() {
       ${MUS ? `<div class="btns"><button class="btn ghost sm" data-aparelho>${T("Procurar novas músicas no aparelho")}</button>${importadas().some((x) => x.mid) ? `<button class="btn ghost sm" data-pastasap>${T("Pastas do aparelho")}</button>` : ""}<button class="btn ghost sm" data-pastasesc>${T("Pastas escolhidas")}${(cfg.pastasEscolhidas || []).length ? " · " + cfg.pastasEscolhidas.length : ""}</button></div>` : ""}
       <p class="note" id="espaco">${T("Calculando o espaço usado…")}</p>
       ${importadas().length ? `<div class="btns"><button class="btn danger sm" data-limparbib>${T("Apagar todas as músicas importadas")}</button></div>` : ""}
-      ${NATIVO ? "" : `<p class="note">${T("Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita, ↑ e ↓ mudam o volume, M deixa mudo.")}</p>`}</div>`,
+      ${NATIVO ? "" : `<p class="note">${T("Atalhos no PC: espaço toca e pausa, setas ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita, ↑ e ↓ mudam o volume, M deixa mudo, Esc volta para a tela anterior, 1 a 5 trocam de aba e / abre a busca.")}</p>`}</div>`,
     sobre: `
     <div class="card stack"><h2>${T("Backup")}</h2><p class="note">${T("Guarda num arquivo as playlists, favoritas, estatísticas, letras, perfil, temas e ajustes. As músicas não entram: no aparelho novo, importe as músicas primeiro e depois restaure.")}</p>
       <div class="btns"><button class="btn ghost sm" data-bkp>${T("Salvar backup")}</button>${podeEnviarBackup() ? `<button class="btn ghost sm" data-bkp-enviar>${T("Enviar backup")}</button>` : ""}<button class="btn ghost sm" data-rst>${T("Restaurar backup")}</button></div>
@@ -2634,7 +2635,7 @@ setInterval(() => {
   const agora = Date.now(), x = cur();
   if (playing && x && ultimoTick) registrarEscuta(x, Math.min(65, (agora - ultimoTick) / 1000));
   ultimoTick = playing ? agora : 0;
-  verificarSono(); paintSono(); atualizarHora(); vigiarTrecho(); acertarAtrasoViz();
+  verificarSono(); paintSono(); atualizarHora(); vigiarTrecho(); acertarAtrasoViz(); atualizarContinuar();
   if (playing && x) vigiarTroca(x, posAtual());
   if (statsSujo && agora - statsSalvo > 10000) salvarStats();
 }, 1000);
@@ -2645,6 +2646,15 @@ addEventListener("visibilitychange", () => {
   atualizarTela();
 });
 addEventListener("pagehide", () => { if (statsSujo) salvarStats(); });
+
+/* O cartão Continuar do Início acompanha a música: barra e tempo que falta (uma vez por segundo, só com o Início aberto) */
+function atualizarContinuar() {
+  const c = APP.dataset.view === "inicio" && $("ini-cont"), x = cur(); if (!c || !x) return;
+  const d = x.d || 0, p = Math.min(d, posAtual() || 0), b = c.querySelector(".ini-barra i"), f = c.querySelector("[data-ini-falta]");
+  const w = (d ? ((p / d) * 100).toFixed(1) : 0) + "%", t = d ? " · " + T("faltam {0}", fmt(Math.max(0, d - p))) : "";
+  if (b && b.style.width !== w) b.style.width = w;
+  if (f && f.textContent !== t) f.textContent = t;
+}
 
 /* ===================== Tela: Você (perfil e estatísticas) ===================== */
 let perfil = Object.assign({ nome: "", foto: "" }, guardado.get("compasso.perfil", {}));
@@ -2719,7 +2729,7 @@ function abrirPersonalizar() {
     ${cfg.visual === "led" ? `<p class="t">${T("Cores do LED")}</p>` + chipsDe([["arte", T("Arte da capa")], ["capa", T("Cores da capa")], ["tema", T("Cores do tema")], ["classico", T("Clássico")]], cfg.ledCor, "data-ledcor") : ""}
     ${["aura", "espectro", "anel"].includes(cfg.visual) ? `<p class="t">${T("Formato da capa")}</p>` + chipsDe([["quadrada", T("Quadrada")], ["redonda", T("Redonda")]], cfg.formaCapa === "redonda" ? "redonda" : "quadrada", "data-forma") : "" /* só onde o formato vale: no Relógio e no Vinil a capa é sempre redonda */}
     ${cfg.visual === "aura" ? `<p class="t">${T("Estilo da Aura")}</p>` + chipsDe([["padrao", T("Padrão")], ["phonk", "Phonk"], ["lofi", "Lo-fi"], ["oitenta", T("Anos 80")]], estiloAura() === ESTILOS_AURA.padrao ? "padrao" : cfg.auraEst, "data-estilo") + `<p class="note">${T("Phonk, Lo-fi e Anos 80 estão liberados para teste. No futuro farão parte do pacote Apoiador.")}</p>` : ""}
-    ${liga("corCapa", T("Cores do visual seguem a capa da música"))}
+    ${estiloAura().cores ? `<div class="opt"><span id="pz-l-corCapa">${T("Cores do visual seguem a capa da música")}</span><button class="tg" data-tg="corCapa" role="switch" aria-checked="false" aria-labelledby="pz-l-corCapa" aria-describedby="pz-n-corCapa" disabled></button></div><p class="note" id="pz-n-corCapa" data-nota-cor>${T("Este estilo da Aura tem cores próprias. A opção volta a valer no estilo Padrão e nos outros visuais.")}</p>` : liga("corCapa", T("Cores do visual seguem a capa da música"))}
     ${liga("amb", T("Luz de fundo com as cores da capa"))}${faixa("ambF", T("Intensidade da luz"), cfg.amb)}
     ${liga("reage", T("Reagir à batida da música"))}${faixa("batF", T("Força da batida"), cfg.reage)}`;
   const refazer = () => { const r = $("sheet-b"), y = r.scrollTop; r.innerHTML = html(); r.scrollTop = y; };
@@ -2766,7 +2776,7 @@ function renderInicio() {
   let cont = "";
   if (x) {
     const d = x.d || 0, p = Math.min(d, posAtual() || 0), falta = Math.max(0, d - p);
-    cont = `<div class="card ini-cont" id="ini-cont"><button class="tp row grow" data-abrir>${capa(x, "thumb ini-capa")}<span class="grow"><span class="sub clip">${T("Continuar de onde parou")}</span><span class="t clip">${esc(x.t)}</span><span class="sub clip">${esc(artistaDe(x))}${d ? " · " + T("faltam {0}", fmt(falta)) : ""}</span><span class="ini-barra"><i style="width:${d ? ((p / d) * 100).toFixed(1) : 0}%"></i></span></span></button><button class="ic big ini-play" data-ini-tocar aria-label="${playing ? T("Pausar") : T("Tocar")}">${ico(playing ? "pause" : "play", 26)}</button></div>`;
+    cont = `<div class="card ini-cont" id="ini-cont"><button class="tp row grow" data-abrir>${capa(x, "thumb ini-capa")}<span class="grow"><span class="sub clip">${T("Continuar de onde parou")}</span><span class="t clip">${esc(x.t)}</span><span class="sub clip">${esc(artistaDe(x))}<span data-ini-falta>${d ? " · " + T("faltam {0}", fmt(falta)) : ""}</span></span><span class="ini-barra"><i style="width:${d ? ((p / d) * 100).toFixed(1) : 0}%"></i></span></span></button><button class="ic big ini-play" data-ini-tocar aria-label="${playing ? T("Pausar") : T("Tocar")}">${ico(playing ? "pause" : "play", 26)}</button></div>`;
   }
   const recA = AUTO.find((a) => a.id === "auto:recentes");
   recIni = (recA ? recA.ids() : []).filter((id) => visivel(porId.get(id))).slice(0, 10);
@@ -4058,7 +4068,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.26.1";
+const VERSAO = "1.26.2";
 /* De onde vêm as versões novas: a versão da Google Play atualiza pela loja (e não pode mandar baixar APK de fora);
    o APK de teste aponta para o GitHub; o site só avisa quais botões abrem o navegador. */
 function notaAtualizacao(nativo, loja) {
@@ -4200,6 +4210,8 @@ $("b-play").addEventListener("click", alternar);
 $("mini-play").addEventListener("click", alternar);
 $("b-next").addEventListener("click", proxima);
 $("mini-next").addEventListener("click", proxima);
+$("mini-prev").addEventListener("click", anterior);
+$("b-voltar").addEventListener("click", voltarUmPasso);
 $("b-prev").addEventListener("click", anterior);
 $("b-shuf").addEventListener("click", alternarAleatorio);
 $("b-rep").addEventListener("click", alternarRepetir);
@@ -4216,7 +4228,7 @@ $("b-vel").addEventListener("click", () => {
   if ($("app").dataset.view === "temas") renderTemas();
 });
 $("b-eq").addEventListener("click", abrirEQ);
-$("b-shuf").innerHTML = ico("shuf"); $("b-prev").innerHTML = ico("prev", 28); $("b-next").innerHTML = ico("next", 28); $("mini-next").innerHTML = ico("next", 22);
+$("b-shuf").innerHTML = ico("shuf"); $("b-prev").innerHTML = ico("prev", 28); $("b-next").innerHTML = ico("next", 28); $("mini-next").innerHTML = ico("next", 22); $("mini-prev").innerHTML = ico("prev", 22); $("b-voltar").innerHTML = ico("back", 20);
 
 /* O app tem layout fixo (nada rola na página), então o zoom de pinça só deixaria tudo cortado e travando: bloqueado aqui, no CSS e na tela */
 for (const ev of ["gesturestart", "gesturechange", "gestureend"]) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
@@ -4247,8 +4259,12 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && emPalco()) return alternarPalco(false);
   if (e.key === "Escape" && APP.dataset.view === "temas" && porta && !editando) return abrirPorta(null);
   const alvo = e.target, tag = alvo.tagName;
+  if (e.key === "Escape" && (tag === "INPUT" || tag === "TEXTAREA") && !folha) return alvo.blur(); // primeiro sai do campo de texto
   if (folha || e.ctrlKey || e.metaKey || e.altKey || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || alvo.isContentEditable) return;
-  if (e.key === " " && tag !== "BUTTON") { e.preventDefault(); alternar(); }
+  if (e.key === "Escape") { if (!editando && voltarUmPasso()) e.preventDefault(); } // volta um passo, como o botão voltar do celular; um tema em edição não é descartado sem querer
+  else if (e.key >= "1" && e.key <= String(TELAS.length) && e.key.length === 1) ir(TELAS[+e.key - 1][0]);
+  else if (e.key === "/") { e.preventDefault(); ir("biblioteca"); $("q").focus(); }
+  else if (e.key === " " && tag !== "BUTTON") { e.preventDefault(); alternar(); }
   else if (e.key === "ArrowRight") { e.preventDefault(); buscarSeg(posAtual() + 5); }
   else if (e.key === "ArrowLeft") { e.preventDefault(); buscarSeg(posAtual() - 5); }
   else if (e.key === "n" || e.key === "N") proxima();

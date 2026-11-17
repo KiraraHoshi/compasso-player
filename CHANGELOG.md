@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 1.26.2
+Consertos pedidos por quem usa o app no PC.
+- **Música de exemplo com a janela em segundo plano:** quando a música acabava e o app estava em outra aba ou janela, ela não passava para a próxima. Agora passa.
+- **Continuar de onde parou:** a barra e o tempo que falta, no Início, andam junto com a música.
+- **Botão de música anterior** na barra de baixo, em telas largas (PC e tablet).
+- **Botão de voltar** na tela Tocando agora.
+- **Teclado no PC:** Esc volta um passo de cada vez (fecha a folha, sai da tela cheia, volta para a tela anterior), as teclas 1 a 5 trocam de aba e a barra (/) abre a busca.
+- **Estilos da Aura com cores próprias (Phonk, Lo-fi, Anos 80):** a opção "Cores do visual seguem a capa" aparecia ligada, mas não fazia nada. Agora ela fica desativada nesses estilos e explica o motivo.
+
 ## 1.26.1
 - **Android sem permissão de internet:** o app nunca usou a internet, mas o pacote ainda levava essa permissão de fábrica. Agora ela foi retirada, e a montagem do app falha se um dia ela voltar.
 - **Versão da Google Play:** em Ajustes › Sobre, o aviso de versões novas passa a dizer que elas chegam pela loja. O APK de teste continua apontando para o GitHub.

@@ -32,7 +32,7 @@
     </section>
 
     <section class="view" id="v-tocando" aria-label="Tocando agora">
-      <div class="np-top"><button class="ic sm" id="b-pincel" aria-label="Personalizar o Tocando"></button><p class="sub clip" id="np-ctx">Tocando agora</p><button class="ic sm" id="b-palco" aria-label="Tela cheia"></button></div>
+      <div class="np-top"><span class="np-lado"><button class="ic sm" id="b-voltar" aria-label="Voltar"></button><button class="ic sm" id="b-pincel" aria-label="Personalizar o Tocando"></button></span><p class="sub clip" id="np-ctx">Tocando agora</p><span class="np-lado fim"><button class="ic sm" id="b-palco" aria-label="Tela cheia"></button></span></div>
       <p class="hora" id="hora" aria-hidden="true"></p>
       <div class="dial"><svg viewBox="0 0 200 200" id="ticks" aria-hidden="true"></svg><div class="disc" id="disc"><span class="gira"><span class="selo" id="selo"></span></span></div><canvas id="viz" aria-hidden="true"></canvas><div class="cena" id="cena" aria-hidden="true"></div></div>
       <div class="letra" id="letra" aria-label="Letra da música"></div>
@@ -68,6 +68,7 @@
   <div class="mini" id="mini">
     <button class="tp" id="mini-open" aria-label="Abrir tocando agora"><span id="mini-th"></span><span class="grow"><span class="t clip" id="mini-t"></span><span class="sub clip" id="mini-a"></span></span></button>
     <button class="ic" id="mini-fav" aria-label="Adicionar às favoritas"></button>
+    <button class="ic" id="mini-prev" aria-label="Música anterior"></button>
     <button class="ic" id="mini-play" aria-label="Tocar"></button>
     <button class="ic" id="mini-next" aria-label="Próxima"></button>
   </div>
