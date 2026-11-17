@@ -63,6 +63,7 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - ✅ **1.24 Aura refinada:** brilho macio, poeira com profundidade, onda do bumbo, fio de luz na caixa e troca de música.
 - ✅ **1.25 Mostradores:** Relógio redondo com ponteiros, Espectro, Anel, Neon e Barras refinados, e economia de bateria (menos desenhos por segundo).
 - ✅ **1.25.1:** correção da capa esticada ao sair do LED, fluidez máxima (90/120 Hz) como opção e menos trabalho fora do Tocando agora.
+- ✅ **1.26.1 Preparo da loja:** Android sem permissão de internet, aviso de atualização próprio da versão da Play, prints e textos da ficha.
 - ✅ **1.26 Estilos da Aura:** Phonk, Lo-fi e Anos 80 no pincel, liberados por enquanto; depois entram no pacote Apoiador.
 - **A refazer:** o Phonk ficou sem impacto perto das edits de Phonk e slowed; refazer com vídeos de referência.
 - **Ideia (a desenhar com calma):** no pacote Apoiador, escolher um vídeo do aparelho que acelera e desacelera conforme a batida, como uma edit. Cuidar do custo no celular.

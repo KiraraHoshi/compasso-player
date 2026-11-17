@@ -165,7 +165,7 @@ Orolon collects no data. Your music, playlists and settings stay on your device.
 | `WAKE_LOCK` | Evitar que a música pare enquanto toca. |
 
 - **Serviço em primeiro plano:** o Console pede uma declaração para o tipo "reprodução de mídia". Marcar "Reprodução de mídia" e descrever: "O app é um player de música. O serviço mantém a música tocando em segundo plano e mostra os controles na notificação." Se pedir um vídeo demonstrando, gravar a tela tocando uma música, apagando a tela e usando a notificação (**a confirmar** se o vídeo é exigido).
-- **Permissão `INTERNET`:** o app não acessa a internet, mas hoje o pacote ainda leva essa permissão, que vem de fábrica na base do Android usada pelo app. Ver a seção "Antes de enviar".
+- **Permissão `INTERNET`:** o pacote não leva essa permissão desde a 1.26.1 (a montagem falha se ela voltar). Na página do app na Play, a lista de permissões não deve mostrar "acesso à rede".
 
 ## Teste fechado
 
@@ -176,6 +176,6 @@ Orolon collects no data. Your music, playlists and settings stay on your device.
 
 ## Antes de enviar
 
-1. Gerar o `.aab`: Actions › "App Android (loja)" › Run workflow, na `main`.
+1. Testar no celular o APK de teste da 1.26.1 (sem a permissão de internet) e só então gerar o `.aab`: Actions › "App Android (loja)" › Run workflow, na `main`.
 2. Na primeira publicação, deixar ativado o Play App Signing (ver `ANDROID.md`).
 3. Conferir no Console a verificação de desenvolvedor (obrigatória no Brasil, **a confirmar** a data na própria conta).

@@ -26,6 +26,8 @@ Na primeira publicação, deixe ativado o **Play App Signing** (o padrão): o Go
 
 `scripts/permissoes-android.mjs` acrescenta as permissões de reprodução em segundo plano (serviço de mídia, notificação e manter o aparelho acordado). Sem a de serviço de mídia, o Android 14+ fecha o app ao tocar.
 
+O mesmo script **tira a permissão de internet** (`INTERNET`), que o Capacitor põe de fábrica: o Orolon não acessa a rede, e as telas do app são servidas de dentro do aparelho. Os dois workflows conferem o manifesto final e falham se ela voltar. O pacote da loja é montado com `OROLON_LOJA=1`, que troca o aviso de versões novas (Ajustes › Sobre) para "chegam pela Google Play".
+
 `scripts/musicas-android.mjs` liga o plugin `android-plugin/MusicasPlugin.java` (lê a biblioteca de mídia do Android para "Procurar músicas no aparelho") e acrescenta a permissão de ler músicas: `READ_MEDIA_AUDIO` no Android 13+ e `READ_EXTERNAL_STORAGE` até o 12. Essa permissão é aceita pela Google Play para players de música; na ficha da loja, declare que o app lê arquivos de áudio do aparelho para tocá-los, sem enviar nada.
 
 ## Fone e notificação (1.20)
