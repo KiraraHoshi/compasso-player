@@ -1,5 +1,6 @@
 // Consertos da 1.26.2: retornos de quem usa o app no PC.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 const tela = (p) => p.avaliar(() => document.getElementById("app").dataset.view);
 const tecla = (p, key) => p.avaliar((k) => { (document.activeElement || document.body).dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true })); }, key);
@@ -178,6 +179,30 @@ export default [
       assert.equal(await p.avaliar(() => /Fim da fila/.test(document.getElementById("toast").textContent)), false, "escondida, ainda não avisa");
       await p.avaliar(() => window.__ver());
       assert.equal(await p.avaliar(() => { const t = document.getElementById("toast"); return t.classList.contains("on") && /Fim da fila/.test(t.textContent); }), true, "avisa quando a janela volta");
+    },
+  },
+  {
+    nome: "celular deitado: a barra lateral não soma de novo o recuo do entalhe (o app já recua a tela inteira)",
+    node: true,
+    rodar: async () => {
+      const css = readFileSync(new URL("../css/app.css", import.meta.url), "utf8");
+      const bloco = css.slice(css.indexOf("/* Celular deitado:"), css.indexOf("/* PC ou tablet largo"));
+      const nav = bloco.split("\n").find((l) => /^\s*nav\{/.test(l));
+      assert.ok(nav, "achei a regra da barra lateral");
+      assert.equal(/safe-area-inset-left|--esq/.test(nav), false, nav.trim());
+    },
+  },
+  {
+    nome: "celular deitado com entalhe: os nomes das abas cabem na barra lateral e nenhum entra embaixo da barra da música",
+    largura: 900, altura: 400,
+    rodar: async (p) => {
+      await p.avaliar(() => document.documentElement.style.setProperty("--safe-area-inset-left", "44px"));
+      await p.quadro();
+      const r = await p.avaliar(() => { const n = document.getElementById("nav").getBoundingClientRect(), m = document.querySelector(".mini").getBoundingClientRect(); return { nav: [n.left, n.width], mini: m.left, fora: [...document.querySelectorAll("#nav button")].filter((b) => { const s = b.querySelector("span") || b; const q = document.createRange(); q.selectNodeContents(s); const t = q.getBoundingClientRect(); return t.left < n.left || t.right > n.right; }).map((b) => b.dataset.v) }; });
+      assert.deepEqual(r.fora, [], "nomes que saem da barra: " + JSON.stringify(r));
+      assert.equal(r.nav[0], 44, "a barra começa depois do entalhe");
+      assert.ok(r.mini >= r.nav[0] + r.nav[1], "a barra da música fica ao lado, não por cima");
+      await p.print("126-biblioteca-deitado");
     },
   },
   {
