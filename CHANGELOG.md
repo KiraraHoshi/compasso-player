@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.26.1
+- **Android sem permissão de internet:** o app nunca usou a internet, mas o pacote ainda levava essa permissão de fábrica. Agora ela foi retirada, e a montagem do app falha se um dia ela voltar.
+- **Versão da Google Play:** em Ajustes › Sobre, o aviso de versões novas passa a dizer que elas chegam pela loja. O APK de teste continua apontando para o GitHub.
+- **Política de privacidade** atualizada: explica a leitura das músicas do aparelho e os backups.
+- Material novo da loja: capturas de tela e textos da ficha, em português e inglês.
+
 ## 1.26.0
 - **Estilos da Aura:** no pincel do Tocando agora, com o mostrador Aura, dá para escolher o estilo. O Padrão continua como era.
   - **Phonk:** soco mais forte na capa, tremida a cada bumbo, riscos no lugar da poeira, vermelho, e as cores se separam na caixa.

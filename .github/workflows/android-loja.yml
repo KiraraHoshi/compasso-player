@@ -46,7 +46,7 @@ jobs:
 
       - name: Montar o projeto Android
         run: |
-          npm run www
+          OROLON_LOJA=1 npm run www
           npx cap add android
           node scripts/permissoes-android.mjs
           node scripts/musicas-android.mjs
@@ -76,6 +76,14 @@ jobs:
           ./gradlew bundleRelease --no-daemon
           cp app/build/outputs/bundle/release/app-release.aab "../Orolon-${VERSAO}.aab"
           rm -f orolon-envio.jks
+
+      - name: Permissões que ficaram no app
+        run: |
+          # o manifesto final (já com o que as bibliotecas acrescentam): não pode haver permissão de internet
+          M=$(find android/app/build/intermediates -name AndroidManifest.xml -path "*merged_manifests*" | head -1)
+          if [ -z "$M" ]; then echo "::error title=Permissões::manifesto final não encontrado para conferir"; exit 1; fi
+          grep -o '<uses-permission[^>]*>' "$M" || true
+          if grep -q 'android.permission.INTERNET"' "$M"; then echo "::error title=Permissões::O app ficou com a permissão de internet"; exit 1; fi
 
       - uses: actions/upload-artifact@v4
         with:

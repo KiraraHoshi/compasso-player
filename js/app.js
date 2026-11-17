@@ -80,6 +80,7 @@ const I = {
 };
 /* App Android (Capacitor): esconde o que só faz sentido no navegador e liga os controles de mídia nativos */
 const NATIVO = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const DA_LOJA = false; // vira true só no pacote da Google Play (scripts/preparar-www.mjs com OROLON_LOJA=1)
 // os plugins nativos podem estar em Capacitor.Plugins ou precisar ser registrados por nome (depende da versão)
 const pegarPlugin = (n) => { if (!NATIVO) return null; try { const P = window.Capacitor.Plugins; if (P && P[n]) return P[n]; if (window.Capacitor.registerPlugin) return window.Capacitor.registerPlugin(n); } catch (e) { /* sem o plugin */ } return null; };
 const PLUG = { MediaSession: pegarPlugin("MediaSession"), SystemBars: pegarPlugin("SystemBars"), App: pegarPlugin("App"), Musicas: pegarPlugin("Musicas") };
@@ -1948,7 +1949,7 @@ function renderTemas() {
     <div class="card stack"><h2>${T("Sobre")}</h2><p class="note">${NATIVO ? T("Orolon Player {0}. Sem anúncios, sem conta e sem coleta de dados: tudo o que você guarda fica neste aparelho.", VERSAO) : T("Orolon Player {0}. Código aberto, sem anúncios e sem conta. Se o app te ajuda, apoiar o projeto mantém ele assim.", VERSAO)}</p>
       ${NATIVO ? "" : `<div class="btns"><a class="btn sm" href="https://github.com/sponsors/KiraraHoshi" target="_blank" rel="noopener">${ico("heartOn", 18)}${T("Apoiar o projeto")}</a><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player" target="_blank" rel="noopener">${T("Código no GitHub")}</a></div>`}
       <div class="btns">${instalado() ? "" : `<button class="btn ghost sm" data-instalar>${T("Instalar como app")}</button>`}<button class="btn ghost sm" data-boasvindas>${T("Ver as boas-vindas")}</button><a class="btn ghost sm" href="${linkPrivacidade()}" target="_blank" rel="noopener">${T("Política de privacidade")}</a></div>
-      ${NATIVO ? `<p class="note">${T("Enquanto o Orolon não está na Google Play, as versões novas ficam no GitHub. Baixe o APK e instale por cima deste: suas músicas, playlists e ajustes continuam. O app não procura atualizações sozinho, porque não usa a internet.")}</p><div class="btns"><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player/releases/tag/android-teste" target="_blank" rel="noopener">${T("Ver se há versão nova")}</a></div>` : `<p class="note">${T("Os dois botões de cima e o da política de privacidade abrem o navegador. O app em si não se conecta a nada.")}</p>`}</div>`,
+      ${notaAtualizacao(NATIVO, DA_LOJA)}</div>`,
   };
   $("tm").innerHTML = cab + partes[porta];
   if (porta === "reproducao") espaco();
@@ -4057,7 +4058,13 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.26.0";
+const VERSAO = "1.26.1";
+/* De onde vêm as versões novas: a versão da Google Play atualiza pela loja (e não pode mandar baixar APK de fora);
+   o APK de teste aponta para o GitHub; o site só avisa quais botões abrem o navegador. */
+function notaAtualizacao(nativo, loja) {
+  if (nativo && loja) return `<p class="note">${T("As versões novas chegam pela Google Play. O app não procura atualizações sozinho, porque não usa a internet.")}</p>`;
+  return nativo ? `<p class="note">${T("Enquanto o Orolon não está na Google Play, as versões novas ficam no GitHub. Baixe o APK e instale por cima deste: suas músicas, playlists e ajustes continuam. O app não procura atualizações sozinho, porque não usa a internet.")}</p><div class="btns"><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player/releases/tag/android-teste" target="_blank" rel="noopener">${T("Ver se há versão nova")}</a></div>` : `<p class="note">${T("Os dois botões de cima e o da política de privacidade abrem o navegador. O app em si não se conecta a nada.")}</p>`;
+}
 const linkPrivacidade = () => "https://kirarahoshi.github.io/compasso-player/privacidade.html" + (LANG === "en" ? "#en" : "#pt");
 let instalar = null;
 const instalado = () => NATIVO || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;

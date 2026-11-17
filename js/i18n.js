@@ -46,6 +46,7 @@ const EN = {
  "Procurar no aparelho": "Find on this device",
  "Procurar novas músicas no aparelho": "Look for new music on this device",
  "{0} do aparelho tocam direto do arquivo e não ocupam espaço extra.": "{0} from this device play straight from the file and take no extra space.",
+ "As versões novas chegam pela Google Play. O app não procura atualizações sozinho, porque não usa a internet.": "New versions arrive through Google Play. The app doesn't check for updates by itself, because it doesn't use the internet.",
  "Enquanto o Orolon não está na Google Play, as versões novas ficam no GitHub. Baixe o APK e instale por cima deste: suas músicas, playlists e ajustes continuam. O app não procura atualizações sozinho, porque não usa a internet.": "Until Orolon is on Google Play, new versions are on GitHub. Download the APK and install it over this one: your music, playlists and settings stay. The app doesn't check for updates by itself, because it doesn't use the internet.",
  "Ver se há versão nova": "Check for a new version",
  "Mostrar o volume": "Show volume",
