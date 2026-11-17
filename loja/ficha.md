@@ -35,7 +35,7 @@ O Orolon toca as músicas que já estão no seu aparelho e transforma o som em i
 Tudo funciona sem internet. Não tem conta, não tem anúncio e nada sai do seu celular.
 
 VISUAIS QUE REAGEM À MÚSICA
-• Dez mostradores: Relógio, Vinil, Aura, Espectro, Anel, Neon, Barras, LED, Cassete e Rádio
+• Oito mostradores: Relógio, Vinil, Aura, Espectro, Anel, Neon, Barras e LED
 • No Relógio, o ponteiro anda a cada batida
 • Cores tiradas da capa de cada música e luz de fundo no mesmo tom
 • Tela cheia com relógio, para deixar tocando na mesa
@@ -43,7 +43,7 @@ VISUAIS QUE REAGEM À MÚSICA
 
 SUA BIBLIOTECA
 • Acha sozinho as músicas do aparelho, ou você escolhe uma pasta
-• Lê título, artista, álbum e capa de MP3, FLAC, M4A, OGG, Opus e WAV
+• Toca MP3, FLAC, M4A, OGG, Opus e WAV, e lê título, artista, álbum e capa gravados no arquivo
 • Músicas, álbuns, artistas e pastas, com busca e várias ordens
 • Playlists, favoritas, notas de 1 a 5 estrelas e listas automáticas (mais tocadas, recentes)
 • Importa e exporta playlists .m3u
@@ -93,7 +93,7 @@ Orolon plays the music that is already on your device and turns sound into image
 Everything works without internet. No account, no ads, and nothing leaves your phone.
 
 VISUALS THAT REACT TO MUSIC
-• Ten displays: Clock, Vinyl, Aura, Spectrum, Ring, Neon, Bars, LED, Cassette and Radio
+• Eight displays: Clock, Vinyl, Aura, Spectrum, Ring, Neon, Bars and LED
 • On the Clock, the hand moves on every beat
 • Colors taken from each song's cover, with a matching background glow
 • Full screen with a clock, to leave playing on your desk
@@ -101,7 +101,7 @@ VISUALS THAT REACT TO MUSIC
 
 YOUR LIBRARY
 • Finds the music on your device by itself, or you pick a folder
-• Reads title, artist, album and cover from MP3, FLAC, M4A, OGG, Opus and WAV
+• Plays MP3, FLAC, M4A, OGG, Opus and WAV, and reads the title, artist, album and cover stored in the file
 • Songs, albums, artists and folders, with search and several sort orders
 • Playlists, favorites, 1 to 5 star ratings and automatic lists (most played, recent)
 • Imports and exports .m3u playlists
@@ -177,5 +177,7 @@ Orolon collects no data. Your music, playlists and settings stay on your device.
 ## Antes de enviar
 
 1. Testar no celular o APK de teste da 1.26.1 (sem a permissão de internet) e só então gerar o `.aab`: Actions › "App Android (loja)" › Run workflow, na `main`.
-2. Na primeira publicação, deixar ativado o Play App Signing (ver `ANDROID.md`).
-3. Conferir no Console a verificação de desenvolvedor (obrigatória no Brasil, **a confirmar** a data na própria conta).
+2. **Quem já tem o APK de teste instalado** (você e o Pombo): a versão da Play é assinada com outra chave e não instala por cima. Antes: Ajustes › Salvar backup (ou Enviar backup), desinstalar o APK de teste, instalar pela Play e restaurar o backup. Desinstalar sem backup apaga playlists, estatísticas e ajustes.
+3. Ler no registro do envio (passo "Permissões que ficaram no app") a lista final de permissões: não pode haver `INTERNET`; se aparecer `ACCESS_NETWORK_STATE`, avisar antes de publicar.
+4. Na primeira publicação, deixar ativado o Play App Signing (ver `ANDROID.md`).
+5. Conferir no Console a verificação de desenvolvedor (obrigatória no Brasil, **a confirmar** a data na própria conta).

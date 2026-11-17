@@ -52,6 +52,7 @@ export default [
     nome: "só o envio da loja marca o app como versão da Google Play",
     node: true,
     rodar: async () => {
+      assert.ok(ler("js/app.js").includes("notaAtualizacao(NATIVO, DA_LOJA)"), "a tela Sobre usa a marca da versão da loja");
       assert.match(montarWww({}), /^const DA_LOJA = false;/m);
       assert.match(montarWww({ OROLON_LOJA: "1" }), /^const DA_LOJA = true;/m);
       assert.match(ler(".github/workflows/android-loja.yml"), /OROLON_LOJA=1 npm run www/);
