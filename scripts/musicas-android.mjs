@@ -21,15 +21,18 @@ if (!pacote) { console.error("Pacote da MainActivity não encontrado"); process.
 const pasta = main.replace(/MainActivity\.java$/, "");
 writeFileSync(pasta + "MusicasPlugin.java", readFileSync("android-plugin/MusicasPlugin.java", "utf8").replace("package PACOTE;", `package ${pacote};`));
 
-// 2. MainActivity: registra o plugin antes de o Capacitor iniciar
+// 2. MainActivity: desenha de ponta a ponta em todo Android (a Google pede; no 13 e 14 as barras ficavam opacas)
+//    e registra o plugin antes de o Capacitor iniciar
 writeFileSync(main, `package ${pacote};
 
 import android.os.Bundle;
+import androidx.activity.EdgeToEdge;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        EdgeToEdge.enable(this);
         registerPlugin(MusicasPlugin.class);
         super.onCreate(savedInstanceState);
     }

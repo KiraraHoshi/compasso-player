@@ -415,7 +415,8 @@ main{contain:content}
 #v-tocando #np-t{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
 
 /* Barras do sistema: no Android (e no iPhone) o app desenha atrás da barra de status e da barra de navegação,
-   então o conteúdo ganha um respiro do tamanho delas. O Capacitor injeta --safe-area-inset-* quando a WebView não informa. */
+   então o conteúdo ganha um respiro do tamanho delas. No Android o Capacitor (modo "native") informa pelo env(); em WebView antigo ele mesmo afasta a tela e o env() vale 0.
+   As variáveis --safe-area-inset-* ficam só como reserva (e para os testes simularem um entalhe): o modo "css" somava o recuo duas vezes. */
 :root{--topo:max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px));--base:max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px));--esq:max(env(safe-area-inset-left,0px),var(--safe-area-inset-left,0px));--dir:max(env(safe-area-inset-right,0px),var(--safe-area-inset-right,0px))}
 .app{padding-top:var(--topo);padding-left:var(--esq);padding-right:var(--dir)}
 nav{padding-bottom:calc(8px + var(--base))}

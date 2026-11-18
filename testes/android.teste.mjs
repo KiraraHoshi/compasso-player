@@ -36,6 +36,17 @@ function montarWww(env) { // roda o preparo da pasta www numa cópia mínima do 
   } finally { rmSync(dir, { recursive: true, force: true }); }
 }
 const permissoes = (xml) => (xml.match(/<uses-permission[^>]*>/g) || []);
+function montarActivity() { // roda o preparo do plugin num projeto Android mínimo e devolve a MainActivity gerada
+  const dir = mkdtempSync(join(tmpdir(), "orolon-activity-")), pasta = join(dir, "android/app/src/main/java/com/joah/orolon");
+  try {
+    mkdirSync(pasta, { recursive: true });
+    writeFileSync(join(pasta, "MainActivity.java"), "package com.joah.orolon;\n\nimport com.getcapacitor.BridgeActivity;\n\npublic class MainActivity extends BridgeActivity {}\n");
+    writeFileSync(join(dir, "android/app/src/main/AndroidManifest.xml"), MODELO);
+    mkdirSync(join(dir, "android-plugin")); cpSync(join(RAIZ, "android-plugin/MusicasPlugin.java"), join(dir, "android-plugin/MusicasPlugin.java"));
+    execFileSync(process.execPath, [join(RAIZ, "scripts/musicas-android.mjs")], { cwd: dir, stdio: "pipe" });
+    return readFileSync(join(pasta, "MainActivity.java"), "utf8");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+}
 
 export default [
   {
@@ -58,6 +69,23 @@ export default [
       assert.match(ler(".github/workflows/android-loja.yml"), /OROLON_LOJA=1 npm run www/);
       assert.ok(!/OROLON_LOJA/.test(ler(".github/workflows/android.yml")), "o APK de teste não é versão da loja");
     },
+  },
+  {
+    nome: "o app desenha de ponta a ponta em todo Android (no 13 e 14 as barras ficavam opacas e o espaço delas era somado de novo)",
+    node: true,
+    rodar: async () => {
+      const j = montarActivity();
+      assert.match(j, /import androidx\.activity\.EdgeToEdge;/);
+      const e2e = j.indexOf("EdgeToEdge.enable(this);"), sup = j.indexOf("super.onCreate(");
+      assert.ok(e2e > 0, "chama EdgeToEdge.enable(this)");
+      assert.ok(e2e < sup, "antes de o Capacitor montar a tela");
+      assert.match(j, /registerPlugin\(MusicasPlugin\.class\);/, "o plugin continua registrado");
+    },
+  },
+  {
+    nome: "o Capacitor cuida das barras do sistema sem passar o recuo de novo para o CSS (em WebView antigo ele já afasta a tela)",
+    node: true,
+    rodar: async () => { assert.equal(JSON.parse(ler("capacitor.config.json")).plugins.SystemBars.insetsHandling, "native"); },
   },
   {
     nome: "o preparo do Android tira a permissão de internet e mantém as de tocar em segundo plano",

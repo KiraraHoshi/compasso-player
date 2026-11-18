@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.26.5
+- **Android: barras do sistema.** Em alguns celulares (Android 13 e 14 com o navegador do sistema mais antigo) o app deixava uma faixa vazia em cima e embaixo, do tamanho das barras do sistema. Agora o app ocupa a tela de ponta a ponta em todo Android, como a Google pede, sem espaço sobrando.
+
 ## 1.26.4
 - **Celular deitado:** em aparelhos com entalhe ou câmera na tela, a barra lateral ficava espremida e os nomes das abas saíam dela, entrando por baixo da barra da música. Agora cabem.
 

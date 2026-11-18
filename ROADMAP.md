@@ -67,6 +67,7 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - ✅ **1.26.1 Preparo da loja:** Android sem permissão de internet, aviso de atualização próprio da versão da Play, prints e textos da ficha.
 - **A refazer:** o Phonk ficou sem impacto perto das edits de Phonk e slowed; refazer com vídeos de referência.
 - ✅ **1.26.2 Consertos do PC:** fim da música de exemplo em segundo plano, Continuar ao vivo, botões de anterior e de voltar, Esc e atalhos de navegação.
+- ✅ **1.26.5 Ponta a ponta no Android:** sem faixas vazias nas barras do sistema (relato de testador num Galaxy S20 FE) e atende ao aviso da Play sobre exibição de ponta a ponta.
 - ✅ **1.26.4 Celular deitado:** barra lateral sem o recuo do entalhe em dobro.
 - ✅ **1.26.3 Aviso de fim da fila; cores da capa nos estilos da Aura (opção própria, desligada de fábrica).**
 - **Ideia:** no Relógio, o ponteiro reagir mais às batidas de bateria (caixa, pratos), não só ao bumbo. Medir no celular.
