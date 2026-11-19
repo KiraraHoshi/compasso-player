@@ -71,14 +71,14 @@ export default [
     },
   },
   {
-    nome: "o app desenha de ponta a ponta em todo Android (no 13 e 14 as barras ficavam opacas e o espaço delas era somado de novo)",
+    nome: "o app desenha de ponta a ponta em todo Android, e só liga isso depois de o Capacitor montar a tela (antes, a janela nascia com o tema da abertura e a imagem dela virava uma faixa no topo)",
     node: true,
     rodar: async () => {
       const j = montarActivity();
       assert.match(j, /import androidx\.activity\.EdgeToEdge;/);
       const e2e = j.indexOf("EdgeToEdge.enable(this);"), sup = j.indexOf("super.onCreate(");
       assert.ok(e2e > 0, "chama EdgeToEdge.enable(this)");
-      assert.ok(e2e < sup, "antes de o Capacitor montar a tela");
+      assert.ok(e2e > sup, "depois de o Capacitor trocar o tema da abertura e montar a tela");
       assert.match(j, /registerPlugin\(MusicasPlugin\.class\);/, "o plugin continua registrado");
     },
   },

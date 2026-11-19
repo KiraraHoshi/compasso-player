@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.26.6
+- **Android: faixa no topo.** A versão 1.26.5 deixou, em alguns celulares, uma faixa com uma imagem espremida no alto de todas as telas. Corrigido.
+
 ## 1.26.5
 - **Android: barras do sistema.** Em alguns celulares (Android 13 e 14 com o navegador do sistema mais antigo) o app deixava uma faixa vazia em cima e embaixo, do tamanho das barras do sistema. Agora o app ocupa a tela de ponta a ponta em todo Android, como a Google pede, sem espaço sobrando.
 

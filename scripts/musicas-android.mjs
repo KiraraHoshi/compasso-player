@@ -32,9 +32,10 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        EdgeToEdge.enable(this);
         registerPlugin(MusicasPlugin.class);
         super.onCreate(savedInstanceState);
+        // Só depois do super: ligar antes cria a janela ainda com o tema da abertura, e a imagem dela vira uma faixa no topo.
+        EdgeToEdge.enable(this);
     }
 }
 `);
