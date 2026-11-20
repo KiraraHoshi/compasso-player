@@ -2114,7 +2114,7 @@ $("tm").addEventListener("click", (e) => {
     if (k === "corCapa" || k === "auraCorCapa" || k === "capaApp") atualizarCorViz();
     renderTemas(); return;
   }
-  if (t.closest("[data-alternar-leve]")) return definirLeve(!cfg.leve);
+  if (t.closest("[data-alternar-leve]")) { if (cfg.leve) cfg.leveAuto = "nao"; return definirLeve(!cfg.leve); } // desligou à mão: não liga mais sozinho
   if (t.closest("[data-alternar-fluido]")) { cfg.fluido = !cfg.fluido; salvarCfg(); return renderTemas(); }
   if (t.closest("[data-instalar]")) return pedirInstalacao();
   if (t.closest("[data-boasvindas]")) return boasVindas();
@@ -4425,6 +4425,21 @@ addEventListener("drop", async (e) => {
 /* ===================== Início ===================== */
 traduzirPagina(document.body);
 APP.dataset.leve = cfg.leve ? "1" : "";
+/* 1.26.8: o visual novo (vidro, clarões, desfoque) pesa mais. Mede ~2 s da abertura; se mais de 25% dos quadros passarem de 50 ms,
+   liga o modo leve sozinho, grava e avisa uma vez (mesmo critério do Orolon Caixinhas 2.0). Os 30 quadros por segundo da economia de bateria
+   (33 ms) não contam. Se a pessoa desligar à mão, nunca mais liga sozinho. A medição para depois de 2 s: não é um laço de animação. */
+const avaliarAbertura = (tempos) => tempos.length >= 20 && tempos.filter((d) => d > 50).length / tempos.length > 0.25;
+function decidirLeve(tempos) {
+  if (cfg.leve || cfg.leveAuto === "nao" || !avaliarAbertura(tempos)) return false;
+  cfg.leveAuto = true; definirLeve(true);
+  toast(T("O aparelho parece lento: o modo leve foi ligado. Dá para desligar em Ajustes › Aparência."));
+  return true;
+}
+if (!cfg.leve && cfg.leveAuto !== "nao") {
+  const tempos = []; let ant = 0; const fim = performance.now() + 2000;
+  const medir = (ts) => { if (document.visibilityState !== "visible") return; if (ant) tempos.push(ts - ant); ant = ts; if (ts < fim) requestAnimationFrame(medir); else decidirLeve(tempos); };
+  requestAnimationFrame(medir);
+}
 aplicarVolume(true); aplicarVolRec(); aplicarVel();
 aplicarTema(); aplicarFundo(); aplicarVisual(); renderLetra();
 ir(location.hash.slice(1) || "inicio");

@@ -67,6 +67,8 @@ async function novaPagina(cr, base, t) {
   await s("Emulation.setDeviceMetricsOverride", { width: largura, height: altura, deviceScaleFactor: 1, mobile: largura < 900 });
   // por padrão as boas-vindas já foram vistas (senão a folha abre sozinha e atrapalha o teste); um teste pode mudar isso
   const antes = { "compasso.boasvindas": true, ...(t.antes || {}) };
+  // 1.26.8: a medição da abertura liga o modo leve sozinha em aparelho lento; o computador dos testes (sobretudo no GitHub) pode parecer lento, então ela fica desligada (os testes dela chamam decidirLeve direto)
+  antes["compasso.cfg"] = { leveAuto: "nao", ...(typeof antes["compasso.cfg"] === "string" ? JSON.parse(antes["compasso.cfg"]) : antes["compasso.cfg"] || {}) };
   {
     const dados = Object.fromEntries(Object.entries(antes).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]));
     await s("Page.addScriptToEvaluateOnNewDocument", { source: `if (!sessionStorage.getItem("__semeado")) { const d = ${JSON.stringify(dados)}; for (const k in d) localStorage.setItem(k, d[k]); sessionStorage.setItem("__semeado", "1"); }` });

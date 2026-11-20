@@ -50,6 +50,35 @@ export default [
     },
   },
   {
+    nome: "abertura lenta: conta só os quadros acima de 50 ms (30 por segundo da economia de bateria não conta)",
+    rodar: async (p) => {
+      const r = await p.avaliar(() => [avaliarAbertura(Array(40).fill(16)), avaliarAbertura(Array(40).fill(33)), avaliarAbertura([...Array(30).fill(16), ...Array(12).fill(80)]), avaliarAbertura([])]);
+      assert.deepEqual(r, [false, false, true, false]);
+    },
+  },
+  {
+    nome: "aparelho lento liga o visual leve sozinho uma vez, avisa, e não religa se a pessoa desligar",
+    antes: { "compasso.cfg": { leveAuto: null } }, // o rodador desliga a medição por padrão
+    rodar: async (p) => {
+      const lento = [...Array(20).fill(16), ...Array(20).fill(90)];
+      assert.equal(await p.avaliar((t) => decidirLeve(t), lento), true);
+      assert.deepEqual(await p.avaliar(() => [cfg.leve, cfg.leveAuto, APP.dataset.leve, document.getElementById("toast").textContent.length > 0]), [true, true, "1", true]);
+      await p.avaliar(() => { ir("temas"); abrirPorta("aparencia"); });
+      await p.clicar("[data-alternar-leve]");
+      assert.deepEqual(await p.avaliar(() => [cfg.leve, cfg.leveAuto]), [false, "nao"]);
+      assert.equal(await p.avaliar((t) => decidirLeve(t), lento), false);
+      assert.equal(await p.avaliar(() => cfg.leve), false);
+    },
+  },
+  {
+    nome: "aparelho rápido não liga o visual leve",
+    antes: { "compasso.cfg": { leveAuto: null } }, // o rodador desliga a medição por padrão
+    rodar: async (p) => {
+      assert.equal(await p.avaliar(() => decidirLeve(Array(60).fill(16))), false);
+      assert.equal(await p.avaliar(() => !!cfg.leve), false);
+    },
+  },
+  {
     nome: "nada rola para o lado e a barra não cobre o fim da lista (celular, deitado e PC)",
     rodar: async (p) => {
       for (const [w, h] of [[320, 640], [360, 780], [412, 915], [800, 400], [1280, 800]]) {

@@ -315,6 +315,7 @@ const EN = {
  "Escolha até 3 atalhos para o Início. As outras ferramentas continuam no Mais.": "Choose up to 3 shortcuts for Home. The other tools stay under More.",
  "Escolha até 3 atalhos. Desmarque um antes.": "Choose up to 3 shortcuts. Unselect one first.",
  "Cores da capa no app inteiro": "Cover colors across the whole app",
+ "O aparelho parece lento: o modo leve foi ligado. Dá para desligar em Ajustes › Aparência.": "This device seems slow, so light mode was turned on. You can turn it off in Settings › Appearance.",
  "Brasa": "Ember",
  "Bronze": "Bronze",
  "Buscar música, artista ou álbum": "Search songs, artists or albums",
