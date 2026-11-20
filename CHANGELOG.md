@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.26.9
+- A fonte do texto (Figtree, a mesma do Orolon Caixinhas) agora vem dentro do app: o texto aparece igual em todo celular, mesmo sem internet. Antes, no Android, saía a fonte do próprio celular.
+
 ## 1.26.8
 O visual novo do Orolon, o mesmo do Orolon Caixinhas 2.0.
 - **Visual Noite Orologia:** cartões de vidro, um clarão de luz parado no alto da tela na cor do tema e a barra de abas flutuante. No celular, Ajustes saiu da barra e virou a engrenagem no topo das telas; no computador e com o celular deitado continua na barra lateral.

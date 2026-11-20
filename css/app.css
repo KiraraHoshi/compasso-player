@@ -2,6 +2,8 @@
    Todas as cores vêm do tema ativo (js/app.js grava as variáveis abaixo no :root). */
 /* Cinzel (títulos do tema Orologia, a mesma do Caixinhas) vem dentro do app: sem internet e igual em todo aparelho. Licença: css/fontes/OFL.txt */
 @font-face{font-family:"Cinzel";src:url("fontes/cinzel.woff2") format("woff2");font-weight:400 900;font-style:normal;font-display:swap}
+/* Figtree (texto do tema Orologia, a mesma do Caixinhas). Licença: css/fontes/OFL-figtree.txt */
+@font-face{font-family:"Figtree";src:url("fontes/figtree.woff2") format("woff2");font-weight:300 900;font-style:normal;font-display:swap}
 :root{
   --bg:#F1EFF6; --card:#FFFFFF; --text:#1D1830; --muted:#6B6580;
   --accent:#6A4BD8; --accent2:#A8743A; --on-accent:#FFFFFF;

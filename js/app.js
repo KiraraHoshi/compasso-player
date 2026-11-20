@@ -4408,7 +4408,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.26.8";
+const VERSAO = "1.26.9";
 /* De onde vêm as versões novas: a versão da Google Play atualiza pela loja (e não pode mandar baixar APK de fora);
    o APK de teste aponta para o GitHub; o site só avisa quais botões abrem o navegador. */
 function notaAtualizacao(nativo, loja) {

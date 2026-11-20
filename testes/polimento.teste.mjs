@@ -53,4 +53,23 @@ export default [
       assert.equal(ok, true);
     },
   },
+  {
+    nome: "fonte Figtree (texto) vem dentro do app, com licença e no cache do site",
+    node: true,
+    rodar: async () => {
+      const css = readFileSync(new URL("css/app.css", raiz), "utf8"), sw = readFileSync(new URL("sw.js", raiz), "utf8");
+      const m = css.match(/@font-face\s*\{[^}]*font-family:\s*"Figtree"[^}]*url\(["']?([^"')]+)["']?\)/);
+      assert.ok(m, "sem @font-face da Figtree no css/app.css");
+      assert.equal(readFileSync(new URL("css/" + m[1], raiz)).subarray(0, 4).toString(), "wOF2");
+      assert.ok(sw.includes('"css/' + m[1] + '"'), "a Figtree não está na lista do sw.js");
+      assert.ok(existsSync(new URL("css/fontes/OFL-figtree.txt", raiz)), "falta a licença da Figtree");
+    },
+  },
+  {
+    nome: "texto comum usa a Figtree de verdade (carregada do app)",
+    rodar: async (p) => {
+      const ok = await p.avaliar(async () => { await document.fonts.load('600 15px "Figtree"'); return [...document.fonts].some((f) => f.family.replace(/"/g, "") === "Figtree" && f.status === "loaded"); });
+      assert.equal(ok, true);
+    },
+  },
 ];
