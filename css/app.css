@@ -107,6 +107,10 @@ select.mini-sel{background:transparent;border:1px solid var(--line);border-radiu
 .app[data-view="tocando"][data-estilo="lofi"]:not([data-leve="1"],[data-semfx="1"]) .fx-aura{display:block;inset:-100px;will-change:transform;background-image:var(--grao);background-size:192px;image-rendering:pixelated}
 .app[data-view="tocando"][data-estilo="oitenta"]:not([data-leve="1"],[data-semfx="1"]) .fx-aura{display:block;opacity:.55;background-image:repeating-linear-gradient(0deg,rgba(0,0,0,.34) 0 1px,transparent 1px 3px)}
 .app[data-leve="1"] .disc::before{display:none}
+/* Phonk (1.26.8): o mostrador inteiro leva um tranco no bumbo (--zk) e as bordas da tela escurecem junto (a opacidade da camada pulsa).
+   Escala e opacidade não repintam nada. A vinheta é mais forte embaixo e nos cantos, longe do texto do meio. */
+.app[data-view="tocando"][data-estilo="phonk"]:not([data-leve="1"]) .dial{transform:scale(calc(1 + var(--zk,0)*.065));will-change:transform}
+.app[data-view="tocando"][data-estilo="phonk"]:not([data-leve="1"],[data-semfx="1"]) .fx-aura{display:block;opacity:.5;will-change:opacity;background:radial-gradient(ellipse 85% 70% at 50% 40%,transparent 55%,rgba(14,0,4,.32) 80%,rgba(6,0,2,.55) 100%)}
 .meta{text-align:center;width:100%;display:flex;flex-direction:column;gap:2px}
 .meta h1{font-size:24px}
 .seek{width:100%}
@@ -288,7 +292,7 @@ textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
 .hora{display:none;font-family:var(--display);font-weight:700;font-size:clamp(40px,9vw,84px);font-variant-numeric:tabular-nums;line-height:1}
 .gira,.selo{position:absolute;inset:0;display:grid;place-items:center;border-radius:50%}
 #viz,.cena{position:absolute;inset:0;width:100%;height:100%;display:none}
-.app[data-visual="barras"] #viz,.app[data-visual="led"] #viz,.app[data-visual="onda"] #viz,.app[data-visual="aura"] #viz,.app[data-visual="espectro"] #viz,.app[data-visual="anel"] #viz,.app[data-visual="neon"] #viz{display:block}
+.app:is([data-visual="barras"],[data-visual="led"],[data-visual="aura"],[data-visual="espectro"],[data-visual="anel"],[data-visual="neon"],[data-visual="galaxia"],[data-visual="tunel"],[data-visual="osc"]) #viz{display:block}
 .app[data-visual="espectro"] #ticks,.app[data-visual="aura"] #ticks,.app[data-visual="anel"] #ticks,.app[data-visual="neon"] :is(#ticks,.disc){display:none}
 #viz{pointer-events:none}
 .app[data-capa="quadrada"] .disc{inset:18%;border-radius:24%}
@@ -301,9 +305,13 @@ textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
 .app:not([data-visual="relogio"]) :is(#picos,#ponteiros){display:none}
 .app[data-leve="1"] :is(#picos,#p-bate),.dial:not([data-bate="1"]) #p-bate{display:none}
 .app[data-capa="quadrada"] :is(.gira,.selo){border-radius:inherit}
-.app:is([data-visual="aura"],[data-visual="espectro"],[data-visual="anel"]) #viz{inset:-25%;width:150%;height:150%}
+.app:is([data-visual="aura"],[data-visual="espectro"],[data-visual="anel"],[data-visual="galaxia"],[data-visual="tunel"]) #viz{inset:-25%;width:150%;height:150%}
+/* Visuais novos (1.26.8): na Galáxia a capa é o miolo; no Túnel ela fica pequena, no fim do túnel; o Osciloscópio usa o aro
+   de tracinhos do relógio como moldura da tela (sem capa) */
+.app:is([data-visual="galaxia"],[data-visual="tunel"]) #ticks,.app[data-visual="osc"] .disc{display:none}
+.app[data-visual="tunel"] .disc{inset:35%;font-size:26px}
 .app[data-visual="cassete"] .cena,.app[data-visual="radio"] .cena{display:block}
-.app:is([data-visual="barras"],[data-visual="onda"],[data-visual="cassete"],[data-visual="radio"],[data-visual="led"]) :is(#ticks,.disc){display:none}
+.app:is([data-visual="barras"],[data-visual="cassete"],[data-visual="radio"],[data-visual="led"]) :is(#ticks,.disc){display:none}
 .app[data-visual="vinil"] .gira{background:repeating-radial-gradient(circle,#0d0d0f 0 2px,#1d1d21 2px 3px);animation:gira 1.8s linear infinite;animation-play-state:paused}
 .app[data-visual="vinil"] .selo{inset:31%;font-size:28px;box-shadow:0 0 0 3px rgba(0,0,0,.55)}
 .app[data-visual="vinil"] .selo::after{content:"";position:absolute;width:10%;aspect-ratio:1;border-radius:50%;background:#0d0d0f}

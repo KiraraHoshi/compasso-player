@@ -46,7 +46,8 @@ export default [
         soma += await p.avaliar((s) => document.querySelectorAll(s).length, CONTROLES);
         await p.voltar();
       }
-      assert.equal(soma, TOTAL_1173);
+      const novosVisuais = (await p.avaliar(() => Object.keys(VISUAIS).length)) - 8; // 1.26.8: cada visual novo é mais um botão em Aparência
+      assert.equal(soma, TOTAL_1173 + novosVisuais);
     },
   },
   {
