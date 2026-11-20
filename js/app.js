@@ -226,15 +226,22 @@ async function paletaDaCapa(x, t) {
 let corViz2 = null;
 /* 1.26.8: a cor da capa vale em três níveis. Desligada: tudo no tema. "Cores do visual seguem a capa" (cfg.corCapa): o mostrador e os botões
    do Tocando agora. "Cores da capa no app inteiro" (cfg.capaApp): o destaque e o brilho de todas as telas. Fundo e texto continuam do tema. */
+/* A cor da capa vira destaque de botão e de texto: precisa de contraste 3:1 com o fundo e os cartões do tema
+   (no tema claro, uma capa amarela daria ~1:1). Escurece (tema claro) ou clareia (escuro) em passos até chegar lá. */
+function legivel(cor, t) {
+  const e = escuro(t); let hsl = rgbHsl(paraRgb(cor)), c = cor;
+  for (let i = 0; i < 20 && (contraste(c, t.fundo) < 3 || contraste(c, t.card) < 3); i++) { hsl = [hsl[0], hsl[1], Math.max(0, Math.min(1, hsl[2] + (e ? 0.04 : -0.04)))]; c = hex(hslRgb(...hsl)); }
+  return c;
+}
 async function atualizarCorViz(t, suave = false) {
-  t = t || temaAtual();
+  if (!t) { let ed = null; try { ed = editando; } catch (e) { /* ainda carregando */ } t = ed ? ed.rascunho : temaAtual(); } // com o editor aberto, a prévia é a do rascunho
   const app = !!cfg.capaApp;
   let x = null; try { x = segueCapa() || app ? cur() : null; } catch (e) { /* ainda carregando */ }
   corViz = t.destaque; corViz2 = null;
   let capa = null;
   if (x) {
     const p = await paletaDaCapa(x, t); if (cur() !== x) return;
-    capa = p.neutro ? NEUTRO(t) : [ajustarL(p.h1, t), ajustarL(p.h2, t, 0.4)];
+    capa = (p.neutro ? NEUTRO(t) : [ajustarL(p.h1, t), ajustarL(p.h2, t, 0.4)]).map((c) => legivel(c, t));
     if (segueCapa()) [corViz, corViz2] = capa;
   }
   document.documentElement.style.setProperty("--viz", corViz);
@@ -252,7 +259,7 @@ function pintarCoresCapa(t, capa, suave) {
   if (chave === coresCapaPintadas) return; // variável de estilo só muda quando o valor muda
   coresCapaPintadas = chave;
   const r = document.documentElement;
-  if (suave && !calmo) { r.dataset.capatroca = "1"; clearTimeout(pintarCoresCapa.tm); pintarCoresCapa.tm = setTimeout(() => { r.dataset.capatroca = ""; }, 800); }
+  if (suave && !calmo && !cfg.leve) { r.dataset.capatroca = "1"; clearTimeout(pintarCoresCapa.tm); pintarCoresCapa.tm = setTimeout(() => { r.dataset.capatroca = ""; }, 800); }
   for (const [k, v] of valores) r.style.setProperty(k, v);
 }
 function aplicar(t) {
@@ -4619,16 +4626,26 @@ APP.dataset.leve = cfg.leve ? "1" : "";
    liga o modo leve sozinho, grava e avisa uma vez (mesmo critério do Orolon Caixinhas 2.0). Os 30 quadros por segundo da economia de bateria
    (33 ms) não contam. Se a pessoa desligar à mão, nunca mais liga sozinho. A medição para depois de 2 s: não é um laço de animação. */
 const avaliarAbertura = (tempos) => tempos.length >= 20 && tempos.filter((d) => d > 50).length / tempos.length > 0.25;
+const aberturaRapida = (tempos) => tempos.length >= 20 && tempos.filter((d) => d > 50).length / tempos.length < 0.05; // folga: um aparelho no limite não fica liga-desliga
 function decidirLeve(tempos) {
-  if (cfg.leve || cfg.leveAuto === "nao" || !avaliarAbertura(tempos)) return false;
+  if (cfg.leveAuto === "nao") return false;
+  if (cfg.leve) { // ligado sozinho antes: o Android copia os ajustes para o celular novo, então mede de novo e desliga se este aparelho for rápido
+    if (cfg.leveAuto !== true || !aberturaRapida(tempos)) return false;
+    delete cfg.leveAuto; definirLeve(false); return true;
+  }
+  if (!avaliarAbertura(tempos)) return false;
   cfg.leveAuto = true; definirLeve(true);
   toast(T("O aparelho parece lento: o modo leve foi ligado. Dá para desligar em Ajustes › Aparência."));
   return true;
 }
-if (!cfg.leve && cfg.leveAuto !== "nao") {
-  const tempos = []; let ant = 0; const fim = performance.now() + 2000;
-  const medir = (ts) => { if (document.visibilityState !== "visible") return; if (ant) tempos.push(ts - ant); ant = ts; if (ts < fim) requestAnimationFrame(medir); else decidirLeve(tempos); };
-  requestAnimationFrame(medir);
+/* Começa só depois de a biblioteca carregar (mais meio segundo): o começo da abertura é pesado em qualquer aparelho */
+function medirAbertura() {
+  if (cfg.leveAuto === "nao" || (cfg.leve && cfg.leveAuto !== true)) return;
+  setTimeout(() => {
+    const tempos = []; let ant = 0; const fim = performance.now() + 2000;
+    const medir = (ts) => { if (document.visibilityState !== "visible") return; if (ant) tempos.push(ts - ant); ant = ts; if (ts < fim) requestAnimationFrame(medir); else decidirLeve(tempos); };
+    requestAnimationFrame(medir);
+  }, 500);
 }
 aplicarVolume(true); aplicarVolRec(); aplicarVel();
 aplicarTema(); aplicarFundo(); aplicarVisual(); renderLetra();
@@ -4650,6 +4667,7 @@ requestAnimationFrame(quadro);
   guardado.set("compasso.semente", true);
   restaurarSessao();
   carregado = true;
+  medirAbertura(); // 1.26.8: o modo leve automático mede só depois da carga
   renderBib(); renderPl(); renderTemas(); paint();
   if (cfg.tagsVer !== 2) setTimeout(relerLetras, 1500);
   if (cfg.capasVer !== 1) setTimeout(acertarCapas, 2500);

@@ -46,6 +46,25 @@ export default [
     },
   },
   {
+    nome: "tema claro com capa amarela no app inteiro: o destaque continua legível sobre o fundo e os cartões",
+    rodar: async (p) => {
+      await p.avaliar(() => { cfg.tema = "claro"; aplicarTema(); });
+      await p.avaliar(preparar, { h1: [60 / 360, 1, 0.5], h2: [180 / 360, 1, 0.5] }, true, true);
+      const r = await p.avaliar(() => { const s = getComputedStyle(document.documentElement), h = (k) => hex(paraRgb(s.getPropertyValue(k).trim())); return [contraste(h("--accent"), h("--bg")), contraste(h("--accent"), h("--card")), contraste(h("--cap-accent"), h("--bg"))]; });
+      for (const c of r) assert.ok(c >= 3, "contraste " + r.map((x) => x.toFixed(2)).join(" / "));
+    },
+  },
+  {
+    nome: "trocar de música com o editor aberto não estraga a prévia do rascunho",
+    rodar: async (p) => {
+      await p.avaliar(() => { ir("temas"); abrirPorta("aparencia"); });
+      await p.clicar("[data-criar]");
+      await p.avaliar(() => { const i = document.getElementById("e-destaque"); i.value = "#ff0000"; i.dispatchEvent(new Event("input", { bubbles: true })); });
+      await p.avaliar(() => { aoTrocar(cur()); return new Promise((r) => setTimeout(r, 750)); });
+      assert.equal(await p.avaliar(() => hex(paraRgb(getComputedStyle(document.documentElement).getPropertyValue("--accent").trim())).toUpperCase()), "#FF0000");
+    },
+  },
+  {
     nome: "editor de tema mostra as cores do próprio tema mesmo com a capa no app inteiro",
     rodar: async (p) => {
       await p.avaliar(preparar, LARANJA, true, true);

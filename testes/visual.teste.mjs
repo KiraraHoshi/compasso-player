@@ -71,6 +71,31 @@ export default [
     },
   },
   {
+    nome: "modo leve ligado sozinho é medido de novo: em aparelho rápido (celular novo restaurado) ele desliga",
+    antes: { "compasso.cfg": { leve: true, leveAuto: true } },
+    rodar: async (p) => {
+      assert.equal(await p.avaliar(() => decidirLeve(Array(60).fill(16))), true, "devia mudar algo");
+      assert.deepEqual(await p.avaliar(() => [cfg.leve, "leveAuto" in cfg, APP.dataset.leve]), [false, false, ""]);
+    },
+  },
+  {
+    nome: "modo leve ligado à mão nunca é desligado pela medição",
+    antes: { "compasso.cfg": { leve: true, leveAuto: null } }, // sem a marca "nao" que o rodador põe
+    rodar: async (p) => {
+      assert.equal(await p.avaliar(() => decidirLeve(Array(60).fill(16))), false);
+      assert.equal(await p.avaliar(() => cfg.leve), true);
+    },
+  },
+  {
+    nome: "a medição da abertura só começa depois de a biblioteca carregar",
+    node: true,
+    rodar: async () => {
+      const src = (await import("node:fs")).readFileSync(new URL("../js/app.js", import.meta.url), "utf8");
+      const i = src.indexOf("const medir = "), j = src.lastIndexOf("carregado = true", src.length);
+      assert.ok(i > 0 && /function medirAbertura\(/.test(src) && /carregado = true;[^\n]*\r?\n?[^\n]*medirAbertura\(\)|medirAbertura\(\)/.test(src.slice(j)), "medirAbertura() devia ser chamada depois de carregado = true");
+    },
+  },
+  {
     nome: "aparelho rápido não liga o visual leve",
     antes: { "compasso.cfg": { leveAuto: null } }, // o rodador desliga a medição por padrão
     rodar: async (p) => {
