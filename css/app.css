@@ -568,3 +568,13 @@ nav button[data-v="temas"]{display:none}
 #ini-ferr .ini-f{padding:10px 2px;gap:5px}
 #ini-ferr .ini-f span{white-space:normal;text-align:center;font-size:11.5px;line-height:1.15;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow-wrap:anywhere}
 @media (max-width:359px){#ini-ferr{gap:6px}#ini-ferr .ini-f{padding:10px 0}#ini-ferr .ini-f span{font-size:10px;letter-spacing:-.02em}}
+/* 1.26.8: cores da capa. No Tocando agora os botões usam --cap-* (a cor da capa com a opção ligada, senão a do tema);
+   com "no app inteiro" o próprio --accent muda. A troca de música passa a cor suavemente (só onde o navegador sabe animar variáveis). */
+:root{--cap-accent:#9C9BF5;--cap-accent2:#E3C98A;--cap-on:#14111F;--brilho:#5B4FA0}
+#v-tocando{--accent:var(--cap-accent);--accent2:var(--cap-accent2);--on-accent:var(--cap-on)}
+@property --accent{syntax:"<color>";inherits:true;initial-value:#9C9BF5}
+@property --accent2{syntax:"<color>";inherits:true;initial-value:#E3C98A}
+@property --brilho{syntax:"<color>";inherits:true;initial-value:#5B4FA0}
+@property --cap-accent{syntax:"<color>";inherits:true;initial-value:#9C9BF5}
+@property --cap-accent2{syntax:"<color>";inherits:true;initial-value:#E3C98A}
+:root[data-capatroca="1"]{transition:--accent .6s ease,--accent2 .6s ease,--brilho .6s ease,--cap-accent .6s ease,--cap-accent2 .6s ease}

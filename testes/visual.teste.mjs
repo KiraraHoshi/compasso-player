@@ -33,7 +33,8 @@ export default [
     nome: "brilho do tema vai para --brilho",
     rodar: async (p) => {
       await p.avaliar(() => { cfg.tema = "g-ametista"; aplicarTema(); });
-      assert.equal(await p.avaliar(() => getComputedStyle(document.documentElement).getPropertyValue("--brilho").trim().toUpperCase()), "#7E3496");
+      await new Promise((r) => setTimeout(r, 750)); // a cor pode estar passando suavemente desde a abertura
+      assert.equal(await p.avaliar(() => hex(paraRgb(getComputedStyle(document.documentElement).getPropertyValue("--brilho").trim())).toUpperCase()), "#7E3496");
     },
   },
   {

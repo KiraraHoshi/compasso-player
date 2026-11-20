@@ -224,18 +224,39 @@ async function paletaDaCapa(x, t) {
   x._paleta = res; return res;
 }
 let corViz2 = null;
-async function atualizarCorViz(t) {
+/* 1.26.8: a cor da capa vale em três níveis. Desligada: tudo no tema. "Cores do visual seguem a capa" (cfg.corCapa): o mostrador e os botões
+   do Tocando agora. "Cores da capa no app inteiro" (cfg.capaApp): o destaque e o brilho de todas as telas. Fundo e texto continuam do tema. */
+async function atualizarCorViz(t, suave = false) {
   t = t || temaAtual();
-  let x = null; try { x = segueCapa() ? cur() : null; } catch (e) { /* ainda carregando */ }
+  const app = !!cfg.capaApp;
+  let x = null; try { x = segueCapa() || app ? cur() : null; } catch (e) { /* ainda carregando */ }
   corViz = t.destaque; corViz2 = null;
+  let capa = null;
   if (x) {
-    const p = await paletaDaCapa(x, t); if (cur() !== x || !segueCapa()) return;
-    if (p.neutro) [corViz, corViz2] = NEUTRO(t); else { corViz = ajustarL(p.h1, t); corViz2 = ajustarL(p.h2, t, 0.4); }
+    const p = await paletaDaCapa(x, t); if (cur() !== x) return;
+    capa = p.neutro ? NEUTRO(t) : [ajustarL(p.h1, t), ajustarL(p.h2, t, 0.4)];
+    if (segueCapa()) [corViz, corViz2] = capa;
   }
   document.documentElement.style.setProperty("--viz", corViz);
+  pintarCoresCapa(t, capa, suave);
+}
+const tintaSobre = (c) => (contraste("#FFFFFF", c) >= contraste("#14111F", c) ? "#FFFFFF" : "#14111F");
+let coresCapaPintadas = "";
+function pintarCoresCapa(t, capa, suave) {
+  let editandoTema = false; try { editandoTema = !!editando; } catch (e) { /* ainda carregando */ }
+  const noTocando = capa && cfg.corCapa, noApp = capa && cfg.capaApp && !editandoTema;
+  const c1 = noTocando || noApp ? capa[0] : t.destaque, c2 = noTocando || noApp ? capa[1] || capa[0] : t.secundaria;
+  const a1 = noApp ? capa[0] : t.destaque, a2 = noApp ? capa[1] || capa[0] : t.secundaria;
+  const valores = [["--cap-accent", c1], ["--cap-accent2", c2], ["--cap-on", tintaSobre(c1)], ["--accent", a1], ["--accent2", a2], ["--on-accent", tintaSobre(a1)], ["--brilho", noApp ? misturar(a1, t.fundo, 0.35) : brilhoDe(t)]];
+  const chave = valores.map((v) => v[1]).join();
+  if (chave === coresCapaPintadas) return; // variável de estilo só muda quando o valor muda
+  coresCapaPintadas = chave;
+  const r = document.documentElement;
+  if (suave && !calmo) { r.dataset.capatroca = "1"; clearTimeout(pintarCoresCapa.tm); pintarCoresCapa.tm = setTimeout(() => { r.dataset.capatroca = ""; }, 800); }
+  for (const [k, v] of valores) r.style.setProperty(k, v);
 }
 function aplicar(t) {
-  atualizarCorViz(t);
+  coresCapaPintadas = "";
   const r = document.documentElement.style, e = escuro(t), f = FONTES[t.fonte] || FONTES.padrao;
   const set = (k, v) => r.setProperty(k, v);
   set("--bg", t.fundo); set("--card", t.card); set("--text", t.texto); set("--muted", t.suave);
@@ -245,6 +266,7 @@ function aplicar(t) {
   set("--hover", e ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.045)");
   set("--ok", e ? "#5FD39A" : "#2E7D4F"); set("--warn", e ? "#F0B85A" : "#9A6212");
   set("--display", f.d); set("--body", f.b); set("color-scheme", e ? "dark" : "light");
+  atualizarCorViz(t); // depois das cores do tema: com a capa no app inteiro, ela passa por cima
   aplicarEfeitos();
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t.fundo;
   corJanela = t.fundo;
@@ -865,7 +887,7 @@ function posAtual() {
   if (!x.demo) return el && el.dataset.id === x.id ? el.currentTime : pos;
   return playing && ctx ? posBase + (ctx.currentTime - inicioT) : pos;
 }
-function aoTrocar(x) { escuta.zerar(); acordarViz(); try { recolherAura(performance.now(), dirTroca); } catch (e) { /* só enfeite */ } dirTroca = 1; if (trecho && (!x || trecho.id !== x.id)) limparTrecho(); renderInicio(); luz(coresDe(x)); atualizarCorViz(); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
+function aoTrocar(x) { escuta.zerar(); acordarViz(); try { recolherAura(performance.now(), dirTroca); } catch (e) { /* só enfeite */ } dirTroca = 1; if (trecho && (!x || trecho.id !== x.id)) limparTrecho(); renderInicio(); luz(coresDe(x)); atualizarCorViz(undefined, true); if (cfg.visual === "led") prepararLed(x); metaSessao(x); paint(); marcarAtual(); renderFilaAberta(); salvarSessao(); renderLetra(); pintarCena(); }
 function carregar(auto) {
   const x = cur();
   if (!x) { dirTroca = 1; playing = false; paint(); return; }
@@ -1929,7 +1951,8 @@ function cardTema(t) {
 const chaveCorCapa = () => { try { return estiloAura().cores ? "auraCorCapa" : "corCapa"; } catch (e) { return "corCapa"; } }; // no arranque a tabela de estilos ainda não existe
 const segueCapa = () => !!cfg[chaveCorCapa()];
 const coresDoEstilo = (E) => (E.cores && !cfg.auraCorCapa ? E.cores : null);
-const tgCorCapa = (pre) => { const k = chaveCorCapa(); return `<div class="opt"><span id="${pre}corCapa">${T("Cores do visual seguem a capa da música")}</span><button class="tg" data-tg="${k}" role="switch" aria-checked="${!!cfg[k]}" aria-labelledby="${pre}corCapa"></button></div>${k === "auraCorCapa" ? `<p class="note" data-nota-cor>${T("Desligada, a Aura usa as cores do estilo. Ligada, usa as cores da capa.")}</p>` : ""}`; };
+const tgCorCapa = (pre) => tgCorCapaVisual(pre) + `<div class="opt"><span id="${pre}capaApp">${T("Cores da capa no app inteiro")}</span><button class="tg" data-tg="capaApp" role="switch" aria-checked="${!!cfg.capaApp}" aria-labelledby="${pre}capaApp"></button></div>`;
+const tgCorCapaVisual = (pre) => { const k = chaveCorCapa(); return `<div class="opt"><span id="${pre}corCapa">${T("Cores do visual seguem a capa da música")}</span><button class="tg" data-tg="${k}" role="switch" aria-checked="${!!cfg[k]}" aria-labelledby="${pre}corCapa"></button></div>${k === "auraCorCapa" ? `<p class="note" data-nota-cor>${T("Desligada, a Aura usa as cores do estilo. Ligada, usa as cores da capa.")}</p>` : ""}`; };
 const tg = (chave, rotulo) => `<div class="opt"><span id="l-${chave}">${rotulo}</span><button class="tg" data-tg="${chave}" role="switch" aria-checked="${!!cfg[chave]}" aria-labelledby="l-${chave}"></button></div>`;
 const faixaAjuste = (chave, rotulo, ligado) => `<div class="opt sub-opt"${ligado ? "" : " hidden"}><label for="r-${chave}">${rotulo}</label><input type="range" id="r-${chave}" data-rg="${chave}" min="0.15" max="1" step="0.05" value="${cfg[chave]}"></div>`;
 /* Ajustes em quatro portas: a raiz é curta (idioma + portas) e cada porta abre uma tela própria */
@@ -2088,7 +2111,7 @@ $("tm").addEventListener("click", (e) => {
     if (k === "nivelar" && ctx) trocarEfeitos();
     if (k === "eraRuido") ajustarRuido();
     if (k === "coracoes") { renderBib(); renderPl(); }
-    if (k === "corCapa" || k === "auraCorCapa") atualizarCorViz();
+    if (k === "corCapa" || k === "auraCorCapa" || k === "capaApp") atualizarCorViz();
     renderTemas(); return;
   }
   if (t.closest("[data-alternar-leve]")) return definirLeve(!cfg.leve);
@@ -2843,7 +2866,7 @@ function abrirPersonalizar() {
       const lc = t.closest("[data-ledcor]"); if (lc) { cfg.ledCor = lc.dataset.ledcor; salvarCfg(); ledId = null; prepararLed(cur()); return refazer(); }
       const fo = t.closest("[data-forma]"); if (fo) { cfg.formaCapa = fo.dataset.forma; salvarCfg(); aplicarVisual(); return refazer(); }
       const es = t.closest("[data-estilo]"); if (es) { cfg.auraEst = es.dataset.estilo; salvarCfg(); aplicarVisual(); refazer(); const b = $("sheet-b").querySelector(`[data-estilo="${cfg.auraEst}"]`); if (b) b.focus(); return; }
-      const g = t.closest("[data-tg]"); if (g) { const k = g.dataset.tg; cfg[k] = !cfg[k]; salvarCfg(); aplicarEfeitos(); if (k === "corCapa" || k === "auraCorCapa") atualizarCorViz(); return refazer(); }
+      const g = t.closest("[data-tg]"); if (g) { const k = g.dataset.tg; cfg[k] = !cfg[k]; salvarCfg(); aplicarEfeitos(); if (k === "corCapa" || k === "auraCorCapa" || k === "capaApp") atualizarCorViz(); return refazer(); }
     },
     entrada(e) { const k = e.target.dataset.rg; if (k) { cfg[k] = +e.target.value; salvarCfg(); aplicarEfeitos(); } },
   });
@@ -3380,7 +3403,8 @@ function restaurarBackup(o) {
   for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "volRec", "leve", "fluido", "coracoes", "corCapa", "formaCapa", "ledCor", "auraEst", "auraCorCapa", "amp", "avisoAmp", "reverb", "largura", "apGraves", "apAgudos", "apInt", "autoTocar", "tocarFone", "pausarFone"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
-  if ("atalhos" in aj) cfg.atalhos = atalhosValidos(aj.atalhos); // arquivo de fora: só ids conhecidos, no máximo 3
+  if ("atalhos" in aj) cfg.atalhos = atalhosValidos(aj.atalhos);
+  if (typeof aj.capaApp === "boolean") cfg.capaApp = aj.capaApp; // arquivo de fora: só ids conhecidos, no máximo 3
   if (aj.ajustes && typeof aj.ajustes === "object" && !Array.isArray(aj.ajustes)) cfg.ajustes = aj.ajustes;
   migrarGaleria(); // backup de antes da 1.26.8: a cópia de um tema da galeria vira o de fábrica
   salvarCfg(); aplicarTema(); aplicarFundo(); aplicarVisual(); aplicarVel(); aplicarVolume(); if (ctx) montarFiltros();

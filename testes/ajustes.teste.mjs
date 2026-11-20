@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 // Controles da tela de Ajustes da 1.17.3 (contados antes de dividir): 57, incluindo o seletor de idioma
 const CONTROLES = "#tm :is(select, input, [role=switch], [data-vis], [data-epoca], [data-cor], [data-forma], [data-ledcor], button):not([data-porta], [data-porta-voltar], [data-bkp-enviar])"; // "Enviar backup" só aparece onde o aparelho sabe compartilhar arquivo
 // 1.19: + 10 no cartão Efeitos da porta Som (5 chips do amplificador, 4 do reverb e a faixa do efeito 3D)
-const TOTAL_1173 = 57 + 10 + 1 - 6 + 12; // + 1: Fluidez máxima (1.25.1); 1.26.8: saem os 6 botões "Adicionar" da galeria antiga e entram 12 temas de fábrica (cada um com a sua miniatura)
+const TOTAL_1173 = 57 + 10 + 1 - 6 + 12 + 1; // + 1: Fluidez máxima (1.25.1); 1.26.8: saem os 6 botões "Adicionar" da galeria antiga e entram 12 temas de fábrica (cada um com a sua miniatura) e a opção "Cores da capa no app inteiro"
 const textoH2 = (p) => p.avaliar(() => [...document.querySelectorAll("#tm h2, #tm .t, #tm label, #tm .sec-t")].map((e) => e.textContent).join(" | "));
 const abrir = async (p, id) => { await p.clicar(`[data-porta="${id}"]`); };
 
