@@ -2853,7 +2853,7 @@ function abrirPersonalizar() {
   const html = () => `<div class="minis" role="group" aria-label="${T("Visual do mostrador")}">${Object.entries(VISUAIS).map(([k, n]) => `<button class="mini-v${cfg.visual === k ? " on" : ""}" data-vis="${k}" aria-pressed="${cfg.visual === k}"><svg viewBox="0 0 24 24" aria-hidden="true">${MINIS[k] || MINIS.relogio}</svg><span>${n}</span></button>`).join("")}</div>
     ${cfg.visual === "led" ? `<p class="t">${T("Cores do LED")}</p>` + chipsDe([["arte", T("Arte da capa")], ["capa", T("Cores da capa")], ["tema", T("Cores do tema")], ["classico", T("Clássico")]], cfg.ledCor, "data-ledcor") : ""}
     ${["aura", "espectro", "anel"].includes(cfg.visual) ? `<p class="t">${T("Formato da capa")}</p>` + chipsDe([["quadrada", T("Quadrada")], ["redonda", T("Redonda")]], cfg.formaCapa === "redonda" ? "redonda" : "quadrada", "data-forma") : "" /* só onde o formato vale: no Relógio e no Vinil a capa é sempre redonda */}
-    ${cfg.visual === "aura" ? `<p class="t">${T("Estilo da Aura")}</p>` + chipsDe([["padrao", T("Padrão")], ["phonk", "Phonk"], ["lofi", "Lo-fi"], ["oitenta", T("Anos 80")]], estiloAura() === ESTILOS_AURA.padrao ? "padrao" : cfg.auraEst, "data-estilo") + `<p class="note">${T("Phonk, Lo-fi e Anos 80 estão liberados para teste. No futuro farão parte do pacote Apoiador.")}</p>` : ""}
+    ${cfg.visual === "aura" ? `<p class="t">${T("Estilo da Aura")}</p>` + chipsDe([["padrao", T("Padrão")], ["phonk", "Phonk"], ["lofi", "Lo-fi"], ["oitenta", T("Anos 80")]], estiloAura() === ESTILOS_AURA.padrao ? "padrao" : cfg.auraEst, "data-estilo") + `` : ""}
     ${tgCorCapa("pz-l-")}
     ${liga("amb", T("Luz de fundo com as cores da capa"))}${faixa("ambF", T("Intensidade da luz"), cfg.amb)}
     ${liga("reage", T("Reagir à batida da música"))}${faixa("batF", T("Força da batida"), cfg.reage)}`;
@@ -3153,23 +3153,28 @@ function desenharRecap() {
   const c = cv.getContext("2d"), css = getComputedStyle(document.documentElement);
   const v = (k) => css.getPropertyValue(k).trim();
   const display = v("--display") || "system-ui, sans-serif", corpo = v("--body") || "system-ui, sans-serif";
-  const g = c.createLinearGradient(0, 0, W, H);
-  g.addColorStop(0, v("--accent") || "#6A4BD8"); g.addColorStop(1, v("--accent2") || "#A8743A");
-  c.fillStyle = g; c.fillRect(0, 0, W, H);
-  c.fillStyle = "rgba(10,8,20,.42)"; c.fillRect(0, 0, W, H);
+  /* 1.26.8: o card no visual Noite Orologia — fundo do tema com o clarão do brilho, mostrador de relógio como marca e blocos de vidro.
+     Sempre escuro (fica bonito em qualquer rede social): nos temas claros o fundo é escurecido com a cor do texto do tema. */
+  const t = temaAtual(), fundo = escuro(t) ? t.fundo : misturar(t.texto, "#000000", 0.35), cor = (k, r) => { const x = paraRgb(v(k)); return x ? hex(x) : r; }, acc0 = cor("--accent", t.destaque), acc = escuro(t) ? acc0 : misturar(acc0, "#FFFFFF", 0.45), acc2 = cor("--accent2", t.secundaria), bri = cor("--brilho", brilhoDe(t)); // no tema claro o destaque é escuro demais para o fundo escuro do card
+  c.fillStyle = fundo; c.fillRect(0, 0, W, H);
+  const clarao = (x, y, r, cor, a) => { const gr = c.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, cor); gr.addColorStop(1, "transparent"); c.globalAlpha = a; c.fillStyle = gr; c.fillRect(0, 0, W, H); c.globalAlpha = 1; };
+  clarao(160, -120, 1100, bri, 0.85); clarao(W + 80, 420, 760, acc2, 0.22); clarao(W * 0.5, H + 200, 900, acc, 0.28);
   // mostrador de relógio de fundo, a marca do Orolon
-  c.save(); c.translate(W - 170, 300); c.strokeStyle = "rgba(255,255,255,.18)"; c.lineCap = "round";
+  c.save(); c.translate(W - 190, 330); c.strokeStyle = "rgba(255,255,255,.16)"; c.lineCap = "round";
   for (let i = 0; i < 60; i++) { c.lineWidth = i % 5 ? 5 : 9; c.beginPath(); c.moveTo(0, -(i % 5 ? 230 : 210)); c.lineTo(0, -250); c.stroke(); c.rotate(Math.PI / 30); }
+  c.strokeStyle = acc; c.lineWidth = 10; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -170); c.stroke(); c.rotate(Math.PI * 0.62); c.lineWidth = 14; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -120); c.stroke();
   c.restore();
+  const vidro = (x, y, w, h) => { c.save(); c.fillStyle = "rgba(255,255,255,.07)"; c.strokeStyle = "rgba(255,255,255,.14)"; c.lineWidth = 2; c.beginPath(); c.roundRect ? c.roundRect(x, y, w, h, 36) : c.rect(x, y, w, h); c.fill(); c.stroke(); c.restore(); };
   const corta = (txt, fonte, max) => { c.font = fonte; let t = String(txt); if (c.measureText(t).width <= max) return t; while (t.length > 1 && c.measureText(t + "…").width > max) t = t.slice(0, -1); return t + "…"; };
   const texto = (txt, x, y, fonte, cor = "#fff", max = W - 160) => { c.font = fonte; c.fillStyle = cor; c.fillText(corta(txt, fonte, max), x, y); };
   const X = 80; let y = 150;
-  texto(`COMPASSO · RECAP ${R.ano}`, X, y, `700 34px ${corpo}`, "rgba(255,255,255,.8)");
+  texto(`OROLON · RECAP ${R.ano}`, X, y, `700 34px ${corpo}`, acc);
   y += 90; texto(perfil.nome ? T("O ano de {0}", perfil.nome) : T("Meu ano em música"), X, y, `700 64px ${display}`);
   y += 230; texto(fmtTempo(R.totalAno), X, y, `800 190px ${display}`);
   y += 70; texto(T("de música em {0}", plural(R.diasAno.length, "dia", "dias")), X, y, `500 44px ${corpo}`, "rgba(255,255,255,.88)");
   const bloco = (rot, val, sub) => {
-    y += 120; texto(rot.toUpperCase(), X, y, `700 30px ${corpo}`, "rgba(255,255,255,.7)");
+    vidro(X - 36, y + 50, W - 2 * X + 72, sub ? 232 : 180);
+    y += 120; texto(rot.toUpperCase(), X, y, `700 30px ${corpo}`, acc);
     y += 70; texto(val, X, y, `700 62px ${display}`);
     if (sub) { y += 52; texto(sub, X, y, `500 38px ${corpo}`, "rgba(255,255,255,.85)"); }
   };
@@ -3180,7 +3185,7 @@ function desenharRecap() {
     y += 120; texto("TOP 5", X, y, `700 30px ${corpo}`, "rgba(255,255,255,.7)");
     R.fx.slice(0, 5).forEach((r, i) => { y += 66; texto(`${i + 1}`, X, y, `800 44px ${display}`, "rgba(255,255,255,.65)"); texto(`${r.x.t} · ${r.x.a}`, X + 70, y, `600 42px ${corpo}`, "#fff", W - 230); });
   }
-  texto(T("Feito no Orolon Player · offline e sem conta"), X, H - 90, `500 32px ${corpo}`, "rgba(255,255,255,.75)");
+  texto("Orolon Player", X, H - 90, `700 34px ${display}`, "rgba(255,255,255,.8)");
   return new Promise((ok) => cv.toBlob((b) => ok({ blob: b, ano: R.ano }), "image/png"));
 }
 async function imagemRecap() {

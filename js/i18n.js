@@ -12,7 +12,6 @@ document.documentElement.lang = LANG === "en" ? "en" : "pt-BR";
 const EN = {
  "Estilo da Aura": "Aura style",
  "Padrão": "Default",
- "Phonk, Lo-fi e Anos 80 estão liberados para teste. No futuro farão parte do pacote Apoiador.": "Phonk, Lo-fi and 80s are unlocked for testing. Later they will be part of the Supporter pack.",
  "Fluidez máxima (90/120 Hz)": "Maximum smoothness (90/120 Hz)",
  "Usa a taxa inteira da tela nas animações do Tocando agora. Fica mais liso, mas gasta mais bateria e pode esquentar o aparelho. Não muda nada em telas de 60 Hz nem com o modo leve ligado.": "Uses the screen's full refresh rate for the Now Playing animations. Smoother, but it uses more battery and can warm up the device. No effect on 60 Hz screens or with light mode on.",
  "Não deu para abrir as pastas do aparelho": "Couldn't open the device folders",
@@ -410,7 +409,6 @@ const EN = {
  "Favorita": "Favorite",
  "Favoritas": "Favorites",
  "Fechar": "Close",
- "Feito no Orolon Player · offline e sem conta": "Made with Orolon Player · offline, no account",
  "Fila": "Queue",
  "Fila vazia": "Queue is empty",
  "Fila · {0}": "Queue · {0}",
@@ -534,7 +532,6 @@ const EN = {
  "Ordem das músicas": "Song order",
  "Orologia Claro": "Orologia Light",
  "Orologia Escuro": "Orologia Dark",
- "Os dois botões de cima abrem o GitHub no navegador. O app em si não se conecta a nada.": "The two buttons above open GitHub in your browser. The app itself doesn't connect to anything.",
  "Os dois botões de cima e o da política de privacidade abrem o navegador. O app em si não se conecta a nada.": "The two buttons above and the privacy policy one open your browser. The app itself doesn't connect to anything.",
  "Política de privacidade": "Privacy policy",
  "Orolon Player {0}. Sem anúncios, sem conta e sem coleta de dados: tudo o que você guarda fica neste aparelho.": "Orolon Player {0}. No ads, no account and no data collection: everything you keep stays on this device.",
