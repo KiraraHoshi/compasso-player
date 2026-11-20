@@ -41,7 +41,7 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - Abas Música e Letra no topo do Tocando agora, deslizando entre elas (ainda não feito; hoje a letra abre pelo botão Letra).
 
 **Só no Android**
-- Procurar as músicas das pastas do aparelho sozinho, com progresso e escolha de pastas.
+- ✅ Procurar as músicas do aparelho sozinho e tocar de pastas escolhidas.
 - Widgets de vários tamanhos.
 - Tocar ao conectar os fones e tocar junto com outros apps.
 - Lembrete de audição no horário de costume.
@@ -76,17 +76,18 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - **A fazer:** redesenhar o card do Recap em imagem (mais bonito, sem destacar "offline e sem conta", com o nome Orolon no lugar de "Compasso").
 - **Ideia:** no pacote Apoiador, temas exclusivos para o card do Recap.
 - **Ideia (a desenhar com calma):** no pacote Apoiador, escolher um vídeo do aparelho que acelera e desacelera conforme a batida, como uma edit. Cuidar do custo no celular.
-- **Próxima:** publicação (ficha e prints da Play, README, teste fechado).
+- **Agora:** teste fechado na Google Play (no ar desde a 1.26.4; a 1.26.7 é a versão mais nova enviada). Faltam 12 testadores inscritos por 14 dias seguidos antes de pedir a produção.
 
 ## Onde o app está (depois da 1.26)
 
 O Orolon já tem o que os players grátis conhecidos têm, e mais os mostradores. **O que falta para lançar não é função, é publicação.** Ordem sugerida:
 
-1. **Publicar na Google Play.** É o passo que mais demora: conta pessoal nova precisa de teste fechado com 12 testadores por 14 dias seguidos. Falta a ficha da loja, os prints novos (`loja/pt`, `loja/en`), as artes e a declaração da permissão de áudio. Vale começar a juntar testadores já.
-2. **README e prints** com as novidades da 1.19 à 1.25.
-3. **Pacote "Apoiador"** (compra única, só cosmético): estilos da Aura (Phonk, Lo-fi, Anos 80; já prontos desde a 1.26, falta só a compra), LED refinado como opção, temas e ícones extras. Só depois de o app estar na loja.
-4. **Só no Android:** widgets e Android Auto.
-5. **Efeitos extras de som** (lista abaixo) e os pequenos acertos adiados das revisões.
+1. ✅ **Ficha da Play, prints (`loja/pt`, `loja/en`), artes e declarações** (1.26.1), e o app no teste fechado (1.26.4).
+2. **Passar pelo teste fechado:** 12 testadores por 14 dias seguidos, depois o pedido de produção.
+3. **Prints do README** com os mostradores novos (o texto já está em dia).
+4. **Pacote "Apoiador"** (compra única, só cosmético): estilos da Aura (Phonk, Lo-fi, Anos 80; já prontos desde a 1.26, falta só a compra), LED refinado como opção, temas e ícones extras. Só depois de o app estar na loja.
+5. **Só no Android:** widgets e Android Auto.
+6. **Efeitos extras de som** (lista abaixo) e os pequenos acertos adiados das revisões.
 
 Vinil, Cassete e Rádio ainda não foram refinados como os outros mostradores.
 
@@ -110,9 +111,10 @@ Vinil, Cassete e Rádio ainda não foram refinados como os outros mostradores.
 
 ## Versão Android
 
-- Encontrar as músicas do aparelho sozinho, sem importar.
-- Reprodução em segundo plano sem cortes.
-- Widgets na tela inicial, modo condução e Android Auto.
+- ✅ Encontrar as músicas do aparelho sozinho, sem importar.
+- ✅ Reprodução em segundo plano, com controles na notificação e na tela de bloqueio.
+- ✅ Modo carro (1.20).
+- Widgets na tela inicial e Android Auto.
 
 ## Pacote pago: visuais do mostrador (ideia)
 

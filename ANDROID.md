@@ -4,7 +4,7 @@ O app Android é o mesmo site, empacotado com o [Capacitor](https://capacitorjs.
 
 ## APK de teste (automático)
 
-Cada envio para a `main` gera um APK de teste, publicado em **Releases → Android (teste)**.
+Cada envio que mexe no app (na `main` ou em qualquer branch) gera um APK de teste, publicado em **Releases → Android (teste)**. A página diz de qual branch ele veio; o último envio substitui o anterior.
 Ele é assinado com a chave fixa de `android-teste/`, então cada versão nova instala por cima da anterior.
 
 ## Versão da Google Play (.aab)
@@ -38,6 +38,18 @@ O mesmo plugin avisa o app quando um fone entra ou sai (com fio, Bluetooth ou US
 
 - **Enviar backup:** o plugin grava o arquivo na pasta temporária do app e abre o compartilhamento do Android pelo `FileProvider` que o Capacitor já traz. Quem envia é o app escolhido pela pessoa; o Orolon continua sem acessar a internet.
 - **Backup automático:** a pessoa escolhe uma pasta no seletor do Android, que libera só aquela pasta (sem permissão de armazenamento). O app grava uma cópia por dia (`orolon-backup-AAAA-MM-DD-xxxx.json`, em que `xxxx` é a marca do aparelho) e mantém as 5 mais novas **daquele aparelho**; cópias de outro aparelho nunca são apagadas nem trocadas. No celular novo, ao escolher a mesma pasta, o app mostra as cópias que já existem e pergunta se é para restaurar uma delas antes de gravar qualquer coisa.
+
+## Barras do sistema (1.26.5 a 1.26.7)
+
+O app ocupa a tela de ponta a ponta, como a Google pede para o Android 15+ (SDK 35+):
+
+- `capacitor.config.json` usa `SystemBars.insetsHandling: "native"`, e a `MainActivity` (escrita por `scripts/musicas-android.mjs`) chama `EdgeToEdge.enable(this)` **depois** do `super.onCreate`. Antes dele, a janela ainda tem o tema da tela de abertura e a imagem dela vira uma faixa no topo (defeito da 1.26.5, visto num Poco X7).
+- A cor dos ícones da barra de status segue o tema do app (`SystemBars.setStyle` a cada troca de tema).
+- Com o WebView do sistema abaixo da versão 140, a página não passa por trás das barras: o Capacitor afasta a tela delas, e o espaço que sobra mostra o fundo da janela, que o `setStyle` repinta de cinza. Por isso o app pinta esse fundo com a cor do tema (`corDaJanela` no plugin) depois de cada `setStyle` e de cada giro da tela (1.26.7, visto num Galaxy M52 com Android 13).
+
+## APK de teste e versão da Play
+
+As duas são assinadas com chaves diferentes e têm o mesmo `appId`, então uma não instala por cima da outra. Para trocar, faça um backup no app, desinstale e instale a outra (desinstalar apaga os dados).
 
 ## Política de privacidade
 

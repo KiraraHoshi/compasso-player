@@ -2,7 +2,7 @@
 
 Player de música **offline** com **temas customizáveis**. As músicas, as playlists e os temas ficam só no seu aparelho: o app não tem conta, não tem servidor e não envia nada para a internet. O `index.html` traz uma política de segurança (CSP) que proíbe qualquer conexão para fora.
 
-Funciona no navegador do celular e do PC e pode ser instalado como app (PWA).
+Funciona no navegador do celular e do PC, pode ser instalado como app (PWA) e tem versão Android (em teste fechado na Google Play).
 
 **[Abrir o app](https://kirarahoshi.github.io/compasso-player/)**
 
@@ -18,8 +18,13 @@ Funciona no navegador do celular e do PC e pode ser instalado como app (PWA).
 
 ## O que ele faz
 
-- **Biblioteca:** importa arquivos ou pastas inteiras (no PC, também dá para arrastar para a janela). Lê título, artista, álbum, número da faixa e capa de MP3, FLAC, M4A, OGG e Opus. Abas de músicas, álbuns e artistas, com busca e ordenação.
-- **Tocando agora:** a capa fica dentro de um mostrador de relógio. Os 60 tracinhos marcam o tempo da música e reagem ao som, e o mostrador pulsa nas batidas graves.
+- **Início:** continuar de onde parou, tocadas recentemente e atalho para as favoritas.
+- **Biblioteca:** importa arquivos ou pastas inteiras (no PC, também dá para arrastar para a janela; no Android, acha as músicas do aparelho sozinho). Lê título, artista, álbum, número da faixa e capa de MP3, FLAC, M4A, OGG e Opus. Abas de músicas, álbuns, artistas e pastas, com busca, várias ordens e estrelas de 1 a 5.
+- **Tocando agora:** a capa fica dentro de um mostrador que reage à música: ouve bumbo, caixa e prato e acompanha o andamento. Pelo pincel dá para trocar o visual, as cores e a capa ali mesmo.
+- **Visuais do mostrador:** Relógio (com ponteiros), Vinil, Aura, Espectro, Anel, Neon, Barras e LED. A Aura tem estilos (Padrão, Phonk, Lo-fi e Anos 80). Em tela cheia, vira um relógio que toca.
+- **Som:** amplificador até 200% com limitador, reverb, efeito 3D e aprimorador (graves, agudos e intensidade), tudo grátis.
+- **Modo carro:** tela simples com botões grandes. No Android, pausa ao tirar o fone e pode tocar sozinho ao conectar.
+- **Repetir trecho (A-B) e marcadores** para áudios longos, e playlists `.m3u`.
 - **Luz de fundo:** um brilho com as cores da capa, que troca com fade a cada música.
 - **Fila:** tocar a seguir, adicionar ao fim, tirar, limpar e reordenar arrastando. Ordem aleatória e repetir (fila ou uma música).
 - **Playlists:** criar, renomear, apagar, adicionar músicas e reordenar arrastando.
@@ -30,10 +35,10 @@ Funciona no navegador do celular e do PC e pode ser instalado como app (PWA).
 - **Letras:** lidas das tags da música ou de um arquivo .lrc com o mesmo nome, sincronizadas no estilo karaokê. Dá para colar e editar.
 - **Organização:** aba de Pastas, editor de informações (sem mexer no arquivo original) e músicas ocultas.
 - **Imagem de fundo** escolhida por você, com desfoque.
-- **Backup:** playlists, favoritas, estatísticas, letras, perfil, temas e ajustes num arquivo, para levar a outro aparelho.
+- **Backup:** playlists, favoritas, estatísticas, letras, perfil, temas e ajustes num arquivo, para levar a outro aparelho. Também dá para enviar o backup por outro app ou deixar uma cópia automática por dia numa pasta escolhida.
+- **Capa personalizada** de álbum e de música, sem mexer no arquivo original.
 - **Recap em imagem:** o resumo do ano vira uma imagem para compartilhar.
-- **Épocas do som:** anos 60 (rádio valvulado), 70 (vinil com estalos), 80 (cassete) e 90 (CD), cada uma com seu visual.
-- **Visuais do mostrador:** relógio, vinil, cassete, rádio, barras e onda. Em tela cheia, vira um relógio que toca.
+- **Épocas do som:** anos 60, 70, 80 e 90, cada uma com som e visual próprios.
 - **Troca sem pausa e crossfade**, velocidade de reprodução e opção de nivelar o volume.
 - **Busca geral e seleção múltipla** na Biblioteca.
 - **Galeria de temas** dentro do app e na pasta [`temas/`](temas/).
@@ -42,7 +47,7 @@ Funciona no navegador do celular e do PC e pode ser instalado como app (PWA).
 - **Português e inglês**, escolhido pelo idioma do aparelho ou em Ajustes.
 - **Volta de onde parou:** ao reabrir, a fila e a posição da música continuam iguais.
 - **Controles do sistema:** tela de bloqueio, fones Bluetooth e teclas de mídia.
-- **Atalhos no PC:** espaço toca e pausa, ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita.
+- **Atalhos no PC:** espaço toca e pausa, ← e → voltam ou avançam 5 segundos, N e P trocam de música, F favorita, Esc volta um passo, 1 a 5 trocam de aba e / abre a busca.
 
 ## Usar
 
@@ -98,7 +103,7 @@ O formato é o mesmo do [Caixinhas Orologia](https://github.com/KiraraHoshi/caix
 ## Limitações conhecidas
 
 - O navegador guarda uma cópia de cada música importada, então elas ocupam espaço duas vezes.
-- Em alguns celulares, o sistema pode pausar a reprodução com a tela desligada. A versão Android nativa vai resolver isso.
+- Pelo navegador do celular, o sistema pode pausar a reprodução com a tela desligada. O app Android não tem esse problema.
 - As músicas de exemplo são sintetizadas na hora e não aparecem nos controles da tela de bloqueio.
 
 ## Estrutura
@@ -120,10 +125,11 @@ docs/               capturas de tela
 
 MIT. Veja `LICENSE`.
 
-## App Android (em preparo)
+## App Android
 
-O mesmo app, empacotado com [Capacitor](https://capacitorjs.com/). Nada precisa ser instalado no PC: o GitHub monta o APK sozinho (veja `.github/workflows/android.yml`).
+O mesmo app, empacotado com [Capacitor](https://capacitorjs.com/), sem a permissão de internet. Nada precisa ser instalado no PC: o GitHub monta o APK sozinho (veja `.github/workflows/android.yml` e [ANDROID.md](ANDROID.md)).
 
-- APK de teste: página de **Releases** › "Android (teste)". No celular, baixe o `.apk` e abra.
+- Google Play: em teste fechado.
+- APK de teste: página de **Releases** › "Android (teste)". No celular, baixe o `.apk` e abra. Ele não instala por cima da versão da Play (as assinaturas são diferentes): faça um backup antes de trocar de um para o outro.
 - Pacote: `com.joah.orolon` · Desenvolvedor: Jo-ah
 - Para montar localmente (com Node e Android Studio): `npm install`, `npm run www`, `npx cap add android`, `npx cap open android`.
