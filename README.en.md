@@ -8,13 +8,22 @@ It runs in the browser on phones and desktops, can be installed as an app (PWA),
 
 The app follows your device language (English or Brazilian Portuguese), and you can switch it in **Settings › Language**.
 
-| Library | Now playing | Vinyl (70s) |
-|---|---|---|
-| ![Library](docs/1-biblioteca.png) | ![Now playing](docs/2-tocando.png) | ![Vinyl visual](docs/3-vinil.png) |
+![Orolon Player](loja/en/destaque-1024x500.jpg)
+
+<p>
+<img src="loja/en/print-1-aura.jpg" width="24%" alt="Aura">
+<img src="loja/en/print-3-relogio.jpg" width="24%" alt="Clock with hands">
+<img src="loja/en/print-4-personalizar.jpg" width="24%" alt="Customize Now Playing">
+<img src="loja/en/print-5-led.jpg" width="24%" alt="LED panel">
+<img src="loja/en/print-8-inicio.jpg" width="24%" alt="Home in the light theme">
+<img src="loja/en/print-2-biblioteca.jpg" width="24%" alt="Library">
+<img src="loja/en/print-6-letra.jpg" width="24%" alt="Synced lyrics">
+<img src="loja/en/print-7-som.jpg" width="24%" alt="Sound effects">
+</p>
 
 ## Features
 
-- **Home:** continue where you left off, recently played and a shortcut to your favorites.
+- **Home:** continue where you left off, shortcuts to the tools (equalizer, sleep timer, Volume +, 3D effects, car mode and more), recently played and favorites.
 - **Library:** import files or whole folders (drag and drop on desktop; on Android it finds the music on the device by itself). Reads title, artist, album, track number, cover art and lyrics from MP3, FLAC, M4A, OGG and Opus, with no external libraries. Songs, albums, artists and folders, global search, multi-select, more sort orders and 1 to 5 star ratings.
 - **Now playing:** the cover sits inside a dial that reacts to the music, hearing kick, snare and cymbals and following the tempo. The brush button changes the visual, colors and cover right there.
 - **Dial visuals:** Clock (with hands), Vinyl, Aura, Spectrum, Ring, Neon, Bars and LED. Aura has styles (Default, Phonk, Lo-fi and 80s). Full screen turns it into a clock that plays music.

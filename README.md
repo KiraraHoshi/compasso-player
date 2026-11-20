@@ -6,19 +6,24 @@ Funciona no navegador do celular e do PC, pode ser instalado como app (PWA) e te
 
 **[Abrir o app](https://kirarahoshi.github.io/compasso-player/)**
 
-| Biblioteca | Tocando agora | Vinil (anos 70) |
-|---|---|---|
-| ![Biblioteca](docs/1-biblioteca.png) | ![Tocando agora](docs/2-tocando.png) | ![Visual de vinil](docs/3-vinil.png) |
+![Orolon Player](loja/pt/destaque-1024x500.jpg)
 
-| Cassete (anos 80) | Você | Ajustes |
-|---|---|---|
-| ![Visual de cassete](docs/4-cassete.png) | ![Aba Você](docs/5-voce.png) | ![Ajustes](docs/6-ajustes.png) |
+<p>
+<img src="loja/pt/print-1-aura.jpg" width="24%" alt="Aura">
+<img src="loja/pt/print-3-relogio.jpg" width="24%" alt="Relógio com ponteiros">
+<img src="loja/pt/print-4-personalizar.jpg" width="24%" alt="Personalizar o Tocando agora">
+<img src="loja/pt/print-5-led.jpg" width="24%" alt="Painel de LED">
+<img src="loja/pt/print-8-inicio.jpg" width="24%" alt="Início no tema claro">
+<img src="loja/pt/print-2-biblioteca.jpg" width="24%" alt="Biblioteca">
+<img src="loja/pt/print-6-letra.jpg" width="24%" alt="Letra sincronizada">
+<img src="loja/pt/print-7-som.jpg" width="24%" alt="Efeitos de som">
+</p>
 
 *[Read in English](README.en.md)* · [Histórico de versões](CHANGELOG.md) · [Planos](ROADMAP.md)
 
 ## O que ele faz
 
-- **Início:** continuar de onde parou, tocadas recentemente e atalho para as favoritas.
+- **Início:** continuar de onde parou, atalhos para as ferramentas (equalizador, temporizador, Volume +, efeitos 3D, modo carro e outras), tocadas há pouco e favoritas.
 - **Biblioteca:** importa arquivos ou pastas inteiras (no PC, também dá para arrastar para a janela; no Android, acha as músicas do aparelho sozinho). Lê título, artista, álbum, número da faixa e capa de MP3, FLAC, M4A, OGG e Opus. Abas de músicas, álbuns, artistas e pastas, com busca, várias ordens e estrelas de 1 a 5.
 - **Tocando agora:** a capa fica dentro de um mostrador que reage à música: ouve bumbo, caixa e prato e acompanha o andamento. Pelo pincel dá para trocar o visual, as cores e a capa ali mesmo.
 - **Visuais do mostrador:** Relógio (com ponteiros), Vinil, Aura, Espectro, Anel, Neon, Barras e LED. A Aura tem estilos (Padrão, Phonk, Lo-fi e Anos 80). Em tela cheia, vira um relógio que toca.
@@ -118,7 +123,8 @@ sw.js               modo offline
 manifest.json       dados para instalar como app
 icons/              ícones do app
 temas/              galeria de temas em JSON
-docs/               capturas de tela
+loja/               artes e capturas (Google Play e este README), refeitas com scripts/prints-loja.mjs
+docs/               desenhos e planos das versões
 ```
 
 ## Licença
