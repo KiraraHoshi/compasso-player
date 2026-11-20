@@ -65,13 +65,15 @@ export default [
     rodar: async (p) => {
       const ultimaCor = () => p.avaliar(() => { const l = window.__log, i = l.map((x) => x.startsWith("Musicas.corDaJanela")).lastIndexOf(true), j = l.lastIndexOf("SystemBars.setStyle"); return { cor: i >= 0 ? l[i] : null, depois: i > j }; });
       await p.esperar(() => window.__log.some((x) => x.startsWith("Musicas.corDaJanela")), 4000);
-      assert.deepEqual(await ultimaCor(), { cor: "Musicas.corDaJanela:#14111F", depois: true }, "tema escuro de fábrica");
-      await p.avaliar(() => aplicar(BASE.claro));
-      await p.esperar(() => window.__log.includes("Musicas.corDaJanela:#F1EFF6"), 4000);
-      assert.deepEqual(await ultimaCor(), { cor: "Musicas.corDaJanela:#F1EFF6", depois: true }, "trocar de tema troca a cor");
+      // o tema de fábrica segue o modo do sistema (no GitHub o Chrome abre no claro): vale a cor do tema em uso
+      const [inicial, outra] = await p.avaliar(() => [temaAtual().fundo, temaAtual().fundo === BASE.claro.fundo ? BASE.escuro.fundo : BASE.claro.fundo]);
+      assert.deepEqual(await ultimaCor(), { cor: "Musicas.corDaJanela:" + inicial, depois: true }, "tema de fábrica");
+      await p.avaliar((c) => aplicar(c === BASE.claro.fundo ? BASE.claro : BASE.escuro), outra);
+      await p.esperar((c) => window.__log.includes("Musicas.corDaJanela:" + c), 4000, outra);
+      assert.deepEqual(await ultimaCor(), { cor: "Musicas.corDaJanela:" + outra, depois: true }, "trocar de tema troca a cor");
       // girar o celular: o SystemBars repinta a janela com a cor padrão do Android; o app pinta de novo
       await p.avaliar(() => { window.__log.length = 0; window.__log.push("SystemBars.setStyle"); dispatchEvent(new Event("resize")); });
-      await p.esperar(() => window.__log.includes("Musicas.corDaJanela:#F1EFF6"), 4000);
+      await p.esperar((c) => window.__log.includes("Musicas.corDaJanela:" + c), 4000, outra);
     },
   },
   {
