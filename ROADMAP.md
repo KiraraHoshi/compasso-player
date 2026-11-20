@@ -63,7 +63,7 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - ✅ **1.24 Aura refinada:** brilho macio, poeira com profundidade, onda do bumbo, fio de luz na caixa e troca de música.
 - ✅ **1.25 Mostradores:** Relógio redondo com ponteiros, Espectro, Anel, Neon e Barras refinados, e economia de bateria (menos desenhos por segundo).
 - ✅ **1.25.1:** correção da capa esticada ao sair do LED, fluidez máxima (90/120 Hz) como opção e menos trabalho fora do Tocando agora.
-- ✅ **1.26 Estilos da Aura:** Phonk, Lo-fi e Anos 80 no pincel, liberados por enquanto; depois entram no pacote Apoiador.
+- ✅ **1.26 Estilos da Aura:** Phonk, Lo-fi e Anos 80 no pincel, grátis para sempre (decisão de 20/11/2026).
 - ✅ **1.26.1 Preparo da loja:** Android sem permissão de internet, aviso de atualização próprio da versão da Play, prints e textos da ficha.
 - **A refazer:** o Phonk ficou sem impacto perto das edits de Phonk e slowed; refazer com vídeos de referência.
 - ✅ **1.26.2 Consertos do PC:** fim da música de exemplo em segundo plano, Continuar ao vivo, botões de anterior e de voltar, Esc e atalhos de navegação.
@@ -76,6 +76,7 @@ Tiradas de uma revisão detalhada do "Reprodutor de Música Offline" (50 mi+ dow
 - **A fazer:** redesenhar o card do Recap em imagem (mais bonito, sem destacar "offline e sem conta", com o nome Orolon no lugar de "Compasso").
 - **Ideia:** no pacote Apoiador, temas exclusivos para o card do Recap.
 - **Ideia (a desenhar com calma):** no pacote Apoiador, escolher um vídeo do aparelho que acelera e desacelera conforme a batida, como uma edit. Cuidar do custo no celular.
+- ✅ **1.26.8 Visual Noite Orologia:** o visual do Caixinhas 2.0 (vidro, brilho, barra flutuante), Início com três atalhos e "Mais", 14 temas com miniaturas, cores da capa no app inteiro, Galáxia, Túnel e Osciloscópio, Phonk e Relógio revistos, Recap novo, modo leve automático e a pasta "Orolon Player" do backup.
 - **Agora:** teste fechado na Google Play (no ar desde a 1.26.4; a 1.26.7 é a versão mais nova enviada). Faltam 12 testadores inscritos por 14 dias seguidos antes de pedir a produção.
 
 ## Onde o app está (depois da 1.26)
@@ -85,11 +86,11 @@ O Orolon já tem o que os players grátis conhecidos têm, e mais os mostradores
 1. ✅ **Ficha da Play, prints (`loja/pt`, `loja/en`), artes e declarações** (1.26.1), e o app no teste fechado (1.26.4).
 2. **Passar pelo teste fechado:** 12 testadores por 14 dias seguidos, depois o pedido de produção.
 3. **Prints do README** com os mostradores novos (o texto já está em dia).
-4. **Pacote "Apoiador"** (compra única, só cosmético): estilos da Aura (Phonk, Lo-fi, Anos 80; já prontos desde a 1.26, falta só a compra), LED refinado como opção, temas e ícones extras. Só depois de o app estar na loja.
+4. **Pacote "Apoiador"** (compra única, só cosmético; em revisão desde 20/11/2026, o Jo-ah vai pensar em planos só de apoio): LED refinado como opção, temas e ícones extras. Só depois de o app estar na loja.
 5. **Só no Android:** widgets e Android Auto.
 6. **Efeitos extras de som** (lista abaixo) e os pequenos acertos adiados das revisões.
 
-Vinil, Cassete e Rádio ainda não foram refinados como os outros mostradores.
+Cassete e Rádio continuam fora da lista: são desenhos parados que não reagem à música (redesenhar ou apagar, a decidir).
 
 ## Sugestões para versões futuras (anotadas em 16/11/2026)
 

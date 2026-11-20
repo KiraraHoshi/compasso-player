@@ -35,7 +35,7 @@ O Orolon toca as músicas que já estão no seu aparelho e transforma o som em i
 Tudo funciona sem internet. Não tem conta, não tem anúncio e nada sai do seu celular.
 
 VISUAIS QUE REAGEM À MÚSICA
-• Oito mostradores: Relógio, Vinil, Aura, Espectro, Anel, Neon, Barras e LED
+• Onze mostradores: Relógio, Vinil, Aura, Espectro, Anel, Neon, Barras, LED, Galáxia, Túnel e Osciloscópio
 • No Relógio, o ponteiro anda a cada batida
 • Cores tiradas da capa de cada música e luz de fundo no mesmo tom
 • Tela cheia com relógio, para deixar tocando na mesa
@@ -93,7 +93,7 @@ Orolon plays the music that is already on your device and turns sound into image
 Everything works without internet. No account, no ads, and nothing leaves your phone.
 
 VISUALS THAT REACT TO MUSIC
-• Eight displays: Clock, Vinyl, Aura, Spectrum, Ring, Neon, Bars and LED
+• Eleven displays: Clock, Vinyl, Aura, Spectrum, Ring, Neon, Bars, LED, Galaxy, Tunnel and Oscilloscope
 • On the Clock, the hand moves on every beat
 • Colors taken from each song's cover, with a matching background glow
 • Full screen with a clock, to leave playing on your desk

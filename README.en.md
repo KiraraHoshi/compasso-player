@@ -26,7 +26,7 @@ The app follows your device language (English or Brazilian Portuguese), and you 
 - **Home:** continue where you left off, shortcuts to the tools (equalizer, sleep timer, Volume +, 3D effects, car mode and more), recently played and favorites.
 - **Library:** import files or whole folders (drag and drop on desktop; on Android it finds the music on the device by itself). Reads title, artist, album, track number, cover art and lyrics from MP3, FLAC, M4A, OGG and Opus, with no external libraries. Songs, albums, artists and folders, global search, multi-select, more sort orders and 1 to 5 star ratings.
 - **Now playing:** the cover sits inside a dial that reacts to the music, hearing kick, snare and cymbals and following the tempo. The brush button changes the visual, colors and cover right there.
-- **Dial visuals:** Clock (with hands), Vinyl, Aura, Spectrum, Ring, Neon, Bars and LED. Aura has styles (Default, Phonk, Lo-fi and 80s). Full screen turns it into a clock that plays music.
+- **Dial visuals:** Clock (with hands), Vinyl, Aura, Spectrum, Ring, Neon, Bars, LED, Galaxy, Tunnel and Oscilloscope. Aura has styles (Default, Phonk, Lo-fi and 80s). Full screen turns it into a clock that plays music.
 - **Sound:** volume boost up to 200% with a limiter, reverb, 3D effect and enhancer (bass, treble and intensity), all free.
 - **Car mode:** a simple screen with big buttons. On Android it pauses when headphones are unplugged and can start playing when they connect.
 - **Sound eras:** 60s, 70s, 80s and 90s, each with its own sound and visual.

@@ -1262,8 +1262,8 @@ function criarEscuta(op = {}) {
   };
 }
 /* A capa tem peso: leva um soco no bumbo e volta como mola. Soco logo depois de outro sai mais fraco, para não ficar tremendo. */
-/* Estilos da Aura (1.26). O Padrão é o de sempre. Phonk, Lo-fi e Anos 80 são só visuais (cosmético do futuro pacote Apoiador;
-   por enquanto liberados para teste). soco: força do soco da capa; tremida: quanto a capa treme no bumbo (px);
+/* Estilos da Aura (1.26). O Padrão é o de sempre. Phonk, Lo-fi e Anos 80 são só visuais, grátis para sempre (decisão de 20/11/2026).
+   soco: força do soco da capa; tremida: quanto a capa treme no bumbo (px);
    clarao: clarão branco na capa a cada caixa; solta: rapidez com que a forma desce; cores: as duas cores do estilo. */
 const ESTILOS_AURA = {
   padrao: { soco: 0.05, tremida: 0, clarao: 0, solta: 0.18 },
@@ -4390,7 +4390,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.26.7";
+const VERSAO = "1.26.8";
 /* De onde vêm as versões novas: a versão da Google Play atualiza pela loja (e não pode mandar baixar APK de fora);
    o APK de teste aponta para o GitHub; o site só avisa quais botões abrem o navegador. */
 function notaAtualizacao(nativo, loja) {

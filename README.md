@@ -26,7 +26,7 @@ Funciona no navegador do celular e do PC, pode ser instalado como app (PWA) e te
 - **Início:** continuar de onde parou, atalhos para as ferramentas (equalizador, temporizador, Volume +, efeitos 3D, modo carro e outras), tocadas há pouco e favoritas.
 - **Biblioteca:** importa arquivos ou pastas inteiras (no PC, também dá para arrastar para a janela; no Android, acha as músicas do aparelho sozinho). Lê título, artista, álbum, número da faixa e capa de MP3, FLAC, M4A, OGG e Opus. Abas de músicas, álbuns, artistas e pastas, com busca, várias ordens e estrelas de 1 a 5.
 - **Tocando agora:** a capa fica dentro de um mostrador que reage à música: ouve bumbo, caixa e prato e acompanha o andamento. Pelo pincel dá para trocar o visual, as cores e a capa ali mesmo.
-- **Visuais do mostrador:** Relógio (com ponteiros), Vinil, Aura, Espectro, Anel, Neon, Barras e LED. A Aura tem estilos (Padrão, Phonk, Lo-fi e Anos 80). Em tela cheia, vira um relógio que toca.
+- **Visuais do mostrador:** Relógio (com ponteiros), Vinil, Aura, Espectro, Anel, Neon, Barras, LED, Galáxia, Túnel e Osciloscópio. A Aura tem estilos (Padrão, Phonk, Lo-fi e Anos 80). Em tela cheia, vira um relógio que toca.
 - **Som:** amplificador até 200% com limitador, reverb, efeito 3D e aprimorador (graves, agudos e intensidade), tudo grátis.
 - **Modo carro:** tela simples com botões grandes. No Android, pausa ao tirar o fone e pode tocar sozinho ao conectar.
 - **Repetir trecho (A-B) e marcadores** para áudios longos, e playlists `.m3u`.
