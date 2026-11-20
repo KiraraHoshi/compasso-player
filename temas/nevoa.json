@@ -1,0 +1,14 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Névoa",
+  "fundo": "#EBEFF3",
+  "card": "#FAFBFC",
+  "texto": "#18202A",
+  "suave": "#536070",
+  "destaque": "#3D6D9C",
+  "secundaria": "#9A5B3C",
+  "brilho": "#A8C2DA",
+  "raio": 12,
+  "fonte": "padrao"
+}

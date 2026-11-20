@@ -1,0 +1,14 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Grafite",
+  "fundo": "#131416",
+  "card": "#1D1F22",
+  "texto": "#ECEDEF",
+  "suave": "#A3A7AD",
+  "destaque": "#6FDCC1",
+  "secundaria": "#F0B88A",
+  "brilho": "#2C5F56",
+  "raio": 10,
+  "fonte": "sistema"
+}

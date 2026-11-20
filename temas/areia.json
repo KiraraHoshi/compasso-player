@@ -1,0 +1,14 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Areia",
+  "fundo": "#F4EEE4",
+  "card": "#FFFCF6",
+  "texto": "#2A2119",
+  "suave": "#6B5E50",
+  "destaque": "#B0502A",
+  "secundaria": "#2E7468",
+  "brilho": "#E9B892",
+  "raio": 14,
+  "fonte": "padrao"
+}

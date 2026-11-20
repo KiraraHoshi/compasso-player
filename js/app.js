@@ -109,15 +109,32 @@ const salvarCfg = () => guardado.set("compasso.cfg", cfg);
 if (cfg.padroes19 !== 1) { cfg.corCapa = true; cfg.formaCapa = "quadrada"; cfg.padroes19 = 1; salvarCfg(); } // novos padrões da 1.9.4
 
 const FONTES = {
-  padrao: { n: T("Orolon"), d: '"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif', b: '"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' },
+  padrao: { n: T("Orologia"), d: '"Cinzel",Constantia,Georgia,serif', b: '"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' }, // 1.26.8: a mesma do Orolon Caixinhas
   sistema: { n: T("Do sistema"), d: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif', b: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' },
   serifada: { n: T("Serifada"), d: 'Georgia,"Times New Roman",serif', b: 'Georgia,"Times New Roman",serif' },
   mono: { n: T("Mono"), d: 'ui-monospace,"Cascadia Mono",Consolas,monospace', b: 'ui-monospace,"Cascadia Mono",Consolas,monospace' },
 };
+/* 1.26.8: as cores base são as mesmas do Orolon Caixinhas (Noite e Dia); os ids continuam "escuro" e "claro" para ninguém perder a escolha */
 const BASE = {
-  claro: { id: "claro", nome: T("Orologia Claro"), fundo: "#F1EFF6", card: "#FFFFFF", texto: "#1D1830", suave: "#6B6580", destaque: "#6A4BD8", secundaria: "#A8743A", raio: 16, fonte: "padrao", fixo: true },
-  escuro: { id: "escuro", nome: T("Orologia Escuro"), fundo: "#14111F", card: "#1E1A2E", texto: "#EFEAF7", suave: "#9A93B0", destaque: "#A98BFF", secundaria: "#D2A067", raio: 16, fonte: "padrao", fixo: true },
+  escuro: { id: "escuro", nome: T("Orologia Escuro"), fundo: "#110E18", card: "#1C1827", texto: "#EEEAF5", suave: "#A49EB8", destaque: "#9C9BF5", secundaria: "#E3C98A", raio: 14, fonte: "padrao", fixo: true },
+  claro: { id: "claro", nome: T("Orologia Claro"), fundo: "#F2F0F7", card: "#FFFFFF", texto: "#1E1A2B", suave: "#5E5874", destaque: "#5A50D6", secundaria: "#8C5E14", raio: 14, fonte: "padrao", fixo: true },
 };
+/* Galeria: os mesmos 12 temas do Orolon Caixinhas (ids g-…), todos livres e prontos para usar. Os da 2.0 do Caixinhas trazem o "brilho" próprio. */
+const G = (id, nome, fundo, card, texto, suave, destaque, secundaria, raio, fonte, brilho) => ({ id: "g-" + id, nome, fundo, card, texto, suave, destaque, secundaria, raio, fonte, ...(brilho ? { brilho } : {}), fixo: true, galeria: true });
+const GALERIA = [
+  G("brasa", T("Brasa"), "#17100C", "#241812", "#F7EBDD", "#B59E8A", "#FF8A3D", "#F2D7A6", 12, "padrao"),
+  G("entardecer", T("Entardecer"), "#0E1119", "#1A1F2B", "#F4EEE6", "#A9A39A", "#EDA36D", "#F7D9A5", 16, "padrao"),
+  G("folha", T("Folha"), "#F1F4EA", "#FFFFFF", "#1C2414", "#5F6B52", "#3F7A14", "#B5560F", 18, "padrao"),
+  G("mare", T("Maré"), "#0A1418", "#12222A", "#E6F4F6", "#8FB0B8", "#4FD1E0", "#F06A86", 20, "padrao"),
+  G("meia-noite", T("Meia-noite"), "#000000", "#101014", "#F2F2F5", "#9A9AA8", "#7C9BFF", "#E3C98A", 14, "sistema"),
+  G("papel", T("Papel"), "#F3F1EC", "#FFFEFB", "#22201C", "#6B665C", "#2F5FA8", "#9A4B2F", 6, "serifada"),
+  G("ametista", T("Ametista"), "#160D1A", "#24162A", "#F6EAF7", "#BBA2C1", "#D98CF0", "#F0C98C", 16, "padrao", "#7E3496"),
+  G("musgo", T("Musgo"), "#0D150F", "#16231A", "#EAF3EB", "#9DB5A3", "#B4D778", "#E8B979", 18, "padrao", "#3C6B2E"),
+  G("grafite", T("Grafite"), "#131416", "#1D1F22", "#ECEDEF", "#A3A7AD", "#6FDCC1", "#F0B88A", 10, "sistema", "#2C5F56"),
+  G("areia", T("Areia"), "#F4EEE4", "#FFFCF6", "#2A2119", "#6B5E50", "#B0502A", "#2E7468", 14, "padrao", "#E9B892"),
+  G("nevoa", T("Névoa"), "#EBEFF3", "#FAFBFC", "#18202A", "#536070", "#3D6D9C", "#9A5B3C", 12, "padrao", "#A8C2DA"),
+  G("lirio", T("Lírio"), "#F8EEF2", "#FFFFFF", "#2A1822", "#6E5663", "#A33D86", "#8A5A12", 20, "padrao", "#EBAACD"),
+];
 const CAMPOS = [["fundo", T("Fundo")], ["card", T("Cartões")], ["texto", T("Texto")], ["suave", T("Texto suave")], ["destaque", T("Destaque")], ["secundaria", T("Secundária")]];
 const DESTAQUES = {
   claro: [[T("Violeta"), "#6A4BD8"], [T("Bronze"), "#A8743A"], [T("Fogo"), "#D2571B"], [T("Ciano"), "#0E8AA8"], [T("Folha"), "#4E8A1E"], [T("Carmesim"), "#C22D52"]],
@@ -126,7 +143,22 @@ const DESTAQUES = {
 const HEX = /^#[0-9a-f]{6}$/i;
 let meusTemas = guardado.get("compasso.temas", []);
 const salvarTemas = () => guardado.set("compasso.temas", meusTemas);
-const todosTemas = () => [BASE.claro, BASE.escuro, ...meusTemas];
+const todosTemas = () => [BASE.escuro, BASE.claro, ...GALERIA, ...meusTemas];
+/* Quem adicionou um tema da galeria antes da 1.26.8 tem uma cópia dele em "meus temas". Cópia com o mesmo nome e as mesmas seis cores
+   vira o tema de fábrica (os cantos diferentes vão para os ajustes dele); com cor ou fonte mudada, é personalização e continua da pessoa. */
+function migrarGaleria() {
+  const mesmo = (m, g) => (m.nome === g.nome || m.nome === GALERIA_NOMES[g.id]) && CAMPOS.every(([k]) => String(m[k] || "").toUpperCase() === g[k].toUpperCase()) && (m.fonte || "padrao") === g.fonte;
+  let mudou = false;
+  meusTemas = meusTemas.filter((m) => {
+    const g = GALERIA.find((x) => mesmo(m, x)); if (!g) return true;
+    if (+m.raio !== g.raio && Number.isFinite(+m.raio)) cfg.ajustes[g.id] = { ...(cfg.ajustes[g.id] || {}), raio: +m.raio };
+    if (cfg.tema === m.id) cfg.tema = g.id;
+    mudou = true; return false;
+  });
+  if (mudou) { salvarTemas(); salvarCfg(); }
+}
+const GALERIA_NOMES = { "g-brasa": "Brasa", "g-entardecer": "Entardecer", "g-folha": "Folha", "g-mare": "Maré", "g-meia-noite": "Meia-noite", "g-papel": "Papel" }; // nome com que a cópia foi guardada em português
+migrarGaleria();
 const temaPorId = (id) => todosTemas().find((t) => t.id === id);
 if (!temaPorId(cfg.tema)) cfg.tema = matchMedia("(prefers-color-scheme: dark)").matches ? "escuro" : "claro";
 const temaAtual = () => { const t = temaPorId(cfg.tema) || BASE.claro; return { ...t, ...(t.fixo ? cfg.ajustes[t.id] || {} : {}) }; };
@@ -136,6 +168,9 @@ function lum(h) {
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 }
 const contraste = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+const misturar = (a, b, k) => "#" + [1, 3, 5].map((i) => { const x = parseInt(a.substr(i, 2), 16), y = parseInt(b.substr(i, 2), 16); return Math.round(x + (y - x) * k).toString(16).padStart(2, "0"); }).join("").toUpperCase();
+/* Cor do clarão do fundo: o "brilho" do tema; sem ele, derivada do destaque (a mesma conta do Caixinhas) */
+const brilhoDe = (t) => t.brilho || misturar(t.destaque, t.fundo, 0.35);
 const escuro = (t) => lum(t.fundo) < 0.2;
 
 let corViz = "#6A4BD8", tinta = "#6A4BD8";
@@ -1989,7 +2024,8 @@ function ajustarAtual(mudanca) {
   else { Object.assign(t, mudanca); salvarTemas(); }
   aplicarTema();
 }
-const temaJSON = (t) => JSON.stringify({ formato: "orologia-tema", versao: 1, nome: t.nome, fundo: t.fundo, card: t.card, texto: t.texto, suave: t.suave, destaque: t.destaque, secundaria: t.secundaria, raio: t.raio, fonte: t.fonte }, null, 2);
+/* O brilho só vai na exportação quando o tema tem um próprio: sem ele, o clarão continua seguindo o destaque (igual ao Caixinhas) */
+const temaJSON = (t) => JSON.stringify({ formato: "orologia-tema", versao: 1, nome: t.nome, fundo: t.fundo, card: t.card, texto: t.texto, suave: t.suave, destaque: t.destaque, secundaria: t.secundaria, brilho: t.brilho || undefined, raio: t.raio, fonte: t.fonte }, null, 2);
 function validarTema(o) {
   if (!o || typeof o !== "object" || Array.isArray(o)) throw new Error(T("Esse conteúdo não é um tema do Orolon."));
   const t = { nome: String(o.nome || T("Tema importado")).trim().slice(0, 40) || T("Tema importado") };
@@ -2001,6 +2037,7 @@ function validarTema(o) {
   }
   t.raio = Math.max(0, Math.min(28, Math.round(Number(o.raio) || 16)));
   t.fonte = FONTES[o.fonte] ? o.fonte : "padrao";
+  const b = String(o.brilho || "").trim(); if (HEX.test(b)) t.brilho = b.toUpperCase(); // opcional; inválido é ignorado, sem recusar o tema
   return t;
 }
 function importarTema(texto) {
@@ -3297,7 +3334,8 @@ function restaurarBackup(o) {
   for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "volRec", "leve", "fluido", "coracoes", "corCapa", "formaCapa", "ledCor", "auraEst", "auraCorCapa", "amp", "avisoAmp", "reverb", "largura", "apGraves", "apAgudos", "apInt", "autoTocar", "tocarFone", "pausarFone"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
-  if (aj.ajustes) cfg.ajustes = aj.ajustes;
+  if (aj.ajustes && typeof aj.ajustes === "object" && !Array.isArray(aj.ajustes)) cfg.ajustes = aj.ajustes;
+  migrarGaleria(); // backup de antes da 1.26.8: a cópia de um tema da galeria vira o de fábrica
   salvarCfg(); aplicarTema(); aplicarFundo(); aplicarVisual(); aplicarVel(); aplicarVolume(); if (ctx) montarFiltros();
   mudouExemplos(); marcarFerramentas(); restaurarCapas(o.capas); renderBib(); renderPl(); renderTemas(); paint();
   return { achadas, total, nPl };
@@ -4127,9 +4165,6 @@ function boasVindas() {
     },
   });
 }
-
-/* ===================== Galeria de temas ===================== */
-const GALERIA = [{"nome": T("Entardecer"), "fundo": "#0E1119", "card": "#1A1F2B", "texto": "#F4EEE6", "suave": "#A9A39A", "destaque": "#EDA36D", "secundaria": "#F7D9A5", "raio": 16, "fonte": "padrao"}, {"nome": T("Brasa"), "fundo": "#17100C", "card": "#241812", "texto": "#F7EBDD", "suave": "#B59E8A", "destaque": "#FF8A3D", "secundaria": "#F2D7A6", "raio": 12, "fonte": "padrao"}, {"nome": T("Maré"), "fundo": "#0A1418", "card": "#12222A", "texto": "#E6F4F6", "suave": "#8FB0B8", "destaque": "#4FD1E0", "secundaria": "#F06A86", "raio": 20, "fonte": "padrao"}, {"nome": T("Meia-noite"), "fundo": "#000000", "card": "#101014", "texto": "#F2F2F5", "suave": "#9A9AA8", "destaque": "#7C9BFF", "secundaria": "#E3C98A", "raio": 14, "fonte": "sistema"}, {"nome": T("Folha"), "fundo": "#F1F4EA", "card": "#FFFFFF", "texto": "#1C2414", "suave": "#5F6B52", "destaque": "#3F7A14", "secundaria": "#B5560F", "raio": 18, "fonte": "padrao"}, {"nome": T("Papel"), "fundo": "#F3F1EC", "card": "#FFFEFB", "texto": "#22201C", "suave": "#6B665C", "destaque": "#2F5FA8", "secundaria": "#9A4B2F", "raio": 6, "fonte": "serifada"}];
 
 /* ===================== Navegação ===================== */
 /* O Tocando agora não fica na barra: abre pelo mini player, pelo Continuar do Início e ao tocar uma lista */

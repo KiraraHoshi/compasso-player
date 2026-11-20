@@ -1,0 +1,14 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Ametista",
+  "fundo": "#160D1A",
+  "card": "#24162A",
+  "texto": "#F6EAF7",
+  "suave": "#BBA2C1",
+  "destaque": "#D98CF0",
+  "secundaria": "#F0C98C",
+  "brilho": "#7E3496",
+  "raio": 16,
+  "fonte": "padrao"
+}

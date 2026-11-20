@@ -1,0 +1,14 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Musgo",
+  "fundo": "#0D150F",
+  "card": "#16231A",
+  "texto": "#EAF3EB",
+  "suave": "#9DB5A3",
+  "destaque": "#B4D778",
+  "secundaria": "#E8B979",
+  "brilho": "#3C6B2E",
+  "raio": 18,
+  "fonte": "padrao"
+}

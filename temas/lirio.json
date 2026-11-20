@@ -1,0 +1,14 @@
+{
+  "formato": "orologia-tema",
+  "versao": 1,
+  "nome": "Lírio",
+  "fundo": "#F8EEF2",
+  "card": "#FFFFFF",
+  "texto": "#2A1822",
+  "suave": "#6E5663",
+  "destaque": "#A33D86",
+  "secundaria": "#8A5A12",
+  "brilho": "#EBAACD",
+  "raio": 20,
+  "fonte": "padrao"
+}
