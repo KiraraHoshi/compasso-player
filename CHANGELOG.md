@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.26.7
+- **Android: faixas cinza nas barras do sistema.** Em alguns celulares (como os Galaxy com Android 13) o espaço da barra de status e da barra de navegação ficava cinza, separado do app. Agora ele tem a cor do tema e acompanha a troca de tema e o giro da tela.
+
 ## 1.26.6
 - **Android: faixa no topo.** A versão 1.26.5 deixou, em alguns celulares, uma faixa com uma imagem espremida no alto de todas as telas. Corrigido.
 

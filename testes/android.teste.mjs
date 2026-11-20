@@ -48,7 +48,45 @@ function montarActivity() { // roda o preparo do plugin num projeto Android mín
   } finally { rmSync(dir, { recursive: true, force: true }); }
 }
 
+// Finge o app Android: todo plugin aceita qualquer chamada e anota o que recebeu em window.__log
+const FINGIR_ANDROID = `
+window.__log = [];
+const plugin = (nome) => new Proxy({}, { get: (o, m) => m === "then" ? undefined
+  : m === "addListener" ? async () => ({ remove() {} })
+  : async (a) => { __log.push(nome + "." + String(m) + (a && a.cor ? ":" + a.cor : "")); return {}; } });
+window.Capacitor = { isNativePlatform: () => true, getPlatform: () => "android",
+  Plugins: { SystemBars: plugin("SystemBars"), Musicas: plugin("Musicas"), MediaSession: plugin("MediaSession"), App: plugin("App") } };
+`;
+
 export default [
+  {
+    nome: "Android com WebView antigo: o espaço das barras do sistema ganha a cor do fundo do tema, sempre depois de o SystemBars repintar (antes ficava uma faixa cinza em cima e embaixo; visto num Galaxy M52)",
+    script: FINGIR_ANDROID,
+    rodar: async (p) => {
+      const ultimaCor = () => p.avaliar(() => { const l = window.__log, i = l.map((x) => x.startsWith("Musicas.corDaJanela")).lastIndexOf(true), j = l.lastIndexOf("SystemBars.setStyle"); return { cor: i >= 0 ? l[i] : null, depois: i > j }; });
+      await p.esperar(() => window.__log.some((x) => x.startsWith("Musicas.corDaJanela")), 4000);
+      assert.deepEqual(await ultimaCor(), { cor: "Musicas.corDaJanela:#14111F", depois: true }, "tema escuro de fábrica");
+      await p.avaliar(() => aplicar(BASE.claro));
+      await p.esperar(() => window.__log.includes("Musicas.corDaJanela:#F1EFF6"), 4000);
+      assert.deepEqual(await ultimaCor(), { cor: "Musicas.corDaJanela:#F1EFF6", depois: true }, "trocar de tema troca a cor");
+      // girar o celular: o SystemBars repinta a janela com a cor padrão do Android; o app pinta de novo
+      await p.avaliar(() => { window.__log.length = 0; window.__log.push("SystemBars.setStyle"); dispatchEvent(new Event("resize")); });
+      await p.esperar(() => window.__log.includes("Musicas.corDaJanela:#F1EFF6"), 4000);
+    },
+  },
+  {
+    nome: "o plugin pinta a janela por trás das barras só com cor válida (#RRGGBB), sem derrubar o app",
+    node: true,
+    rodar: async () => {
+      const j = ler("android-plugin/MusicasPlugin.java");
+      const m = j.match(/public void corDaJanela\(PluginCall call\) \{[\s\S]*?\n    \}/);
+      assert.ok(m, "existe o método corDaJanela");
+      assert.match(m[0], /\^#\[0-9A-Fa-f\]\{6\}\$/, "confere o formato da cor");
+      assert.match(m[0], /getDecorView\(\)\.setBackgroundColor\(Color\.parseColor\(cor\)\)/);
+      assert.match(m[0], /runOnUiThread/);
+      assert.match(j, /^import android\.graphics\.Color;/m);
+    },
+  },
   {
     nome: "a versão da Google Play não manda baixar APK do GitHub; a de teste continua mandando",
     rodar: async (p) => {

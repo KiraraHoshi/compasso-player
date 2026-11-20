@@ -87,6 +87,12 @@ const PLUG = { MediaSession: pegarPlugin("MediaSession"), SystemBars: pegarPlugi
 if (NATIVO) document.documentElement.classList.add("nativo");
 // Chamadas para o lado nativo nunca podem derrubar o app: algumas devolvem promessa, outras um código, outras falham na hora
 function nat(f) { try { const r = f(); if (r && typeof r.catch === "function") r.catch(() => {}); return r; } catch (e) { return null; } }
+// Barras do sistema em WebView antigo (abaixo da 140, ex.: Galaxy M52 e S20 FE com Android 13): o Capacitor afasta a página das
+// barras e o espaço que sobra mostra o fundo da janela, que o SystemBars repinta de cinza a cada setStyle e ao girar o celular.
+// O app pinta esse fundo com a cor do tema depois de cada repintura.
+let corJanela = "";
+function pintarJanela() { if (PLUG.Musicas && /^#[0-9A-Fa-f]{6}$/.test(corJanela)) nat(() => PLUG.Musicas.corDaJanela({ cor: corJanela })); }
+if (NATIVO) addEventListener("resize", () => setTimeout(pintarJanela, 150));
 // No app de teste, um erro aparece na tela em vez de deixar tudo em branco
 if (NATIVO) addEventListener("error", (e) => {
   try { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;bottom:90px;z-index:99;background:#B3261E;color:#fff;padding:10px 12px;border-radius:12px;font:12px/1.4 monospace"; d.textContent = "Erro: " + (e.message || e) + " (" + (e.filename || "").split("/").pop() + ":" + (e.lineno || "") + ")"; document.body.append(d); setTimeout(() => d.remove(), 12000); } catch (x) { /* sem tela ainda */ }
@@ -203,7 +209,9 @@ function aplicar(t) {
   set("--display", f.d); set("--body", f.b); set("color-scheme", e ? "dark" : "light");
   aplicarEfeitos();
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t.fundo;
-  if (PLUG.SystemBars) nat(() => PLUG.SystemBars.setStyle({ style: e ? "DARK" : "LIGHT" })); // ícones claros no tema escuro e vice-versa
+  corJanela = t.fundo;
+  if (PLUG.SystemBars) nat(() => Promise.resolve(PLUG.SystemBars.setStyle({ style: e ? "DARK" : "LIGHT" })).then(pintarJanela, pintarJanela)); // ícones claros no tema escuro e vice-versa
+  else pintarJanela();
 }
 function aplicarEfeitos() {
   const r = document.documentElement.style;
@@ -4081,7 +4089,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.26.6";
+const VERSAO = "1.26.7";
 /* De onde vêm as versões novas: a versão da Google Play atualiza pela loja (e não pode mandar baixar APK de fora);
    o APK de teste aponta para o GitHub; o site só avisa quais botões abrem o navegador. */
 function notaAtualizacao(nativo, loja) {

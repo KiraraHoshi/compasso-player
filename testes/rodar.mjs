@@ -71,6 +71,7 @@ async function novaPagina(cr, base, t) {
     const dados = Object.fromEntries(Object.entries(antes).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]));
     await s("Page.addScriptToEvaluateOnNewDocument", { source: `if (!sessionStorage.getItem("__semeado")) { const d = ${JSON.stringify(dados)}; for (const k in d) localStorage.setItem(k, d[k]); sessionStorage.setItem("__semeado", "1"); }` });
   }
+  if (t.script) await s("Page.addScriptToEvaluateOnNewDocument", { source: t.script }); // ex.: fingir o Capacitor do app Android
   await s("Page.navigate", { url: `${base}/index.html${t.hash ? "#" + t.hash : ""}` });
 
   const avaliar = async (fn, ...args) => {

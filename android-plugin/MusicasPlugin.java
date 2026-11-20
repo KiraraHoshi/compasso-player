@@ -37,6 +37,7 @@ import android.os.SystemClock;
 import android.content.ContentUris;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
@@ -131,6 +132,17 @@ public class MusicasPlugin extends Plugin {
                 if (ligado) getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 else getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             } catch (Exception e) { /* janela indisponível */ }
+            call.resolve();
+        });
+    }
+
+    // Fundo da janela por trás das barras do sistema (aparece em WebView antigo, onde a página não passa por trás delas)
+    @PluginMethod
+    public void corDaJanela(PluginCall call) {
+        final String cor = call.getString("cor", "");
+        if (cor == null || !cor.matches("^#[0-9A-Fa-f]{6}$")) { call.reject("cor-invalida"); return; }
+        getActivity().runOnUiThread(() -> {
+            try { getActivity().getWindow().getDecorView().setBackgroundColor(Color.parseColor(cor)); } catch (Exception e) { /* janela indisponível */ }
             call.resolve();
         });
     }
