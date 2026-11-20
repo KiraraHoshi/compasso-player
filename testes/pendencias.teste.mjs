@@ -32,6 +32,14 @@ export default [
     },
   },
   {
+    nome: "cartão Favoritas do Início: nome e contagem em linhas separadas",
+    rodar: async (p) => {
+      await p.avaliar(() => { favs.add(faixas[0].id); ir("biblioteca"); ir("inicio"); });
+      const [a, b] = await p.avaliar(() => [...document.querySelectorAll("#ini-fav .grow > span")].map((e) => e.getBoundingClientRect().top));
+      assert.ok(b > a + 5, `na mesma linha: ${a} / ${b}`);
+    },
+  },
+  {
     nome: "texto antigo sem uso saiu da tradução",
     node: true,
     rodar: async () => assert.doesNotMatch(readFileSync(new URL("../js/i18n.js", import.meta.url), "utf8"), /Os dois botões de cima abrem o GitHub|liberados para teste/),

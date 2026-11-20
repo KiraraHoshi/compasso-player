@@ -586,3 +586,5 @@ nav button[data-v="temas"]{display:none}
 @property --cap-accent{syntax:"<color>";inherits:true;initial-value:#9C9BF5}
 @property --cap-accent2{syntax:"<color>";inherits:true;initial-value:#E3C98A}
 :root[data-capatroca="1"]{transition:--accent .6s ease,--accent2 .6s ease,--brilho .6s ease,--cap-accent .6s ease,--cap-accent2 .6s ease}
+/* Cartão Favoritas do Início: nome e contagem em linhas separadas (estavam grudados: "Favoritas3 músicas") */
+.ini-fav .grow>span{display:block}
