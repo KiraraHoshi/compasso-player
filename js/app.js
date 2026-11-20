@@ -36,6 +36,7 @@ const I = {
   rep: tr("M5 12V9.5A2.5 2.5 0 017.5 7H18M19 12v2.5a2.5 2.5 0 01-2.5 2.5H6M15.5 4.5L18 7l-2.5 2.5M8.5 14.5L6 17l2.5 2.5"),
   ondas: tr("M2.5 12c1.6-3.2 3.2-3.2 4.8 0s3.2 3.2 4.8 0 3.2-3.2 4.8 0 3.2 3.2 4.8 0") + tr("M6 5.8a9 9 0 0 1 12 0M6 18.2a9 9 0 0 0 12 0"),
   carro: tr("M5 11.5l1.5-4.3A2 2 0 0 1 8.4 5.8h7.2a2 2 0 0 1 1.9 1.4l1.5 4.3M4 11.5h16v6H4zM6.5 17.5v1.7M17.5 17.5v1.7M7 14.5h.5M16.5 14.5h.5"),
+  eng: tr("M12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6zM19.4 13.4l1.6 1.2-1.8 3.1-1.9-.7a7 7 0 0 1-2 1.2l-.3 2H11l-.3-2a7 7 0 0 1-2-1.2l-1.9.7-1.8-3.1 1.6-1.2a7 7 0 0 1 0-2.8L5 9.4l1.8-3.1 1.9.7a7 7 0 0 1 2-1.2l.3-2h3.6l.3 2a7 7 0 0 1 2 1.2l1.9-.7L20.6 9.4 19 10.6a7 7 0 0 1 .4 2.8z"),
   pincel: tr("M19.6 4.4a2 2 0 0 0-2.9 0L9.2 11.9l2.9 2.9 7.5-7.5a2 2 0 0 0 0-2.9zM8 13.4c-1.9.3-3 1.7-3 3.3 0 1-.6 1.9-1.5 2.3 2.7.6 6.6-.3 6.6-3.6"),
   star: tr("M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"),
   starOn: '<path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
@@ -98,6 +99,8 @@ if (NATIVO) addEventListener("error", (e) => {
   try { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;bottom:90px;z-index:99;background:#B3261E;color:#fff;padding:10px 12px;border-radius:12px;font:12px/1.4 monospace"; d.textContent = "Erro: " + (e.message || e) + " (" + (e.filename || "").split("/").pop() + ":" + (e.lineno || "") + ")"; document.body.append(d); setTimeout(() => d.remove(), 12000); } catch (x) { /* sem tela ainda */ }
 });
 const ico = (n, s = 24) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+/* 1.26.8: no celular Ajustes sai da barra de baixo e vira a engrenagem no topo das telas (no PC e deitado continua na barra lateral) */
+const engrenagem = () => `<button class="ic sm o-eng" data-ajustes aria-label="${T("Ajustes")}">${ico("eng", 22)}</button>`;
 const eqIcone = () => '<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>';
 
 /* ===================== Ajustes e temas ===================== */
@@ -236,7 +239,7 @@ function aplicar(t) {
   const r = document.documentElement.style, e = escuro(t), f = FONTES[t.fonte] || FONTES.padrao;
   const set = (k, v) => r.setProperty(k, v);
   set("--bg", t.fundo); set("--card", t.card); set("--text", t.texto); set("--muted", t.suave);
-  set("--accent", t.destaque); set("--accent2", t.secundaria); set("--radius", t.raio + "px");
+  set("--accent", t.destaque); set("--accent2", t.secundaria); set("--radius", t.raio + "px"); set("--brilho", brilhoDe(t));
   set("--on-accent", contraste("#FFFFFF", t.destaque) >= contraste("#14111F", t.destaque) ? "#FFFFFF" : "#14111F");
   set("--line", e ? "rgba(255,255,255,.12)" : "rgba(0,0,0,.10)");
   set("--hover", e ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.045)");
@@ -1822,7 +1825,7 @@ function renderPl() {
   if (!p) {
     plAberta = null;
     const lista = pls.slice().sort((a, b) => (b.mod || 0) - (a.mod || 0));
-    L.innerHTML = `<div><h1>${T("Playlists")}</h1><p class="sub">${plural(pls.length, "playlist sua", "playlists suas")} ${T("e {0} automáticas", autosVisiveis().length)}</p></div>
+    L.innerHTML = `<div class="row o-topo"><div class="grow"><h1>${T("Playlists")}</h1><p class="sub">${plural(pls.length, "playlist sua", "playlists suas")} ${T("e {0} automáticas", autosVisiveis().length)}</p></div>${engrenagem()}</div>
       <div class="autos">${autosVisiveis().map((a) => { const n = idsDe(a).length; return `<button class="auto" data-abrir="${a.id}"><span class="auto-ic">${ico(a.ic, 20)}</span><span class="t">${a.nome}</span><span class="sub">${plural(n, "música", "músicas")}</span></button>`; }).join("")}</div>
       <div class="row"><p class="sec-t grow">${T("Suas playlists")}</p><button class="btn ghost sm" data-m3u>${T("Importar .m3u")}</button><button class="btn sm" data-nova>${ico("plus", 18)}${T("Nova")}</button></div>` +
       (lista.length ? lista.map((y) => { const fx = idsDe(y).map((id) => porId.get(id)); return `<div class="card row"><button class="tp" data-abrir="${y.id}">${mosaico(y)}<span class="grow"><span class="t clip">${esc(y.nome)}</span><span class="sub clip">${plural(fx.length, "música", "músicas")} · ${fmt(duracaoTotal(fx))}</span></span></button><button class="ic act" data-tocarpl="${y.id}" aria-label="${T("Tocar {0}", esc(y.nome))}">${ico("play")}</button></div>`; }).join("")
@@ -2834,9 +2837,9 @@ function abrirFolhaEpoca() {
 function renderInicio() {
   const I0 = $("ini"); if (!I0 || $("app").dataset.view !== "inicio") return;
   const vis = faixas.filter(visivel), x = cur();
-  const cab = `<div><h1 class="clip">${esc(saudacao(new Date().getHours(), perfil.nome))}</h1><p class="sub">${plural(vis.length, "música", "músicas")}</p></div>`;
+  const cab = `<div class="row o-topo"><div class="grow"><h1 class="clip">${esc(saudacao(new Date().getHours(), perfil.nome))}</h1><p class="sub">${plural(vis.length, "música", "músicas")}</p></div>${engrenagem()}</div>`;
   const ferr = `<div class="ini-ferr" id="ini-ferr"></div>`;
-  if (!carregado) { I0.innerHTML = `<div><h1 class="clip">${esc(saudacao(new Date().getHours(), perfil.nome))}</h1></div>` + ferr; renderFerramentas(); return; } // sem piscar o convite enquanto carrega
+  if (!carregado) { I0.innerHTML = `<div class="row o-topo"><div class="grow"><h1 class="clip">${esc(saudacao(new Date().getHours(), perfil.nome))}</h1></div>${engrenagem()}</div>` + ferr; renderFerramentas(); return; } // sem piscar o convite enquanto carrega
   if (!vis.length) {
     I0.innerHTML = cab + `<div class="card stack" id="ini-vazio"><h2>${T("Traga suas músicas")}</h2><p class="note">${T("Elas ficam guardadas só neste aparelho. Servem MP3, FLAC, M4A, OGG e Opus.")}</p><div class="btns"><button class="btn sm" data-ini-importar>${ico("note", 18)}${T("Importar músicas")}</button></div></div>` + ferr;
     if (typeof renderFerramentas === "function") renderFerramentas();
@@ -2874,7 +2877,7 @@ function renderVoce() {
   topVoce = top.map((r) => r.x.id);
   const desde = stats.desde ? new Date(stats.desde).toLocaleDateString(LOCALE(), { day: "numeric", month: "long", year: "numeric" }) : "";
   V.innerHTML = `<div class="perfil">${avatar()}<div class="grow"><h1 class="clip">${esc(perfil.nome || T("Você"))}</h1><p class="sub">${desde ? T("Ouvindo no Orolon desde {0}", desde) : T("Suas estatísticas aparecem aqui conforme você ouve.")}</p></div>
-      <button class="btn ghost sm" data-editarperfil>${ico("edit", 18)}${T("Editar")}</button></div>
+      <button class="btn ghost sm" data-editarperfil>${ico("edit", 18)}${T("Editar")}</button>${engrenagem()}</div>
     <div class="tiles"><div class="tile"><b>${fmtTempoCurto(total)}</b><span class="sub">${T("de escuta")}</span></div><div class="tile"><b>${plays}</b><span class="sub">${plays === 1 ? T("reprodução") : T("reproduções")}</span></div><div class="tile"><b>${diasOuvindo}</b><span class="sub">${diasOuvindo === 1 ? T("dia ouvindo") : T("dias ouvindo")}</span></div></div>
     <div class="card stack"><div class="row"><h2 class="grow">${T("Últimos 7 dias")}</h2><span class="sub">${fmtTempo(dias.reduce((s, d) => s + d.s, 0))}</span></div>
       <div class="bars" role="img" aria-label="${T("Minutos ouvidos por dia nos últimos 7 dias")}">${dias.map((d, i) => `<div class="${i === 6 ? "hoje" : ""}"><em>${d.s >= 60 ? Math.round(d.s / 60) : ""}</em><i style="height:${Math.max(3, (d.s / maxDia) * 100).toFixed(1)}%"></i><span>${i === 6 ? T("hoje") : d.d.toLocaleDateString(LOCALE(), { weekday: "short" }).replace(".", "")}</span></div>`).join("")}</div></div>
@@ -4095,6 +4098,8 @@ document.addEventListener("fullscreenchange", () => { if (!document.fullscreenEl
 $("b-palco").addEventListener("click", () => alternarPalco());
 $("b-palco").innerHTML = ico("expand", 20);
 $("b-pincel").innerHTML = ico("pincel", 20);
+$("b-import").insertAdjacentHTML("afterend", engrenagem());
+$("main").addEventListener("click", (e) => { if (e.target.closest("[data-ajustes]")) ir("temas"); });
 $("b-pincel").addEventListener("click", abrirPersonalizar);
 
 
