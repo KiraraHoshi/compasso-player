@@ -36,7 +36,7 @@ const I = {
   rep: tr("M5 12V9.5A2.5 2.5 0 017.5 7H18M19 12v2.5a2.5 2.5 0 01-2.5 2.5H6M15.5 4.5L18 7l-2.5 2.5M8.5 14.5L6 17l2.5 2.5"),
   ondas: tr("M2.5 12c1.6-3.2 3.2-3.2 4.8 0s3.2 3.2 4.8 0 3.2-3.2 4.8 0 3.2 3.2 4.8 0") + tr("M6 5.8a9 9 0 0 1 12 0M6 18.2a9 9 0 0 0 12 0"),
   carro: tr("M5 11.5l1.5-4.3A2 2 0 0 1 8.4 5.8h7.2a2 2 0 0 1 1.9 1.4l1.5 4.3M4 11.5h16v6H4zM6.5 17.5v1.7M17.5 17.5v1.7M7 14.5h.5M16.5 14.5h.5"),
-  eng: tr("M12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6zM19.4 13.4l1.6 1.2-1.8 3.1-1.9-.7a7 7 0 0 1-2 1.2l-.3 2H11l-.3-2a7 7 0 0 1-2-1.2l-1.9.7-1.8-3.1 1.6-1.2a7 7 0 0 1 0-2.8L5 9.4l1.8-3.1 1.9.7a7 7 0 0 1 2-1.2l.3-2h3.6l.3 2a7 7 0 0 1 2 1.2l1.9-.7L20.6 9.4 19 10.6a7 7 0 0 1 .4 2.8z"),
+  eng: '<circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/>' + tr("M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"), // a mesma do Orolon Caixinhas (a antiga tinha os dentes fora do centro)
   pincel: tr("M19.6 4.4a2 2 0 0 0-2.9 0L9.2 11.9l2.9 2.9 7.5-7.5a2 2 0 0 0 0-2.9zM8 13.4c-1.9.3-3 1.7-3 3.3 0 1-.6 1.9-1.5 2.3 2.7.6 6.6-.3 6.6-3.6"),
   star: tr("M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"),
   starOn: '<path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
@@ -2825,10 +2825,21 @@ function atalhosValidos(l) {
 }
 const meusAtalhos = () => atalhosValidos(cfg.atalhos);
 const botaoFerr = (f, extra = "", cls = "") => `<button class="ini-f${cls}" data-ferr="${f.id}"${extra}>${f.ic ? ico(f.ic, 22) : `<b class="ini-vel"></b>`}<span>${f.nome}</span></button>`;
+/* Rótulo de atalho que não cabe (letra grande do aparelho, fonte larga): diminui a letra até 8 px em vez de partir a palavra */
+function caberRotulos() {
+  for (const sp of document.querySelectorAll(".ini-ferr .ini-f span")) {
+    sp.style.fontSize = "";
+    if (!sp.clientWidth) continue; // tela escondida: mede quando aparecer
+    let px = parseFloat(getComputedStyle(sp).fontSize);
+    while (sp.scrollWidth - sp.clientWidth > 1 && px > 8) { px -= 0.5; sp.style.fontSize = px + "px"; }
+  }
+}
+addEventListener("resize", () => caberRotulos());
+if (document.fonts) document.fonts.ready.then(() => caberRotulos());
 function renderFerramentas() {
   const g = $("ini-ferr"); if (!g) return;
   g.innerHTML = meusAtalhos().map((id) => botaoFerr(FERRAMENTAS.find((f) => f.id === id))).join("") + `<button class="ini-f o-mais" data-ferr-mais>${ico("more", 22)}<span>${T("Mais")}</span></button>`;
-  marcarFerramentas();
+  marcarFerramentas(); caberRotulos();
 }
 function marcarFerramentas() { // marca o que está ligado no Início e na folha "Mais", se estiver aberta
   for (const g of [$("ini-ferr"), folha && folha.ferramentas ? $("sheet-b") : null]) {
@@ -4450,6 +4461,7 @@ function ir(v, voltando) {
   if (antes && antes !== v) { rolagens[antes] = $("main").scrollTop; if (!voltando) { historico.push(antes); if (historico.length > 30) historico.shift(); } }
   $("app").dataset.view = v;
   document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + v));
+  if (v === "inicio") caberRotulos(); // rótulos montados com a tela escondida são medidos agora
   document.querySelectorAll("nav button").forEach((b) => { const on = b.dataset.v === v; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   if (v === "voce") renderVoce();
   if (v === "inicio") renderInicio();

@@ -1,7 +1,7 @@
 /* Orolon: modo offline. Guarda os arquivos do app no aparelho e abre mesmo sem internet.
    Estratégia: entrega da cópia guardada na hora e atualiza a cópia em segundo plano. */
 const CACHE = "compasso-v1.26.8";
-const ARQUIVOS = ["./", "index.html", "css/app.css", "js/i18n.js", "js/tags.js", "js/app.js", "manifest.json",
+const ARQUIVOS = ["./", "index.html", "css/app.css", "css/fontes/cinzel.woff2", "js/i18n.js", "js/tags.js", "js/app.js", "manifest.json",
   "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png"];
 
 self.addEventListener("install", (e) => {

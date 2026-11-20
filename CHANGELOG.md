@@ -4,12 +4,13 @@
 O visual novo do Orolon, o mesmo do Orolon Caixinhas 2.0.
 - **Visual Noite Orologia:** cartões de vidro, um clarão de luz parado no alto da tela na cor do tema e a barra de abas flutuante. No celular, Ajustes saiu da barra e virou a engrenagem no topo das telas; no computador e com o celular deitado continua na barra lateral.
 - **Início mais simples:** em vez das nove ferramentas, três atalhos que você escolhe (de fábrica: Equalizador, Temporizador e Modo carro) e o botão **Mais**, que abre todas. Toque em **Editar** para trocar os atalhos.
-- **14 temas prontos**, todos grátis, cada um com uma miniatura em Ajustes › Aparência: Orologia Escuro e Claro (agora com as mesmas cores do Caixinhas), Brasa, Entardecer, Folha, Maré, Meia-noite, Papel e os novos Ametista, Musgo, Grafite, Areia, Névoa e Lírio. Se você tinha adicionado um tema da galeria, ele vira o tema pronto, sem cópia repetida. Os títulos usam a fonte Orologia, a mesma do Caixinhas.
+- **14 temas prontos**, todos grátis, cada um com uma miniatura em Ajustes › Aparência: Orologia Escuro e Claro (agora com as mesmas cores do Caixinhas), Brasa, Entardecer, Folha, Maré, Meia-noite, Papel e os novos Ametista, Musgo, Grafite, Areia, Névoa e Lírio. Se você tinha adicionado um tema da galeria, ele vira o tema pronto, sem cópia repetida. Os títulos usam a fonte Orologia (Cinzel), a mesma do Caixinhas, que agora vem dentro do app e aparece igual em todo celular.
 - **Brilho por tema:** cada tema pode ter a cor do clarão do fundo. No editor de tema há a cor "Brilho do fundo" e o botão "Automático", que faz o clarão seguir o destaque.
 - **Cores da capa no app inteiro:** opção nova em Aparência e no pincel. Ligada, o destaque de todas as telas segue a capa da música que está tocando. Com "Cores do visual seguem a capa da música", os botões do Tocando agora também pegam a cor da capa.
 - **Três visuais novos para o mostrador:** Galáxia, Túnel e Osciloscópio.
 - **Visuais revistos:** o Phonk ficou com mais impacto na batida; no Relógio, o ponteiro também reage à caixa e aos pratos; o Espectro mostra melhor os agudos; com "reduzir movimento", a poeira do Espectro e do Anel não anda mais.
 - **Phonk, Lo-fi e Anos 80 são grátis para sempre.**
+- **Engrenagem de Ajustes** com o mesmo desenho do Caixinhas (a antiga tinha o círculo fora do centro), e o nome dos atalhos diminui para caber em vez de partir a palavra ("Temporizad/or").
 - **Recap em imagem novo,** no visual do Orolon.
 - **Modo leve automático:** se o aparelho parecer lento ao abrir o app, o modo leve liga sozinho e avisa uma vez. Se você desligar, ele não liga mais sozinho.
 - **Android, backup automático:** o app cria a pasta "Orolon Player" dentro do lugar que você escolher e grava nela, sem pedir permissão nova. Quem já tinha uma pasta escolhida continua gravando no mesmo lugar. O nome das cópias passa a levar a marca do próprio aparelho, para um celular novo nunca apagar as cópias do antigo.
