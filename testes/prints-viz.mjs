@@ -13,11 +13,13 @@ const TODOS = [
 const filtro = (process.env.ORO_VIZ || "").split(",").filter(Boolean);
 const lista = TODOS.filter(([v, e]) => !filtro.length || filtro.includes(v) || filtro.includes(e));
 const TAMANHOS = [["celular", 360, 780], ["pc", 1280, 800]];
+const TEMA = process.env.ORO_TEMA || ""; // ex.: ORO_TEMA=claro → prints com sufixo -claro
 
 export default TAMANHOS.map(([nomeT, largura, altura]) => ({
   nome: `prints dos visuais (${nomeT})`, hash: "tocando", largura, altura,
   rodar: async (p) => {
     await p.avaliar(BATERIA);
+    if (TEMA) await p.avaliar((t) => { cfg.tema = t; aplicarTema(); }, TEMA);
     for (const [v, est] of lista) {
       const ok = await p.avaliar((v, est) => {
         if (est) cfg.auraEst = est;
@@ -33,7 +35,7 @@ export default TAMANHOS.map(([nomeT, largura, altura]) => ({
       // espera o instante logo depois de um bumbo, que é o que mais mostra o efeito
       await p.esperar(() => escuta.O.bumbo.env > 0.75, 4000).catch(() => {});
       await new Promise((r) => setTimeout(r, 40));
-      await p.print(`viz-${v}${est ? "-" + est : ""}-${nomeT}`);
+      await p.print(`viz-${v}${est ? "-" + est : ""}-${nomeT}${TEMA ? "-" + TEMA : ""}`);
     }
     await p.avaliar(() => { __bateria.desligar(); pausar(); cfg.auraEst = "padrao"; });
   },

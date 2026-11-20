@@ -1289,7 +1289,7 @@ function ouvirBatidas(agora) {
    O ponteiro âmbar marca quanto da música já passou. O fino anda um tracinho (6 graus) a cada golpe de bumbo,
    com o tranco de relógio: passa um pouco do ponto e volta. */
 const golpeForte = (g) => (g >= 0.75 ? g : 0); // o ponteiro grande só anda nos graves bem definidos (golpe perto do mais forte dos últimos segundos)
-/* 1.26.8: a caixa dá um tranco para a frente (uns 2 graus) e o prato faz o ponteiro tremer de leve; os dois voltam ao lugar.
+/* 1.26.8: a caixa dá um tranco para a frente (uns 3 graus) e o prato faz o ponteiro tremer de leve; os dois voltam ao lugar.
    Só o bumbo avança o ponteiro, então ele continua contando as batidas. */
 function criarPonteiro() {
   let a = 0, v = 0, alvo = 0, lado = 1;
@@ -3997,7 +3997,8 @@ function desenharAura(c, Wc, vivo) {
   const tintaA = c.createLinearGradient(0, 0, Wc, Wc); tintaA.addColorStop(0.15, rgba(c1, 1)); tintaA.addColorStop(0.85, rgba(c2, 1));
   auraGiro += (E.lento ? 0.0003 + eB * 0.014 * k : 0.001 + eB * 0.006 * k) * fqV * parado * (E.vagalume ? 0.5 : 1); // gira bem devagar, com impulso no bumbo (Phonk: quase parado entre os golpes, e o golpe empurra mais)
   const A = W * 0.14 * (0.45 + k * 0.75) * (1 + eB * (E.afiado ? 0.45 : 0.22) * k) * auraPres * (E.afiado ? 1.2 : 1), ex = E.afiado ? 2.3 : 1.7;
-  const vz = $("viz"), kpx = vz && vz.clientWidth ? Wc / vz.clientWidth : 1, ccx = cx + fxCapa.x * kpx, ccy = cx + fxCapa.y * kpx; // onde a capa está, em px desta tela
+  let ccx = cx, ccy = cx; // onde a capa está, em px desta tela (só o Phonk treme; nos outros estilos é o centro)
+  if (E.croma && (fxCapa.x || fxCapa.y)) { const vz = $("viz"), kpx = vz && vz.clientWidth ? Wc / vz.clientWidth : 1; ccx += fxCapa.x * kpx; ccy += fxCapa.y * kpx; }
   c.lineJoin = "round";
   // 1) brilho macio atrás de tudo
   if (usarBrilho()) {
@@ -4175,7 +4176,9 @@ function desenharOsc(c, W, vivo) {
     oscCheio = Math.min(3, oscCheio + 1);
   } else oscCheio = 0; // parado: só a linha reta do aparelho ligado
   // a tela: vidro escuro, retícula fina e o aro
-  c.globalAlpha = 1; c.fillStyle = "rgba(4,6,10,.5)"; c.beginPath(); c.arc(cx, cx, Rs, 0, Math.PI * 2); c.fill();
+  // a tela é sempre escura (também no tema claro), e o traço é clareado dentro dela: o fósforo aparece em qualquer tema
+  const claro = (q) => [q[0] + (255 - q[0]) * 0.35, q[1] + (255 - q[1]) * 0.35, q[2] + (255 - q[2]) * 0.35], fosforo = rgbaDe(claro(corAura[0]), 1);
+  c.globalAlpha = 1; c.fillStyle = "rgba(8,9,14,.86)"; c.beginPath(); c.arc(cx, cx, Rs, 0, Math.PI * 2); c.fill();
   c.strokeStyle = rgbaDe(corAura[0], 1); c.lineWidth = W * 0.0018; c.globalAlpha = 0.16; c.beginPath();
   c.moveTo(cx - Rs, cx); c.lineTo(cx + Rs, cx); c.moveTo(cx, cx - Rs); c.lineTo(cx, cx + Rs);
   for (const f of [0.33, 0.66]) { c.moveTo(cx + Rs * f, cx); c.arc(cx, cx, Rs * f, 0, Math.PI * 2); }
@@ -4186,15 +4189,15 @@ function desenharOsc(c, W, vivo) {
   const traco = (g, h, dx) => { g.beginPath(); for (let i = 0; i < OSC_N; i++) { const x = cx + dx + h[i * 2] * Rs * 0.92, y = cx + h[i * 2 + 1] * Rs * 0.92; if (i) g.lineTo(x, y); else g.moveTo(x, y); } };
   const reto = (g) => { g.beginPath(); g.moveTo(cx - Rs * 0.8, cx); g.lineTo(cx + Rs * 0.8, cx); };
   c.lineJoin = c.lineCap = "round";
-  if (!oscCheio) { c.strokeStyle = tinta; c.globalAlpha = 0.75; c.lineWidth = W * 0.005; reto(c); c.stroke(); }
+  if (!oscCheio) { c.strokeStyle = fosforo; c.globalAlpha = 0.75; c.lineWidth = W * 0.005; reto(c); c.stroke(); }
   else {
     brilhoViz(c, W, 0.7 + eB * 0.3 * k, vivo, (g) => { g.strokeStyle = tintaDe(g, W); g.lineJoin = g.lineCap = "round"; g.lineWidth = W * 0.022; traco(g, atual, 0); g.stroke(); }, 0, "osc");
-    if (!cfg.leve) for (let v = 2; v >= 1; v--) { if (oscCheio <= v) continue; const h = oscHist[(oscVez + 3 - v) % 3]; c.strokeStyle = tinta; c.globalAlpha = v === 2 ? 0.14 : 0.3; c.lineWidth = W * 0.004; traco(c, h, 0); c.stroke(); } // fósforo apagando
+    if (!cfg.leve) for (let v = 2; v >= 1; v--) { if (oscCheio <= v) continue; const h = oscHist[(oscVez + 3 - v) % 3]; c.strokeStyle = fosforo; c.globalAlpha = v === 2 ? 0.14 : 0.3; c.lineWidth = W * 0.004; traco(c, h, 0); c.stroke(); } // fósforo apagando
     if (eC > 0.06 && !cfg.leve) { // na caixa, as duas cores se separam um instante
       const d = eC * W * 0.012 * k; c.globalCompositeOperation = "lighter"; c.globalAlpha = 0.5; c.lineWidth = W * 0.005;
       c.strokeStyle = rgbaDe(corAura[0], 1); traco(c, atual, d); c.stroke(); c.strokeStyle = rgbaDe(corAura[1], 1); traco(c, atual, -d); c.stroke(); c.globalCompositeOperation = "source-over";
     }
-    c.strokeStyle = tinta; c.globalAlpha = 0.95; c.lineWidth = W * (0.0055 + eB * 0.003 * k); traco(c, atual, 0); c.stroke();
+    c.strokeStyle = fosforo; c.globalAlpha = 0.95; c.lineWidth = W * (0.0055 + eB * 0.003 * k); traco(c, atual, 0); c.stroke();
     c.strokeStyle = "#fff"; c.globalAlpha = 0.45; c.lineWidth = W * 0.0016; c.stroke(); // miolo claro do traço
   }
   c.restore();
