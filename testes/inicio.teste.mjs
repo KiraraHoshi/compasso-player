@@ -7,29 +7,77 @@ const semRolarDeLado = async (p) => {
   }
 };
 
+// 1.26.8: o Início mostra três atalhos escolhidos e "Mais", que abre as nove ferramentas
+const NOVE = ["eq", "sono", "volmais", "efeitos", "visual", "epoca", "vel", "carro", "palco"];
+const pelaMais = async (p, id) => { await p.clicar("[data-ferr-mais]"); await p.clicar(`#sheet [data-ferr=${id}]`); };
+const marcada = async (p, id) => { await p.avaliar(() => fecharFolha()); await p.clicar("[data-ferr-mais]"); return p.avaliar((x) => document.querySelector(`#sheet [data-ferr=${x}]`).classList.contains("act"), id); };
+
 export default [
   {
-    nome: "nove ferramentas na ordem",
-    rodar: async (p) => assert.deepEqual(await p.avaliar(() => [...document.querySelectorAll("#ini-ferr [data-ferr]")].map((b) => b.dataset.ferr)), ["eq", "sono", "volmais", "efeitos", "visual", "epoca", "vel", "carro", "palco"]),
+    nome: "três atalhos de fábrica e o Mais",
+    rodar: async (p) => {
+      assert.deepEqual(await p.avaliar(() => [...document.querySelectorAll("#ini-ferr [data-ferr]")].map((b) => b.dataset.ferr)), ["eq", "sono", "carro"]);
+      assert.ok(await p.avaliar(() => !!document.querySelector("#ini-ferr [data-ferr-mais]")));
+    },
+  },
+  {
+    nome: "Mais abre as nove ferramentas na ordem",
+    rodar: async (p) => {
+      await p.clicar("[data-ferr-mais]");
+      assert.deepEqual(await p.avaliar(() => [...document.querySelectorAll("#sheet [data-ferr]")].map((b) => b.dataset.ferr)), NOVE);
+    },
+  },
+  {
+    nome: "editar troca os atalhos, até três",
+    rodar: async (p) => {
+      await p.clicar("[data-atalhos-editar]");
+      await p.clicar("#sheet [data-ferr=sono]");
+      await p.clicar("#sheet [data-ferr=vel]");
+      assert.deepEqual(await p.avaliar(() => cfg.atalhos), ["eq", "carro", "vel"]);
+      await p.clicar("#sheet [data-ferr=palco]");
+      assert.deepEqual(await p.avaliar(() => cfg.atalhos), ["eq", "carro", "vel"]);
+      assert.equal(await p.avaliar(() => document.getElementById("toast").textContent), "Escolha até 3 atalhos. Desmarque um antes.");
+      await p.avaliar(() => fecharFolha());
+      assert.deepEqual(await p.avaliar(() => [...document.querySelectorAll("#ini-ferr [data-ferr]")].map((b) => b.dataset.ferr)), ["eq", "carro", "vel"]);
+      assert.equal(await p.avaliar(() => document.querySelector("#ini-ferr .ini-vel").textContent), "1×");
+    },
+  },
+  {
+    nome: "atalhos inválidos voltam ao padrão ou são cortados",
+    rodar: async (p) => {
+      assert.deepEqual(await p.avaliar(() => atalhosValidos("x")), ["eq", "sono", "carro"]);
+      assert.deepEqual(await p.avaliar(() => atalhosValidos(["eq", "eq", "zz", "sono", "carro", "vel"])), ["eq", "sono", "carro"]);
+      assert.deepEqual(await p.avaliar(() => atalhosValidos([])), []);
+    },
+  },
+  {
+    nome: "atalhos entram no backup e um valor estragado volta ao padrão",
+    rodar: async (p) => {
+      await p.avaliar(() => restaurarBackup({ formato: "compasso-backup", ajustes: { atalhos: ["palco"] } }));
+      assert.deepEqual(await p.avaliar(() => cfg.atalhos), ["palco"]);
+      await p.avaliar(() => restaurarBackup({ formato: "compasso-backup", ajustes: { atalhos: 42 } }));
+      assert.deepEqual(await p.avaliar(() => cfg.atalhos), ["eq", "sono", "carro"]);
+      assert.ok(await p.avaliar(() => textoBackup().then((t) => JSON.parse(t).ajustes.atalhos.length === 3)));
+    },
   },
   {
     nome: "Volume + pela folha muda o amplificador",
     rodar: async (p) => {
-      await p.clicar("[data-ferr=volmais]");
+      await pelaMais(p, "volmais");
       await p.clicar('#sheet [data-amp="1.5"]');
       assert.equal(await p.avaliar(() => cfg.amp), 1.5);
-      assert.ok(await p.avaliar(() => document.querySelector("[data-ferr=volmais]").classList.contains("act")));
+      assert.ok(await marcada(p, "volmais"));
     },
   },
   {
     nome: "Efeitos pela folha liga o reverb e o 3D",
     rodar: async (p) => {
-      await p.clicar("[data-ferr=efeitos]");
+      await pelaMais(p, "efeitos");
       await p.clicar("#sheet [data-reverb=sala]");
       assert.equal(await p.avaliar(() => cfg.reverb), "sala");
       await p.avaliar(() => { const r = document.querySelector("#sheet [data-fx=largura]"); r.value = 50; r.dispatchEvent(new Event("input", { bubbles: true })); });
       assert.equal(await p.avaliar(() => cfg.largura), 1.5);
-      assert.ok(await p.avaliar(() => document.querySelector("[data-ferr=efeitos]").classList.contains("act")));
+      assert.ok(await marcada(p, "efeitos"));
     },
   },
   {
@@ -55,7 +103,7 @@ export default [
   {
     nome: "visual pela folha muda o visual",
     rodar: async (p) => {
-      await p.clicar("[data-ferr=visual]");
+      await pelaMais(p, "visual");
       await p.clicar("#sheet [data-vis=vinil]");
       assert.equal(await p.avaliar(() => cfg.visual), "vinil");
     },
@@ -63,7 +111,7 @@ export default [
   {
     nome: "época pela folha muda a época",
     rodar: async (p) => {
-      await p.clicar("[data-ferr=epoca]");
+      await pelaMais(p, "epoca");
       await p.clicar("#sheet [data-epoca='80']");
       assert.equal(await p.avaliar(() => String(cfg.era)), "80");
     },
@@ -76,11 +124,11 @@ export default [
     },
   },
   {
-    nome: "grade de ferramentas não estoura em 320 px",
+    nome: "fileira de atalhos não estoura em 320 px",
     largura: 320,
     rodar: async (p) => {
       assert.ok(await p.avaliar(() => { const g = document.getElementById("ini-ferr"); return g.scrollWidth <= g.clientWidth; }));
-      assert.equal(await p.avaliar(() => new Set([...document.querySelectorAll("#ini-ferr .ini-f")].map((b) => b.offsetTop)).size), 3, "as 9 ferramentas deviam ficar em 3 linhas de 3");
+      assert.equal(await p.avaliar(() => new Set([...document.querySelectorAll("#ini-ferr .ini-f")].map((b) => b.offsetTop)).size), 1, "os 3 atalhos e o Mais deviam ficar numa linha só");
     },
   },
   {

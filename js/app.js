@@ -2768,15 +2768,45 @@ const FERRAMENTAS = [
   { id: "carro", nome: T("Modo carro"), ic: "carro", abrir: () => abrirCarro() },
   { id: "palco", nome: T("Tela cheia"), ic: "expand", abrir: () => { ir("tocando"); alternarPalco(true); } },
 ];
+/* 1.26.8: o Início mostra só três atalhos (a pessoa escolhe quais) e "Mais", que abre as nove; nenhuma ferramenta some */
+const ATALHOS_PADRAO = ["eq", "sono", "carro"];
+function atalhosValidos(l) {
+  if (!Array.isArray(l)) return ATALHOS_PADRAO.slice();
+  const ids = FERRAMENTAS.map((f) => f.id);
+  return [...new Set(l.filter((x) => ids.includes(x)))].slice(0, 3);
+}
+const meusAtalhos = () => atalhosValidos(cfg.atalhos);
+const botaoFerr = (f, extra = "", cls = "") => `<button class="ini-f${cls}" data-ferr="${f.id}"${extra}>${f.ic ? ico(f.ic, 22) : `<b class="ini-vel"></b>`}<span>${f.nome}</span></button>`;
 function renderFerramentas() {
   const g = $("ini-ferr"); if (!g) return;
-  g.innerHTML = FERRAMENTAS.map((f) => `<button class="ini-f" data-ferr="${f.id}">${f.ic ? ico(f.ic, 22) : `<b class="ini-vel"></b>`}<span>${f.nome}</span></button>`).join("");
+  g.innerHTML = meusAtalhos().map((id) => botaoFerr(FERRAMENTAS.find((f) => f.id === id))).join("") + `<button class="ini-f o-mais" data-ferr-mais>${ico("more", 22)}<span>${T("Mais")}</span></button>`;
   marcarFerramentas();
 }
-function marcarFerramentas() {
-  const g = $("ini-ferr"); if (!g || !g.firstChild) return;
-  for (const f of FERRAMENTAS) { const b = g.querySelector(`[data-ferr="${f.id}"]`); if (b) { const on = !!(f.ativo && f.ativo()); b.classList.toggle("act", on); b.setAttribute("aria-pressed", on); } }
-  const v = g.querySelector(".ini-vel"); if (v) v.textContent = decimal(String(+cfg.vel || 1)) + "×";
+function marcarFerramentas() { // marca o que está ligado no Início e na folha "Mais", se estiver aberta
+  for (const g of [$("ini-ferr"), folha && folha.ferramentas ? $("sheet-b") : null]) {
+    if (!g || !g.firstChild) continue;
+    for (const f of FERRAMENTAS) { const b = g.querySelector(`[data-ferr="${f.id}"]`); if (b && !b.hasAttribute("data-escolher")) { const on = !!(f.ativo && f.ativo()); b.classList.toggle("act", on); b.setAttribute("aria-pressed", on); } }
+    const v = g.querySelector(".ini-vel"); if (v) v.textContent = decimal(String(+cfg.vel || 1)) + "×";
+  }
+}
+/* A folha com as nove ferramentas. "escolher": tocar marca ou desmarca o atalho (até três), em vez de abrir a ferramenta. */
+function abrirFerramentas(escolher = false) {
+  const html = () => (escolher ? `<p class="note">${T("Escolha até 3 atalhos para o Início. As outras ferramentas continuam no Mais.")}</p>` : "")
+    + `<div class="ini-ferr o-todas">${FERRAMENTAS.map((f) => { const on = meusAtalhos().includes(f.id); return escolher ? botaoFerr(f, ` data-escolher aria-pressed="${on}"`, on ? " act" : "") : botaoFerr(f); }).join("")}</div>`;
+  abrirFolha({
+    titulo: escolher ? T("Atalhos do Início") : T("Ferramentas"), html: html(), ferramentas: true,
+    clique(e) {
+      const b = e.target.closest("[data-ferr]"); if (!b) return;
+      const id = b.dataset.ferr;
+      if (!escolher) { const it = FERRAMENTAS.find((x) => x.id === id); fecharFolha(); if (it) it.abrir(); return; }
+      const l = meusAtalhos();
+      if (l.includes(id)) cfg.atalhos = l.filter((x) => x !== id);
+      else if (l.length >= 3) return toast(T("Escolha até 3 atalhos. Desmarque um antes."));
+      else cfg.atalhos = [...l, id];
+      salvarCfg(); $("sheet-b").innerHTML = html(); renderFerramentas();
+    },
+  });
+  marcarFerramentas();
 }
 const chipsDe = (lista, sel, attr) => `<div class="chips" role="group">${lista.map(([k, n]) => `<button ${attr}="${k}" aria-pressed="${sel === k}" class="${sel === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
 function abrirFolhaVisual() {
@@ -2838,7 +2868,7 @@ function renderInicio() {
   const I0 = $("ini"); if (!I0 || $("app").dataset.view !== "inicio") return;
   const vis = faixas.filter(visivel), x = cur();
   const cab = `<div class="row o-topo"><div class="grow"><h1 class="clip">${esc(saudacao(new Date().getHours(), perfil.nome))}</h1><p class="sub">${plural(vis.length, "música", "músicas")}</p></div>${engrenagem()}</div>`;
-  const ferr = `<div class="ini-ferr" id="ini-ferr"></div>`;
+  const ferr = `<div class="stack o-atalhos"><div class="row"><p class="sec-t grow">${T("Atalhos")}</p><button class="o-link" data-atalhos-editar>${T("Editar")}</button></div><div class="ini-ferr" id="ini-ferr"></div></div>`;
   if (!carregado) { I0.innerHTML = `<div class="row o-topo"><div class="grow"><h1 class="clip">${esc(saudacao(new Date().getHours(), perfil.nome))}</h1></div>${engrenagem()}</div>` + ferr; renderFerramentas(); return; } // sem piscar o convite enquanto carrega
   if (!vis.length) {
     I0.innerHTML = cab + `<div class="card stack" id="ini-vazio"><h2>${T("Traga suas músicas")}</h2><p class="note">${T("Elas ficam guardadas só neste aparelho. Servem MP3, FLAC, M4A, OGG e Opus.")}</p><div class="btns"><button class="btn sm" data-ini-importar>${ico("note", 18)}${T("Importar músicas")}</button></div></div>` + ferr;
@@ -2861,6 +2891,8 @@ function renderInicio() {
 $("ini").addEventListener("click", (e) => {
   const t = e.target;
   const f = t.closest("[data-ferr]"); if (f) { const it = FERRAMENTAS.find((x) => x.id === f.dataset.ferr); if (it) it.abrir(); return; }
+  if (t.closest("[data-ferr-mais]")) return abrirFerramentas(false);
+  if (t.closest("[data-atalhos-editar]")) return abrirFerramentas(true);
   if (t.closest("[data-ini-tocar]")) return alternar();
   if (t.closest("[data-abrir]")) return ir("tocando");
   if (t.closest("[data-ini-importar]")) return menuImportar();
@@ -3348,10 +3380,11 @@ function restaurarBackup(o) {
   for (const k of ["amb", "ambF", "reage", "batF", "fade", "tela", "anterior", "ord", "exemplos", "exemplosMexeu", "sonoTerminar", "fundoBlur", "fundoVeu", "era", "eraRuido", "visual", "xfade", "vel", "nivelar", "vol", "mudo", "volRec", "leve", "fluido", "coracoes", "corCapa", "formaCapa", "ledCor", "auraEst", "auraCorCapa", "amp", "avisoAmp", "reverb", "largura", "apGraves", "apAgudos", "apInt", "autoTocar", "tocarFone", "pausarFone"]) if (k in aj) cfg[k] = aj[k];
   if (aj.eq && Array.isArray(aj.eq.g)) cfg.eq = Object.assign(cfg.eq, aj.eq);
   if (aj.tema && temaPorId(aj.tema)) cfg.tema = aj.tema;
+  if ("atalhos" in aj) cfg.atalhos = atalhosValidos(aj.atalhos); // arquivo de fora: só ids conhecidos, no máximo 3
   if (aj.ajustes && typeof aj.ajustes === "object" && !Array.isArray(aj.ajustes)) cfg.ajustes = aj.ajustes;
   migrarGaleria(); // backup de antes da 1.26.8: a cópia de um tema da galeria vira o de fábrica
   salvarCfg(); aplicarTema(); aplicarFundo(); aplicarVisual(); aplicarVel(); aplicarVolume(); if (ctx) montarFiltros();
-  mudouExemplos(); marcarFerramentas(); restaurarCapas(o.capas); renderBib(); renderPl(); renderTemas(); paint();
+  mudouExemplos(); renderFerramentas(); restaurarCapas(o.capas); renderBib(); renderPl(); renderTemas(); paint();
   return { achadas, total, nPl };
 }
 

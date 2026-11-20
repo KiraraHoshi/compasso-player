@@ -417,7 +417,7 @@ main{contain:content}
 /* Títulos longos no Tocando agora: quebram em até duas linhas e nunca empurram a coluna para fora da tela */
 .np-meta{grid-template-columns:44px minmax(0,1fr) 44px}
 #v-tocando>*{min-width:0;max-width:100%}
-#v-tocando #np-t{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+#v-tocando #np-t{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:normal}
 
 /* Barras do sistema: no Android (e no iPhone) o app desenha atrás da barra de status e da barra de navegação,
    então o conteúdo ganha um respiro do tamanho delas. No Android o Capacitor (modo "native") informa pelo env(); em WebView antigo ele mesmo afasta a tela e o env() vale 0.
@@ -555,3 +555,16 @@ nav button[data-v="temas"]{display:none}
   :is(.card,.th,.seg,.ini-f,.mini-v,.porta,.pill,nav,.mini){background:var(--card);border-color:var(--line)}
   .app::before{display:none}
 }
+/* 1.26.8: Início com três atalhos e "Mais" numa fileira; a folha "Mais" mostra as nove em grade */
+#ini-ferr{grid-template-columns:repeat(4,minmax(0,1fr))}
+#ini-ferr .ini-f{min-height:70px}
+.o-mais svg{color:var(--muted)}
+.o-atalhos{gap:6px}
+.o-atalhos>.row{padding-right:2px}
+.o-atalhos .sec-t{padding-top:2px}
+.o-todas{grid-template-columns:repeat(3,minmax(0,1fr))}
+.o-todas .ini-f[data-escolher].act{border-color:var(--accent)}
+@media (min-width:600px){#ini-ferr{grid-template-columns:repeat(4,minmax(0,1fr))}}
+#ini-ferr .ini-f{padding:10px 2px;gap:5px}
+#ini-ferr .ini-f span{white-space:normal;text-align:center;font-size:11.5px;line-height:1.15;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow-wrap:anywhere}
+@media (max-width:359px){#ini-ferr{gap:6px}#ini-ferr .ini-f{padding:10px 0}#ini-ferr .ini-f span{font-size:10px;letter-spacing:-.02em}}
