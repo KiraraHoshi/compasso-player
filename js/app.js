@@ -2034,7 +2034,7 @@ function renderTemas() {
       <p class="note" id="bkp-ultimo">${textoUltimoBackup()}</p>
       ${temBackupAutomatico() ? `<p class="t">${T("Backup automático")}</p>` + (cfg.bkpPasta
         ? `<p class="note">${cfg.bkpPendente ? T("A pasta \"{0}\" já tem backups. Escolha se quer restaurar um deles; até lá nada é gravado nela.", esc(cfg.bkpPasta.nome)) : T("Uma cópia por dia na pasta \"{0}\", guardando as 5 mais novas deste aparelho.", esc(cfg.bkpPasta.nome))}${cfg.bkpFalha ? " " + T("A última tentativa falhou: confira se a pasta ainda existe.") : ""}</p><div class="btns"><button class="btn ghost sm" data-bkp-pasta>${T("Trocar pasta")}</button><button class="btn ghost sm" data-bkp-dapasta>${T("Restaurar da pasta")}</button><button class="btn ghost sm" data-bkp-desligar>${T("Desligar")}</button></div>`
-        : `<p class="note">${T("Escolha uma pasta e o Orolon guarda uma cópia nela todo dia, sem conta e sem internet. No celular novo, escolha a mesma pasta e restaure.")}</p><div class="btns"><button class="btn ghost sm" data-bkp-pasta>${T("Escolher a pasta do backup")}</button></div>`) : ""}</div>
+        : `<p class="note">${T("Escolha uma pasta e o Orolon guarda uma cópia nela todo dia, sem conta e sem internet. No celular novo, escolha a mesma pasta e restaure.")} ${T("Dentro do lugar escolhido o app cria a pasta \"Orolon Player\" e grava nela.")}</p><div class="btns"><button class="btn ghost sm" data-bkp-pasta>${T("Escolher a pasta do backup")}</button></div>`) : ""}</div>
     <div class="card stack"><h2>${T("Sobre")}</h2><p class="note">${NATIVO ? T("Orolon Player {0}. Sem anúncios, sem conta e sem coleta de dados: tudo o que você guarda fica neste aparelho.", VERSAO) : T("Orolon Player {0}. Código aberto, sem anúncios e sem conta. Se o app te ajuda, apoiar o projeto mantém ele assim.", VERSAO)}</p>
       ${NATIVO ? "" : `<div class="btns"><a class="btn sm" href="https://github.com/sponsors/KiraraHoshi" target="_blank" rel="noopener">${ico("heartOn", 18)}${T("Apoiar o projeto")}</a><a class="btn ghost sm" href="https://github.com/KiraraHoshi/compasso-player" target="_blank" rel="noopener">${T("Código no GitHub")}</a></div>`}
       <div class="btns">${instalado() ? "" : `<button class="btn ghost sm" data-instalar>${T("Instalar como app")}</button>`}<button class="btn ghost sm" data-boasvindas>${T("Ver as boas-vindas")}</button><a class="btn ghost sm" href="${linkPrivacidade()}" target="_blank" rel="noopener">${T("Política de privacidade")}</a></div>
@@ -3284,7 +3284,17 @@ async function enviarBackup(plug = MUS) { // quem envia é o app que a pessoa es
 const temBackupAutomatico = (plug = MUS) => !!(plug && plug.gravarBackup && (NATIVO || plug !== MUS));
 /* Cada aparelho grava com a sua marca no nome (orolon-backup-AAAA-MM-DD-xxxx.json) e só apaga as cópias dele:
    o celular novo nunca passa por cima dos backups do antigo. */
-const nomeBackupAuto = (d = new Date()) => { if (!cfg.bkpId) { cfg.bkpId = Math.random().toString(36).slice(2, 6).padEnd(4, "0"); salvarCfg(); } return `orolon-backup-${hojeStr(d)}-${cfg.bkpId}.json`; };
+const marcaSorteada = () => { if (!cfg.bkpId) { cfg.bkpId = Math.random().toString(36).slice(2, 6).padEnd(4, "0"); salvarCfg(); } return cfg.bkpId; };
+/* 1.26.8: a marca vem do próprio aparelho (o plugin tira do ANDROID_ID) e fica só na memória. A marca sorteada de antes fica nos dados,
+   e o Android copia os dados para o celular novo: com ela, o novo apagaria as cópias do antigo na limpeza. Sem plugin (navegador), vale a sorteada. */
+let marcaDoAparelho = null;
+async function marcaBackup(plug = MUS) {
+  if (marcaDoAparelho) return marcaDoAparelho;
+  try { const r = plug && plug.aparelho ? await plug.aparelho() : null; if (r && /^[a-z0-9]{4}$/.test(r.marca || "")) return (marcaDoAparelho = r.marca); } catch (e) { /* sem marca do aparelho */ }
+  return marcaSorteada();
+}
+const nomeBackupAuto = (d = new Date(), marca = marcaSorteada()) => `orolon-backup-${hojeStr(d)}-${marca}.json`;
+const comSub = (o) => (cfg.bkpPasta && cfg.bkpPasta.sub ? { ...o, sub: cfg.bkpPasta.sub } : o); // pastas escolhidas antes da 1.26.8 não têm subpasta
 let bkpRodando = false;
 async function backupAutomatico(plug = MUS, agora = Date.now(), forcar = false) {
   if (!temBackupAutomatico(plug) || !cfg.bkpPasta || !cfg.bkpPasta.uri) return "sem-pasta";
@@ -3293,8 +3303,9 @@ async function backupAutomatico(plug = MUS, agora = Date.now(), forcar = false) 
   if (!forcar && (agora - (+cfg.bkpAutoEm || 0) < DIA_MS || agora - (+cfg.bkpTentouEm || 0) < 3600000)) return "cedo"; // depois de uma falha, só tenta de novo em 1 hora
   bkpRodando = true;
   try {
-    const nome = nomeBackupAuto(new Date(agora));
-    await plug.gravarBackup({ uri: cfg.bkpPasta.uri, nome, grupo: "-" + cfg.bkpId + ".json", texto: await textoBackup(), manter: 5 });
+    const marca = await marcaBackup(plug), nome = nomeBackupAuto(new Date(agora), marca), pasta = cfg.bkpPasta;
+    const r = await plug.gravarBackup(comSub({ uri: pasta.uri, nome, grupo: "-" + marca + ".json", texto: await textoBackup(), manter: 5 }));
+    if (r && typeof r.sub === "string" && r.sub && cfg.bkpPasta === pasta) cfg.bkpPasta = { ...pasta, sub: r.sub }; // a subpasta sumiu e foi recriada
     cfg.bkpAutoEm = agora; cfg.bkpTentouEm = 0; marcarBackupFeito(agora);
     return "feito";
   } catch (e) { cfg.bkpFalha = true; cfg.bkpTentouEm = agora; salvarCfg(); return "falhou"; } // sem aviso na tela a cada vez: a linha em Ajustes › Sobre conta o que houve
@@ -3303,7 +3314,8 @@ async function backupAutomatico(plug = MUS, agora = Date.now(), forcar = false) 
 const dataDoBackup = (nome) => (/orolon-backup-(\d{4}-\d{2}-\d{2})/.exec(String(nome)) || [])[1] || "";
 async function copiasDaPasta(plug = MUS) { // as cópias da pasta, da mais nova para a mais antiga
   if (!plug || !plug.listarBackups || !cfg.bkpPasta) return [];
-  return (((await plug.listarBackups({ uri: cfg.bkpPasta.uri })) || {}).backups || []).slice()
+  await marcaBackup(plug); // para a folha saber quais cópias são deste aparelho
+  return (((await plug.listarBackups(comSub({ uri: cfg.bkpPasta.uri }))) || {}).backups || []).slice()
     .sort((x, y) => dataDoBackup(y.nome).localeCompare(dataDoBackup(x.nome)) || (y.modificado || 0) - (x.modificado || 0));
 }
 async function restaurarCopia(plug, doc) { const r = await plug.lerBackup({ doc }); return restaurarBackup(JSON.parse((r || {}).texto || "")); }
@@ -3316,7 +3328,7 @@ async function restaurarDaPasta(plug = MUS) { // tenta da mais nova para a mais 
 }
 function abrirCopiasDaPasta(plug, lista) {
   const dataBonita = (n) => { const d = dataDoBackup(n); return d ? d.split("-").reverse().join("/") : n; };
-  const daqui = (n) => !!cfg.bkpId && String(n).endsWith("-" + cfg.bkpId + ".json");
+  const marca = marcaDoAparelho || cfg.bkpId, daqui = (n) => !!marca && String(n).endsWith("-" + marca + ".json");
   abrirFolha({
     titulo: T("Backups da pasta"),
     html: `<p class="note">${cfg.bkpPendente ? T("Esta pasta já tem backups. Quer restaurar um deles neste aparelho? Nada é gravado nem apagado antes de você escolher.") : T("Escolha a cópia para restaurar. As músicas não entram no backup: importe as músicas antes.")}</p>
@@ -3341,7 +3353,7 @@ async function escolherPastaBackup(plug = MUS) {
   if (!plug || !plug.escolherPastaBackup) return;
   let r; try { r = await plug.escolherPastaBackup(); } catch (e) { toast(T("Não deu para abrir as pastas do aparelho")); return; }
   if (!r || r.cancelado || !r.uri) return;
-  cfg.bkpPasta = { uri: r.uri, nome: r.nome || T("Pasta") }; cfg.bkpFalha = false; cfg.bkpPendente = false; salvarCfg();
+  cfg.bkpPasta = { uri: r.uri, nome: r.nome || T("Pasta"), ...(typeof r.sub === "string" && r.sub ? { sub: r.sub } : {}) }; cfg.bkpFalha = false; cfg.bkpPendente = false; salvarCfg();
   let ja = []; try { ja = await copiasDaPasta(plug); } catch (e) { /* pasta sem leitura: a gravação vai avisar */ }
   if (ja.length) { cfg.bkpPendente = true; salvarCfg(); return abrirCopiasDaPasta(plug, ja); } // pasta com backups (celular novo?): pergunta antes de gravar qualquer coisa
   await primeiroBackup(plug);
