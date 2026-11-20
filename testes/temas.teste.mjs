@@ -47,6 +47,33 @@ export default [
     },
   },
   {
+    nome: "Aparência mostra os 14 temas como miniaturas e tocar aplica",
+    hash: "temas",
+    rodar: async (p) => {
+      await p.avaliar(() => abrirPorta("aparencia"));
+      assert.equal(await p.avaliar(() => document.querySelectorAll("#tm .o-mini[data-tema]").length), 14);
+      assert.equal(await p.avaliar(() => document.querySelectorAll("#tm [data-galeria]").length), 0);
+      await p.clicar('#tm .o-mini[data-tema="g-musgo"]');
+      assert.equal(await p.avaliar(() => cfg.tema), "g-musgo");
+      assert.equal(await p.avaliar(() => getComputedStyle(document.documentElement).getPropertyValue("--bg").trim().toUpperCase()), "#0D150F");
+      assert.equal(await p.avaliar(() => document.querySelector('#tm .o-mini[data-tema="g-musgo"]').getAttribute("aria-pressed")), "true");
+    },
+  },
+  {
+    nome: "editor tem a cor do brilho e Automático tira o brilho escolhido",
+    hash: "temas",
+    rodar: async (p) => {
+      await p.avaliar(() => abrirPorta("aparencia"));
+      await p.clicar("[data-criar]");
+      await p.avaliar(() => { const i = document.getElementById("e-brilho"); i.value = "#336699"; i.dispatchEvent(new Event("input", { bubbles: true })); });
+      assert.equal(await p.avaliar(() => editando.rascunho.brilho), "#336699");
+      await p.clicar("[data-brilho-auto]");
+      assert.equal(await p.avaliar(() => "brilho" in editando.rascunho), false);
+      await p.clicar("[data-salvar]");
+      assert.equal(await p.avaliar(() => "brilho" in temaAtual()), false);
+    },
+  },
+  {
     nome: "restaurar backup antigo com tema da galeria não duplica",
     rodar: async (p) => {
       await p.avaliar((b) => restaurarBackup({ formato: "compasso-backup", temas: [{ ...b, raio: 12 }] }), BRASA);

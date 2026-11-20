@@ -133,11 +133,20 @@ select.mini-sel{background:transparent;border:1px solid var(--line);border-radiu
 .th{border-radius:var(--radius);padding:10px;border:2px solid var(--line);text-align:left;background:var(--card);display:flex;flex-direction:column;gap:2px;position:relative}
 .th.sel{border-color:var(--accent)}
 .th.add{align-items:center;justify-content:center;border-style:dashed;color:var(--muted);min-height:138px;font-weight:600;gap:6px}
-.prev{height:74px;border-radius:calc(var(--r,16px)*.6);padding:10px;display:flex;flex-direction:column;justify-content:space-between;margin-bottom:6px;border:1px solid rgba(128,128,128,.18)}
-.prev b{display:block;height:8px;width:60%;border-radius:9px}
-.prev em{display:block;height:6px;width:40%;border-radius:9px}
-.prev s{display:block;height:20px;width:20px;border-radius:50%;align-self:flex-end;margin-top:-20px}
 .th .edit{position:absolute;top:8px;right:8px;font-size:12px;font-weight:600;padding:3px 8px;border-radius:99px;background:var(--bg);color:var(--text)}
+/* 1.26.8: miniatura do Início em cada tema (cores em linha, do próprio tema) */
+.o-mprev{position:relative;display:flex;flex-direction:column;gap:6px;height:112px;padding:9px 8px 30px;border-radius:calc(var(--r,16px)*.7);margin-bottom:6px;border:1px solid rgba(128,128,128,.2);overflow:hidden}
+.o-mcard{display:flex;align-items:center;gap:6px;padding:5px;border-radius:calc(var(--r,16px)*.45);border:1px solid}
+.o-mcard>i{width:22px;height:22px;border-radius:6px;flex:none}
+.o-mcard>span{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.o-mcard b{display:block;height:5px;width:75%;border-radius:9px}
+.o-mcard em{display:block;height:4px;width:50%;border-radius:9px}
+.o-mat{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.o-mat i{height:16px;border-radius:calc(var(--r,16px)*.3);border:1px solid transparent}
+.o-mat i:last-child{opacity:.35}
+.o-mnav{position:absolute;left:8px;right:8px;bottom:7px;height:16px;border-radius:99px;border:1px solid;display:flex;align-items:center;justify-content:space-around}
+.o-mnav i{width:5px;height:5px;border-radius:50%}
+.o-link{color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:2px}
 .sw{display:flex;gap:10px;flex-wrap:wrap}
 .sw button{width:38px;height:38px;border-radius:50%;border:3px solid var(--card);box-shadow:0 0 0 1px var(--line)}
 .sw button.sel{box-shadow:0 0 0 2px var(--text)}
@@ -321,10 +330,6 @@ textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
 .btn[disabled]{opacity:.45;pointer-events:none}
 a.btn{text-decoration:none}
 .passo{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:700;flex:none}
-.galeria{display:flex;flex-direction:column;gap:6px}
-.gal{display:flex;align-items:center;gap:12px;padding:8px;border-radius:var(--radius);background:var(--card);border:1px solid var(--line)}
-.gal-c{display:flex;align-items:center;justify-content:center;gap:5px;width:74px;height:40px;border-radius:calc(var(--radius)*.6);border:1px solid rgba(128,128,128,.25);flex:none}
-.gal-c i{width:14px;height:14px;border-radius:50%;border:1px solid rgba(128,128,128,.3)}
 .albs{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
 .albs.poucos{grid-template-columns:repeat(auto-fill,minmax(130px,150px))}
 .selbar .btns{display:grid;grid-template-columns:1fr 1fr}

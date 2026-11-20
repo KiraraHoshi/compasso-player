@@ -1906,10 +1906,19 @@ function escolherMusicas(p) {
 
 /* ===================== Tela: Temas ===================== */
 let editando = null;
+/* Miniatura do Início no tema t (1.26.8): clarão do brilho, um cartão de vidro com a capa, a fileira de atalhos e a barra flutuante.
+   Só estilos em linha com as cores do próprio tema: nada depende do tema em uso. */
+function miniaturaTema(v) {
+  const vidro = misturar(v.card, v.fundo, 0.25), traco = misturar(v.texto, v.fundo, 0.82);
+  return `<span class="o-mprev" aria-hidden="true" style="--r:${v.raio}px;background:radial-gradient(circle at 25% -10%,${brilhoDe(v)} 0,transparent 62%),${v.fundo}">
+    <span class="o-mcard" style="background:${vidro};border-color:${traco}"><i style="background:linear-gradient(135deg,${v.destaque},${v.secundaria})"></i><span><b style="background:${v.texto}"></b><em style="background:${v.suave}"></em></span></span>
+    <span class="o-mat">${`<i style="background:${vidro};border-color:${traco}"></i>`.repeat(3)}<i style="background:${v.destaque}"></i></span>
+    <span class="o-mnav" style="background:${vidro};border-color:${traco}"><i style="background:${v.destaque}"></i><i style="background:${v.suave}"></i><i style="background:${v.suave}"></i></span></span>`;
+}
 function cardTema(t) {
   const sel = t.id === cfg.tema, v = t.fixo ? { ...t, ...(cfg.ajustes[t.id] || {}) } : t;
-  return `<div class="th${sel ? " sel" : ""}"><button class="tp" style="flex-direction:column;align-items:stretch;gap:2px" data-tema="${t.id}" aria-pressed="${sel}">
-    <span class="prev" style="background:${v.fundo};--r:${v.raio}px"><span style="display:flex;flex-direction:column;gap:5px"><b style="background:${v.texto}"></b><em style="background:${v.suave}"></em></span><s style="background:${v.destaque}"></s></span>
+  return `<div class="th${sel ? " sel" : ""}"><button class="tp o-mini" style="flex-direction:column;align-items:stretch;gap:2px" data-tema="${t.id}" aria-pressed="${sel}">
+    ${miniaturaTema(v)}
     <span class="t clip">${esc(t.nome)}</span><span class="sub">${t.fixo ? T("Grátis") : T("Seu tema")}</span></button>
     ${t.fixo ? "" : `<button class="edit" data-editar="${t.id}" aria-label="${T("Editar {0}", esc(t.nome))}">${T("Editar")}</button>`}</div>`;
 }
@@ -1943,8 +1952,6 @@ function renderTemas() {
     aparencia: `
     <p class="sec-t">${T("Temas")}</p>
     <div class="themes">${todosTemas().map(cardTema).join("")}<button class="th add" data-criar>${ico("plus")}${T("Criar tema")}</button></div>
-    <p class="sec-t">${T("Galeria")}</p>
-    <div class="galeria">${GALERIA.map((g, i) => { const tem = meusTemas.some((m) => m.nome === g.nome); return `<div class="gal"><span class="gal-c" style="background:${g.fundo}"><i style="background:${g.card}"></i><i style="background:${g.destaque}"></i><i style="background:${g.secundaria}"></i></span><span class="t clip grow">${esc(g.nome)}</span><button class="btn ghost sm" data-galeria="${i}"${tem ? " disabled" : ""}>${tem ? T("Adicionado") : T("Adicionar")}</button></div>`; }).join("")}</div>
     <div class="card stack"><h2>${T("Ajuste rápido")}</h2><p class="note">${T("Vale para o tema em uso: {0}.", esc(t.nome))}</p>
       <div class="sw" role="group" aria-label="${T("Cor de destaque")}">${cores.map(([n, c]) => `<button data-cor="${c}" title="${n}" aria-label="${n}" aria-pressed="${c.toUpperCase() === t.destaque.toUpperCase()}" class="${c.toUpperCase() === t.destaque.toUpperCase() ? "sel" : ""}" style="background:${c}"></button>`).join("")}</div>
       <div class="opt"><label for="r-raio">${T("Cantos arredondados")}</label><input id="r-raio" type="range" min="0" max="28" step="2" value="${t.raio}"></div></div>
@@ -2083,8 +2090,6 @@ $("tm").addEventListener("click", (e) => {
   }
   if (t.closest("[data-alternar-leve]")) return definirLeve(!cfg.leve);
   if (t.closest("[data-alternar-fluido]")) { cfg.fluido = !cfg.fluido; salvarCfg(); return renderTemas(); }
-  const ga = t.closest("[data-galeria]");
-  if (ga) { const n = validarTema(GALERIA[+ga.dataset.galeria]); n.id = uid("t"); meusTemas.push(n); salvarTemas(); cfg.tema = n.id; aplicarTema(); renderTemas(); return toast(T('Tema "{0}" adicionado', n.nome)); }
   if (t.closest("[data-instalar]")) return pedirInstalacao();
   if (t.closest("[data-boasvindas]")) return boasVindas();
   if (t.closest("[data-aparelho]")) return procurarNoAparelho(true);
@@ -2186,6 +2191,8 @@ function renderEditor() {
     <div class="card stack"><label class="t" for="e-nome">${T("Nome")}</label><input class="field" id="e-nome" value="${esc(d.nome)}" maxlength="40" autocomplete="off"></div>
     <div class="card stack"><h2>${T("Cores")}</h2>
       ${CAMPOS.map(([k, n]) => `<label class="color-row" for="e-${k}"><span class="grow">${n}</span><code id="x-${k}">${d[k]}</code><input type="color" id="e-${k}" data-campo="${k}" value="${d[k].toLowerCase()}"></label>`).join("")}
+      <label class="color-row" for="e-brilho"><span class="grow">${T("Brilho do fundo")}</span><code id="x-brilho">${textoBrilho(d)}</code><input type="color" id="e-brilho" data-campo="brilho" value="${brilhoDe(d).toLowerCase()}"></label>
+      <p class="note">${T("O brilho é o clarão parado no alto da tela. Sem escolher, ele acompanha o destaque.")} <button class="o-link" data-brilho-auto${d.brilho ? "" : " hidden"}>${T("Automático")}</button></p>
       <div class="stack" id="e-contraste" style="gap:6px">${htmlContraste(d)}</div></div>
     <div class="card stack"><div class="opt"><label for="e-raio">${T("Cantos arredondados")}</label><input type="range" id="e-raio" min="0" max="28" step="2" value="${d.raio}"></div></div>
     <div class="card stack"><h2>${T("Fonte")}</h2><div class="fonts">${Object.entries(FONTES).map(([k, f]) => `<button data-fonte="${k}" aria-pressed="${d.fonte === k}" class="${d.fonte === k ? "on" : ""}" style="font-family:${esc(f.b)}"><b style="font-family:${esc(f.d)}">Aa</b>${f.n}</button>`).join("")}</div></div>
@@ -2197,12 +2204,16 @@ function entradaEditor(e) {
   if (t.id === "e-nome") { d.nome = t.value; return; }
   if (t.id === "e-raio") d.raio = +t.value;
   else if (t.dataset.campo) { d[t.dataset.campo] = t.value.toUpperCase(); $("x-" + t.dataset.campo).textContent = d[t.dataset.campo]; $("e-contraste").innerHTML = htmlContraste(d); }
+  if (t.dataset.campo === "brilho") document.querySelector("[data-brilho-auto]").hidden = false;
+  else if (!d.brilho) { $("e-brilho").value = brilhoDe(d).toLowerCase(); $("x-brilho").textContent = textoBrilho(d); } // sem brilho escolhido, ele acompanha o destaque
   aplicar(d);
 }
+const textoBrilho = (d) => (d.brilho ? d.brilho : T("{0} (automático)", brilhoDe(d)));
 function cliqueEditor(e) {
   const t = e.target, d = editando.rascunho;
   const f = t.closest("[data-fonte]");
   if (f) { d.fonte = f.dataset.fonte; document.querySelectorAll("[data-fonte]").forEach((b) => { const on = b === f; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); }); aplicar(d); return; }
+  if (t.closest("[data-brilho-auto]")) { delete d.brilho; $("e-brilho").value = brilhoDe(d).toLowerCase(); $("x-brilho").textContent = textoBrilho(d); t.closest("[data-brilho-auto]").hidden = true; aplicar(d); return; }
   if (t.closest("[data-voltar]")) { editando = null; aplicarTema(); renderTemas(); return; }
   if (t.closest("[data-salvar]")) {
     const novo = validarTema({ ...d, nome: (d.nome || "").trim() || "Meu tema" });
