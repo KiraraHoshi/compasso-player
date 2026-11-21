@@ -299,6 +299,8 @@ textarea.letra-ed{min-height:260px;font:14px/1.6 var(--body)}
 .app:is([data-visual="barras"],[data-visual="led"],[data-visual="aura"],[data-visual="espectro"],[data-visual="anel"],[data-visual="neon"],[data-visual="galaxia"],[data-visual="tunel"],[data-visual="osc"]) #viz{display:block}
 .app[data-visual="espectro"] #ticks,.app[data-visual="aura"] #ticks,.app[data-visual="anel"] #ticks,.app[data-visual="neon"] :is(#ticks,.disc){display:none}
 #viz{pointer-events:none}
+/* 1.26.10: o desenho dos visuais largos sai 25% para fora do mostrador; título, botões e barra de tempo ficam acima dele */
+#v-tocando > :is(.np-meta,.np-bar,.seek,.ctl,.volume){position:relative;z-index:1}
 .app[data-capa="quadrada"] .disc{inset:18%;border-radius:24%}
 /* Relógio (1.25): pontinhos de pico e ponteiros. O âmbar marca o tempo da música; o fino anda a cada batida */
 .dial .pk{fill:var(--accent);opacity:.85}
