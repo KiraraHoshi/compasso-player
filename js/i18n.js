@@ -589,6 +589,8 @@ const EN = {
  "Sair da tela cheia": "Exit full screen",
  "Salvar": "Save",
  "Salvar backup": "Save backup",
+ "Backup salvo na pasta \"{0}\".": "Backup saved in the \"{0}\" folder.",
+ "Não deu para gravar na pasta. Confira se ela ainda existe.": "Couldn't write to the folder. Check that it still exists.",
  "Salvar letra": "Save lyrics",
  "Salvar perfil": "Save profile",
  "Salvar tema": "Save theme",

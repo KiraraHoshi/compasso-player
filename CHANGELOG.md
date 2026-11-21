@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.26.10
+- **Salvar backup grava na pasta:** no celular, com a pasta do backup escolhida, o botão "Salvar backup" grava a cópia de hoje na pasta na hora. Antes ele abria o compartilhamento, igual ao "Enviar backup". Sem pasta escolhida, ele pede a pasta.
+
 ## 1.26.9
 - A fonte do texto (Figtree, a mesma do Orolon Caixinhas) agora vem dentro do app: o texto aparece igual em todo celular, mesmo sem internet. Antes, no Android, saía a fonte do próprio celular.
 

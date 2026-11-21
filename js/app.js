@@ -3305,10 +3305,23 @@ function avisarRestauro(r) {
   toast(T("Backup restaurado: {0}", plural(r.nPl, "playlist", "playlists")) + (r.total ? T(", {0} de {1} músicas encontradas", r.achadas, r.total) : ""));
   if (r.total > r.achadas) setTimeout(() => toast(T("Importe as músicas que faltam e restaure de novo para completar")), 2600);
 }
-async function salvarBackup() {
+/* 1.26.10: no app Android, "Salvar backup" grava a cópia de hoje na pasta do backup na hora (antes abria o compartilhamento, igual ao "Enviar backup").
+   Sem pasta, pede a pasta; com a pasta ainda cheia de backups sem decisão, mostra as cópias primeiro. */
+async function salvarBackup(plug = MUS) {
+  if (temBackupAutomatico(plug)) {
+    if (!cfg.bkpPasta || !cfg.bkpPasta.uri) return escolherPastaBackup(plug);
+    if (cfg.bkpPendente) {
+      let l = []; try { l = await copiasDaPasta(plug); } catch (e) { /* pasta ilegível: segue para gravar */ }
+      if (l.length) return abrirCopiasDaPasta(plug, l);
+      liberarBackupDaPasta();
+    }
+    const st = await backupAutomatico(plug, Date.now(), true);
+    if (st === "cedo") return; // já está gravando
+    return toast(st === "feito" ? T("Backup salvo na pasta \"{0}\".", cfg.bkpPasta.nome) : T("Não deu para gravar na pasta. Confira se ela ainda existe."));
+  }
   let texto; try { texto = await textoBackup(); } catch (e) { return toast(T("Não deu para montar o backup")); }
-  if (NATIVO && MUS && MUS.compartilhar) { // dentro do app Android o download direto não grava nada: entrega pelo compartilhamento
-    try { await MUS.compartilhar({ nome: nomeBackup(), texto, tipo: "application/json", titulo: T("Salvar backup") }); } catch (e) { return toast(T("Não deu para enviar o backup")); }
+  if (plug && plug.compartilhar && (NATIVO || plug !== MUS)) { // app Android sem a gravação em pasta: o download direto não grava nada, entrega pelo compartilhamento
+    try { await plug.compartilhar({ nome: nomeBackup(), texto, tipo: "application/json", titulo: T("Salvar backup") }); } catch (e) { return toast(T("Não deu para enviar o backup")); }
   } else baixar(new Blob([texto], { type: "application/json" }), nomeBackup());
   marcarBackupFeito();
 }
@@ -4408,7 +4421,7 @@ function acaoSel(a) {
 }
 
 /* ===================== Boas-vindas, instalação e sobre ===================== */
-const VERSAO = "1.26.9";
+const VERSAO = "1.26.10";
 /* De onde vêm as versões novas: a versão da Google Play atualiza pela loja (e não pode mandar baixar APK de fora);
    o APK de teste aponta para o GitHub; o site só avisa quais botões abrem o navegador. */
 function notaAtualizacao(nativo, loja) {
